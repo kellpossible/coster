@@ -1,5 +1,5 @@
 /// So I need:
-use crate::currency::Currency;
+use crate::currency::{Currency, CurrencyType};
 use chrono::{DateTime, Utc};
 use std::rc::Rc;
 use std::boxed::Box;
@@ -46,14 +46,23 @@ pub enum AccountStatus {
 }
 
 pub struct AccountCategory {
-    name: String,
-    parent: Option<Rc<AccountCategory>>,
+    pub name: String,
+    pub parent: Option<Rc<AccountCategory>>,
 }
 
+/// An account holding a commodity of [CurrencyType](crate::currency::CurrencyType)
 pub struct Account {
-    id: String,
-    name: Option<String>,
-    category: Option<Rc<AccountCategory>>,
+    /// A unique identifier for this `Account`
+    pub id: String,
+
+    /// The name of this `Account`
+    pub name: Option<String>,
+
+    /// The type of currency to be stored in this account
+    pub currency_type: CurrencyType,
+
+    /// The category that this account part of
+    pub category: Option<Rc<AccountCategory>>,
 }
 
 impl PartialEq for Account {
@@ -64,8 +73,13 @@ impl PartialEq for Account {
 
 /// Mutable state associated with an `Account`
 struct AccountState {
+    /// 
     account: Rc<Account>,
+
+    /// The amount of the commodity currently stored in this account
     amount: Currency,
+
+    /// The status of this account (open/closed/etc...)
     status: AccountStatus,
 }
 
@@ -85,7 +99,7 @@ pub struct Transaction {
     elements: Vec<TransactionElement>
 }
 
-impl Action for Transaction{
+impl Action for Transaction {
     fn datetime(&self) -> DateTime<Utc> {
         self.datetime
     }

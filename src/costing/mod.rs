@@ -1,5 +1,5 @@
-use std::rc::Rc;
 use chrono::{DateTime, Utc};
+use std::rc::Rc;
 
 struct User {
     id: String,

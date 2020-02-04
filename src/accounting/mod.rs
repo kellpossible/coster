@@ -35,7 +35,7 @@ pub struct Program {
 
 impl Program {
     pub fn new(actions: Vec<Box<dyn Action>>) -> Program {
-        Program { actions: actions }
+        Program { actions }
     }
     pub fn execute(&self, program_state: &mut ProgramState) -> Result<(), AccountingError> {
         for (index, action) in self.actions.iter().enumerate() {
@@ -66,8 +66,8 @@ impl ProgramState {
             .collect();
 
         ProgramState {
-            accounts: accounts,
-            account_states: account_states,
+            accounts,
+            account_states,
             current_action_index: 0,
         }
     }
@@ -155,9 +155,9 @@ struct AccountState {
 impl AccountState {
     fn new(account: Rc<Account>, amount: Commodity, status: AccountStatus) -> AccountState {
         AccountState {
-            account: account,
-            amount: amount,
-            status: status,
+            account,
+            amount,
+            status,
         }
     }
 
@@ -189,22 +189,25 @@ pub enum ActionType {
 
 #[derive(Debug)]
 pub struct Transaction {
-    description: String,
+    description: Option<String>,
     datetime: DateTime<Utc>,
     elements: Vec<TransactionElement>,
 }
 
-#[derive(Debug)]
-struct TransactionElement {
-    /// The account to perform the transaction to
-    account: Rc<Account>,
-
-    /// The amount of [Commodity](Commodity) to add to the account
-    amount: Commodity,
-
-    /// The exchange rate to use for converting the amount in this element
-    /// to a different [Currency](Currency)
-    exchange_rate: Option<ExchangeRate>,
+impl Transaction {
+    fn new(
+        description: Option<String>,
+        datetime: DateTime<Utc>,
+        elements: Vec<TransactionElement>,
+    ) -> Result<Transaction, AccountingError> {
+        //TODO: perform the commodity sum
+        //TODO: decide what currency to use for the sum type
+        Ok(Transaction {
+            description,
+            datetime,
+            elements,
+        })
+    }
 }
 
 impl fmt::Display for Transaction {
@@ -243,6 +246,33 @@ impl Action for Transaction {
         }
 
         return Ok(());
+    }
+}
+
+#[derive(Debug)]
+struct TransactionElement {
+    /// The account to perform the transaction to
+    account: Rc<Account>,
+
+    /// The amount of [Commodity](Commodity) to add to the account
+    amount: Commodity,
+
+    /// The exchange rate to use for converting the amount in this element
+    /// to a different [Currency](Currency)
+    exchange_rate: Option<ExchangeRate>,
+}
+
+impl TransactionElement {
+    pub fn new(
+        account: Rc<Account>,
+        amount: Commodity,
+        exchange_rate: Option<ExchangeRate>,
+    ) -> TransactionElement {
+        TransactionElement {
+            account,
+            amount,
+            exchange_rate,
+        }
     }
 }
 
@@ -295,13 +325,17 @@ impl Action for EditAccountStatus {
 
 #[cfg(test)]
 mod tests {
-    use super::{Account, AccountStatus, Action, EditAccountStatus, Program, ProgramState};
-    use crate::currency::Currency;
+    use super::{
+        Account, AccountState, AccountStatus, Action, EditAccountStatus, Program, ProgramState,
+        Transaction, TransactionElement,
+    };
+    use crate::currency::{Commodity, Currency};
     use chrono::{DateTime, Utc};
+    use rust_decimal::Decimal;
     use std::rc::Rc;
 
     #[test]
-    fn open_account() {
+    fn execute_program() {
         let currency = Rc::from(Currency::from_alpha3(Some('$'), "AUD"));
         let account1 = Rc::from(Account::new(
             Some(String::from("Account 1")),
@@ -313,21 +347,43 @@ mod tests {
 
         let mut program_state = ProgramState::new(accounts);
 
-        let open_account_action = EditAccountStatus::new(account1.clone(), AccountStatus::Open, Utc::now());
+        // TODO: change Utc::now to a string parsed value
+        let open_account_action =
+            EditAccountStatus::new(account1.clone(), AccountStatus::Open, Utc::now());
 
-        let actions: Vec<Box<dyn Action>> = vec![Box::from(open_account_action)];
+        // TODO: change Utc::now to a string parsed value
+        let transaction1 = Transaction::new(
+            Some(String::from("Transaction 1")),
+            Utc::now(),
+            vec![TransactionElement::new(
+                account1.clone(),
+                Commodity::from_str(Some('$'), "AUD", "-2.52"),
+                None,
+            )],
+        ).unwrap();
+
+        let actions: Vec<Box<dyn Action>> =
+            vec![Box::from(open_account_action), Box::from(transaction1)];
         let program = Program::new(actions);
 
-        assert_eq!(
-            AccountStatus::Closed,
-            program_state.get_account_state(account1.id.as_ref()).unwrap().status
-        );
+        let account1_state_before: AccountState = program_state
+            .get_account_state(account1.id.as_ref())
+            .unwrap()
+            .clone();
+
+        assert_eq!(AccountStatus::Closed, account1_state_before.status);
 
         program.execute(&mut program_state).unwrap();
 
+        let account1_state_after: AccountState = program_state
+            .get_account_state(account1.id.as_ref())
+            .unwrap()
+            .clone();
+
+        assert_eq!(AccountStatus::Open, account1_state_after.status);
         assert_eq!(
-            AccountStatus::Open,
-            program_state.get_account_state(account1.id.as_ref()).unwrap().status
+            Commodity::from_str(Some('$'), "AUD", "-2.52"),
+            account1_state_after.amount
         );
     }
 }

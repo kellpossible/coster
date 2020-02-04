@@ -7,6 +7,7 @@ use iso4217::CurrencyCode;
 use rust_decimal::Decimal;
 use std::fmt;
 use std::rc::Rc;
+use std::str::FromStr;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -115,6 +116,13 @@ impl Commodity {
             currency: currency,
             value: value,
         }
+    }
+
+    pub fn from_str(symbol: Option<char>, currency_alpha3: &str, value: &str) -> Commodity {
+        Commodity::new(
+            Rc::from(Currency::from_alpha3(symbol, currency_alpha3)),
+            Decimal::from_str(value).unwrap(),
+        )
     }
 
     /// Add the value of commodity `other` to `self`

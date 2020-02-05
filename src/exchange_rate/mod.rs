@@ -7,7 +7,7 @@ pub enum ExchangeRateSource {
     Internet(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExchangeRate {
     /// The datetime that this exchange rate represents
     datetime: DateTime<Utc>,

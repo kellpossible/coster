@@ -2,8 +2,6 @@ extern crate chrono;
 extern crate iso4217;
 extern crate rust_decimal;
 
-// use crate::exchange_rate::ExchangeRate;
-use iso4217::CurrencyCode;
 use rust_decimal::Decimal;
 use std::fmt;
 use std::rc::Rc;
@@ -29,8 +27,8 @@ pub enum CurrencyError {
 /// Represents a the type of currency held in a [Commodity](Commodity)
 #[derive(Debug, Clone)]
 pub struct Currency {
-    pub symbol: Option<char>,
-    pub code: &'static CurrencyCode,
+    pub code: String,
+    pub name: Option<String>,
 }
 
 impl Currency {
@@ -40,33 +38,33 @@ impl Currency {
     /// ```
     /// # use coster::currency::Currency;
     ///
-    /// let currency = Currency::new(Option::from('$'), &iso4217::alpha3("AUD").unwrap());
-    /// assert_eq!("Australian dollar", currency.code.name);
-    /// assert_eq!('$', currency.symbol.unwrap());
+    /// let currency = Currency::new("AUD", Some("Australian dollar"));
+    /// assert_eq!("AUD", currency.code);
+    /// assert_eq!("Australian dollar", currency.name.unwrap());
     /// ```
-    pub fn new(symbol: Option<char>, code: &'static CurrencyCode) -> Currency {
+    pub fn new<S: Into<String>>(code: S, name: Option<S>) -> Currency {
         Currency {
-            symbol: symbol,
-            code: code,
+            code: code.into(),
+            name: name.map(|n| n.into()),
         }
-    }
-
-    pub fn from_alpha3(symbol: Option<char>, alpha3: &str) -> Currency {
-        Currency::new(symbol, iso4217::alpha3(alpha3).unwrap())
     }
 }
 
 impl PartialEq for Currency {
     /// Implementation of [PartialEq](core::cmp::PartialEq) for [Currency](Currency) which compares
-    /// their currency code `alpha3` values.
+    /// their currency code values.
     fn eq(&self, other: &Self) -> bool {
-        self.code.alpha3 == other.code.alpha3
+        self.code == other.code
     }
 }
 
 impl fmt::Display for Currency {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.code.alpha3)
+        write!(f, "{}", self.code)?;
+        match &self.name {
+            Some(name) => write!(f, " ({})", name),
+            None => Ok(()),
+        }
     }
 }
 
@@ -105,7 +103,7 @@ impl Commodity {
     /// use rust_decimal::Decimal;
     /// use std::rc::Rc;
     ///
-    /// let currency = Rc::from(Currency::from_alpha3(Option::from('$'), "USD"));
+    /// let currency = Rc::from(Currency::new("USD", None));
     /// let commodity = Commodity::new(currency.clone(), Decimal::new(202, 2));
     ///
     /// assert_eq!(Decimal::from_str("2.02").unwrap(), commodity.value);
@@ -118,9 +116,9 @@ impl Commodity {
         }
     }
 
-    pub fn from_str(symbol: Option<char>, currency_alpha3: &str, value: &str) -> Commodity {
+    pub fn from_str(currency_code: &str, value: &str) -> Commodity {
         Commodity::new(
-            Rc::from(Currency::from_alpha3(symbol, currency_alpha3)),
+            Rc::from(Currency::new(currency_code, None)),
             Decimal::from_str(value).unwrap(),
         )
     }
@@ -134,7 +132,7 @@ impl Commodity {
     /// use rust_decimal::Decimal;
     /// use std::rc::Rc;
     ///
-    /// let currency = Rc::from(Currency::from_alpha3(Option::from('$'), "USD"));
+    /// let currency = Rc::from(Currency::new("USD", None));
     /// let commodity1 = Commodity::new(currency.clone(), Decimal::new(400, 2));
     /// let commodity2 = Commodity::new(currency.clone(), Decimal::new(250, 2));
     ///
@@ -166,7 +164,7 @@ impl Commodity {
     /// use rust_decimal::Decimal;
     /// use std::rc::Rc;
     ///
-    /// let currency = Rc::from(Currency::from_alpha3(Option::from('$'), "USD"));
+    /// let currency = Rc::from(Currency::new("USD", None));
     /// let commodity1 = Commodity::new(currency.clone(), Decimal::new(400, 2));
     /// let commodity2 = Commodity::new(currency.clone(), Decimal::new(250, 2));
     ///
@@ -198,7 +196,7 @@ impl Commodity {
     /// use rust_decimal::Decimal;
     /// use std::rc::Rc;
     ///
-    /// let currency = Rc::from(Currency::from_alpha3(Option::from('$'), "USD"));
+    /// let currency = Rc::from(Currency::new("USD", None));
     /// let commodity = Commodity::new(currency.clone(), Decimal::new(202, 2));
     ///
     /// // perform the negation
@@ -226,8 +224,8 @@ mod tests {
 
     #[test]
     fn commodity_incompatible_currency() {
-        let currency1 = Rc::from(Currency::from_alpha3(Option::from('$'), "USD"));
-        let currency2 = Rc::from(Currency::from_alpha3(Option::from('$'), "AUD"));
+        let currency1 = Rc::from(Currency::new("USD", None));
+        let currency2 = Rc::from(Currency::new("AUD", None));
 
         let commodity1 = Commodity::new(currency1, Decimal::new(400, 2));
         let commodity2 = Commodity::new(currency2, Decimal::new(250, 2));

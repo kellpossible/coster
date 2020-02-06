@@ -3,7 +3,7 @@ extern crate iso4217;
 extern crate nanoid;
 extern crate rust_decimal;
 
-use crate::currency::{Commodity, CurrencyCode, Currency, CurrencyError};
+use crate::currency::{Commodity, Currency, CurrencyError};
 use crate::exchange_rate::ExchangeRate;
 
 use chrono::NaiveDate;

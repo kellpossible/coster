@@ -1,16 +1,16 @@
+extern crate arrayvec;
 extern crate chrono;
 extern crate iso4217;
 extern crate rust_decimal;
-extern crate arrayvec;
 
+use arrayvec::ArrayString;
 use rust_decimal::Decimal;
 use std::fmt;
 use std::str::FromStr;
 use thiserror::Error;
-use arrayvec::ArrayString;
 
 pub const CURRENCY_CODE_LENGTH: usize = 8;
-type CurrencyCodeArray = ArrayString::<[u8;CURRENCY_CODE_LENGTH]>;
+type CurrencyCodeArray = ArrayString<[u8; CURRENCY_CODE_LENGTH]>;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum CurrencyError {
@@ -26,8 +26,11 @@ pub enum CurrencyError {
         other_commodity: Commodity,
         reason: String,
     },
-    #[error("The currency code {0} is too long. Maximum of {} characters allowed.", CURRENCY_CODE_LENGTH)]
-    TooLongCurrencyCode(String)
+    #[error(
+        "The currency code {0} is too long. Maximum of {} characters allowed.",
+        CURRENCY_CODE_LENGTH
+    )]
+    TooLongCurrencyCode(String),
 }
 
 /// Represents a the type of currency held in a [Commodity](Commodity).
@@ -42,30 +45,27 @@ pub struct Currency {
 
 impl Currency {
     /// Create a new [Currency](Currency)
-    /// 
+    ///
     /// # Example
     /// ```
     /// # use coster::currency::{Currency, CurrencyCode};
-    /// 
+    ///
     /// let code = CurrencyCode::from_str("AUD").unwrap();
     /// let currency = Currency::new(
-    ///     code, 
+    ///     code,
     ///     Some(String::from("Australian Dollar"))
     /// );
-    /// 
+    ///
     /// assert_eq!(code, currency.code);
     /// assert_eq!(Some(String::from("Australian Dollar")), currency.name);
     /// ```
     pub fn new(code: CurrencyCode, name: Option<String>) -> Currency {
-        Currency {
-            code,
-            name,
-        }
+        Currency { code, name }
     }
 }
 
 /// The code/id of a [Currency](Currency).
-/// 
+///
 /// This is a fixed length array of characters of length [CURRENCY_CODE_LENGTH](CURRENCY_CODE_LENGTH),
 /// with a backing implementation based on [ArrayString](ArrayString).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -97,9 +97,7 @@ impl CurrencyCode {
 impl PartialEq<CurrencyCode> for &str {
     fn eq(&self, other: &CurrencyCode) -> bool {
         match CurrencyCodeArray::from_str(self) {
-            Ok(self_as_code) => {
-                self_as_code == other.array
-            },
+            Ok(self_as_code) => self_as_code == other.array,
             Err(_) => false,
         }
     }
@@ -192,10 +190,7 @@ impl Commodity {
             String::from("cannot add commodities with different currencies"),
         )?;
 
-        return Ok(Commodity::new(
-            self.value + other.value,
-            self.currency_code,
-        ));
+        return Ok(Commodity::new(self.value + other.value, self.currency_code));
     }
 
     /// Subtract the value of commodity `other` from `self`
@@ -224,10 +219,7 @@ impl Commodity {
             String::from("cannot subtract commodities with different currencies"),
         )?;
 
-        return Ok(Commodity::new(
-            self.value - other.value,
-            self.currency_code,
-        ));
+        return Ok(Commodity::new(self.value - other.value, self.currency_code));
     }
 
     /// Negate the value of this commodity such that `result = -self`
@@ -249,10 +241,7 @@ impl Commodity {
     /// assert_eq!(currency_code, result.currency_code)
     /// ```
     pub fn negate(&self) -> Commodity {
-        Commodity::new(
-            -self.value,
-            self.currency_code, 
-        )
+        Commodity::new(-self.value, self.currency_code)
     }
 }
 

@@ -3,7 +3,7 @@ extern crate iso4217;
 extern crate nanoid;
 extern crate rust_decimal;
 
-use crate::currency::{Commodity, Currency, CurrencyError};
+use crate::currency::{Commodity, CurrencyCode, Currency, CurrencyError};
 use crate::exchange_rate::ExchangeRate;
 
 use chrono::NaiveDate;
@@ -110,8 +110,6 @@ pub struct AccountCategory {
 
 /// Details for an account, which holds a [Commodity](Commodity)
 /// with a type of [Currency](Currency).
-///
-/// For the creation of an account, see [ProgramState::new_account()](ProgramState::new_account)
 #[derive(Debug, Clone)]
 pub struct Account {
     /// A unique identifier for this `Account`
@@ -173,7 +171,7 @@ impl AccountState {
     fn new_default_amount(account: Rc<Account>, status: AccountStatus) -> AccountState {
         AccountState {
             account: account.clone(),
-            amount: Commodity::new(account.currency.clone(), Decimal::new(0, DECIMAL_SCALE)),
+            amount: Commodity::new(Decimal::new(0, DECIMAL_SCALE), account.currency.code),
             status: status,
         }
     }
@@ -267,7 +265,7 @@ impl Action for Transaction {
                 .clone(),
         };
 
-        let mut sum = Commodity::new(sum_currency, Decimal::zero());
+        let mut sum = Commodity::new(Decimal::zero(), sum_currency.code);
 
         let mut modified_elements = self.elements.clone();
 
@@ -434,13 +432,13 @@ mod tests {
         Account, AccountState, AccountStatus, Action, EditAccountStatus, NaiveDate, Program,
         ProgramState, Transaction, TransactionElement,
     };
-    use crate::currency::{Commodity, Currency};
+    use crate::currency::{Commodity, Currency, CurrencyCode};
     use std::rc::Rc;
     use std::str::FromStr;
 
     #[test]
     fn execute_program() {
-        let currency = Rc::from(Currency::new("AUD", None));
+        let currency = Rc::from(Currency::new(CurrencyCode::from_str("AUD").unwrap(), None));
         let account1 = Rc::from(Account::new(
             Some(String::from("Account 1")),
             currency.clone(),
@@ -475,12 +473,12 @@ mod tests {
             vec![
                 TransactionElement::new(
                     account1.clone(),
-                    Some(Commodity::from_str("AUD", "-2.52")),
+                    Some(Commodity::from_str("-2.52", "AUD").unwrap()),
                     None,
                 ),
                 TransactionElement::new(
                     account2.clone(),
-                    Some(Commodity::from_str("AUD", "2.52")),
+                    Some(Commodity::from_str("2.52", "AUD").unwrap()),
                     None,
                 ),
             ],
@@ -513,7 +511,7 @@ mod tests {
 
         assert_eq!(AccountStatus::Open, account1_state_after.status);
         assert_eq!(
-            Commodity::from_str("AUD", "-2.52"),
+            Commodity::from_str("-2.52", "AUD").unwrap(),
             account1_state_after.amount
         );
     }

@@ -1,12 +1,16 @@
 extern crate chrono;
 extern crate iso4217;
 extern crate rust_decimal;
+extern crate arrayvec;
 
 use rust_decimal::Decimal;
 use std::fmt;
-use std::rc::Rc;
 use std::str::FromStr;
 use thiserror::Error;
+use arrayvec::ArrayString;
+
+pub const CURRENCY_CODE_LENGTH: usize = 8;
+type CurrencyCodeArray = ArrayString::<[u8;CURRENCY_CODE_LENGTH]>;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum CurrencyError {
@@ -22,57 +26,96 @@ pub enum CurrencyError {
         other_commodity: Commodity,
         reason: String,
     },
+    #[error("The currency code {0} is too long. Maximum of {} characters allowed.", CURRENCY_CODE_LENGTH)]
+    TooLongCurrencyCode(String)
 }
 
-/// Represents a the type of currency held in a [Commodity](Commodity)
+/// Represents a the type of currency held in a [Commodity](Commodity).
 #[derive(Debug, Clone)]
 pub struct Currency {
-    pub code: String,
+    /// Stores the code/id of this currency in a fixed length [ArrayString](ArrayString),
+    /// with a maximum length of [CURRENCY_CODE_LENGTH](CURRENCY_CODE_LENGTH).
+    pub code: CurrencyCode,
+    /// The human readable name of this currency.
     pub name: Option<String>,
 }
 
 impl Currency {
+    /// Create a new [Currency](Currency)
+    /// 
+    /// # Example
+    /// ```
+    /// # use coster::currency::{Currency, CurrencyCode};
+    /// 
+    /// let code = CurrencyCode::from_str("AUD").unwrap();
+    /// let currency = Currency::new(
+    ///     code, 
+    ///     Some(String::from("Australian Dollar"))
+    /// );
+    /// 
+    /// assert_eq!(code, currency.code);
+    /// assert_eq!(Some(String::from("Australian Dollar")), currency.name);
+    /// ```
+    pub fn new(code: CurrencyCode, name: Option<String>) -> Currency {
+        Currency {
+            code,
+            name,
+        }
+    }
+}
+
+/// The code/id of a [Currency](Currency).
+/// 
+/// This is a fixed length array of characters of length [CURRENCY_CODE_LENGTH](CURRENCY_CODE_LENGTH),
+/// with a backing implementation based on [ArrayString](ArrayString).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CurrencyCode {
+    pub array: CurrencyCodeArray,
+}
+
+impl CurrencyCode {
     /// Create a new [Currency](Currency).
     ///
     /// # Example
     /// ```
-    /// # use coster::currency::Currency;
+    /// # use coster::currency::CurrencyCode;
     ///
-    /// let currency = Currency::new("AUD", Some("Australian dollar"));
-    /// assert_eq!("AUD", currency.code);
-    /// assert_eq!("Australian dollar", currency.name.unwrap());
+    /// let currency_code = CurrencyCode::from_str("AUD").unwrap();
+    /// assert_eq!("AUD", currency_code);
     /// ```
-    pub fn new<S: Into<String>>(code: S, name: Option<S>) -> Currency {
-        Currency {
-            code: code.into(),
-            name: name.map(|n| n.into()),
+    pub fn from_str(code: &str) -> Result<CurrencyCode, CurrencyError> {
+        if code.len() > CURRENCY_CODE_LENGTH {
+            return Err(CurrencyError::TooLongCurrencyCode(String::from(code)));
+        }
+
+        return Ok(CurrencyCode {
+            array: CurrencyCodeArray::from(code).unwrap(),
+        });
+    }
+}
+
+impl PartialEq<CurrencyCode> for &str {
+    fn eq(&self, other: &CurrencyCode) -> bool {
+        match CurrencyCodeArray::from_str(self) {
+            Ok(self_as_code) => {
+                self_as_code == other.array
+            },
+            Err(_) => false,
         }
     }
 }
 
-impl PartialEq for Currency {
-    /// Implementation of [PartialEq](core::cmp::PartialEq) for [Currency](Currency) which compares
-    /// their currency code values.
-    fn eq(&self, other: &Self) -> bool {
-        self.code == other.code
-    }
-}
-
-impl fmt::Display for Currency {
+impl fmt::Display for CurrencyCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.code)?;
-        match &self.name {
-            Some(name) => write!(f, " ({})", name),
-            None => Ok(()),
-        }
+        write!(f, "{}", self.array)
     }
 }
 
 /// A commodity, which holds a value of a type of [Currrency](Currency)
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Commodity {
-    pub currency: Rc<Currency>,
     pub value: Decimal,
+    pub currency_code: CurrencyCode,
 }
 
 /// Check whether the currencies of two commodities are compatible (the same),
@@ -82,7 +125,7 @@ fn check_currency_compatible(
     other_commodity: &Commodity,
     reason: String,
 ) -> Result<(), CurrencyError> {
-    if this_commodity.currency != other_commodity.currency {
+    if this_commodity.currency_code != other_commodity.currency_code {
         return Err(CurrencyError::IncompatableCommodity {
             this_commodity: this_commodity.clone(),
             other_commodity: other_commodity.clone(),
@@ -98,29 +141,29 @@ impl Commodity {
     ///
     /// # Example
     /// ```
-    /// # use coster::currency::{Commodity, Currency};
+    /// # use coster::currency::{Commodity, CurrencyCode};
     /// # use std::str::FromStr;
     /// use rust_decimal::Decimal;
     /// use std::rc::Rc;
     ///
-    /// let currency = Rc::from(Currency::new("USD", None));
-    /// let commodity = Commodity::new(currency.clone(), Decimal::new(202, 2));
+    /// let currency_code = CurrencyCode::from_str("USD").unwrap();
+    /// let commodity = Commodity::new(Decimal::new(202, 2), currency_code);
     ///
     /// assert_eq!(Decimal::from_str("2.02").unwrap(), commodity.value);
-    /// assert_eq!(currency, commodity.currency)
+    /// assert_eq!(currency_code, commodity.currency_code)
     /// ```
-    pub fn new(currency: Rc<Currency>, value: Decimal) -> Commodity {
+    pub fn new(value: Decimal, currency_code: CurrencyCode) -> Commodity {
         Commodity {
-            currency: currency,
+            currency_code: currency_code,
             value: value,
         }
     }
 
-    pub fn from_str(currency_code: &str, value: &str) -> Commodity {
-        Commodity::new(
-            Rc::from(Currency::new(currency_code, None)),
+    pub fn from_str(value: &str, currency_code: &str) -> Result<Commodity, CurrencyError> {
+        Ok(Commodity::new(
             Decimal::from_str(value).unwrap(),
-        )
+            CurrencyCode::from_str(currency_code)?,
+        ))
     }
 
     /// Add the value of commodity `other` to `self`
@@ -128,19 +171,19 @@ impl Commodity {
     ///
     /// # Example
     /// ```
-    /// # use coster::currency::{Commodity, Currency};
+    /// # use coster::currency::{Commodity, CurrencyCode};
     /// use rust_decimal::Decimal;
     /// use std::rc::Rc;
     ///
-    /// let currency = Rc::from(Currency::new("USD", None));
-    /// let commodity1 = Commodity::new(currency.clone(), Decimal::new(400, 2));
-    /// let commodity2 = Commodity::new(currency.clone(), Decimal::new(250, 2));
+    /// let currency_code = CurrencyCode::from_str("USD").unwrap();
+    /// let commodity1 = Commodity::new(Decimal::new(400, 2), currency_code);
+    /// let commodity2 = Commodity::new(Decimal::new(250, 2), currency_code);
     ///
     /// // perform the add
     /// let result = commodity1.add(&commodity2).unwrap();
     ///
     /// assert_eq!(Decimal::new(650, 2), result.value);
-    /// assert_eq!(currency, result.currency);
+    /// assert_eq!(currency_code, result.currency_code);
     /// ```
     pub fn add(&self, other: &Commodity) -> Result<Commodity, CurrencyError> {
         check_currency_compatible(
@@ -150,8 +193,8 @@ impl Commodity {
         )?;
 
         return Ok(Commodity::new(
-            self.currency.clone(),
             self.value + other.value,
+            self.currency_code,
         ));
     }
 
@@ -160,19 +203,19 @@ impl Commodity {
     ///
     /// # Example
     /// ```
-    /// # use coster::currency::{Commodity, Currency};
+    /// # use coster::currency::{Commodity, CurrencyCode};
     /// use rust_decimal::Decimal;
     /// use std::rc::Rc;
     ///
-    /// let currency = Rc::from(Currency::new("USD", None));
-    /// let commodity1 = Commodity::new(currency.clone(), Decimal::new(400, 2));
-    /// let commodity2 = Commodity::new(currency.clone(), Decimal::new(250, 2));
+    /// let currency_code = CurrencyCode::from_str("USD").unwrap();
+    /// let commodity1 = Commodity::new(Decimal::new(400, 2), currency_code);
+    /// let commodity2 = Commodity::new(Decimal::new(250, 2), currency_code);
     ///
     /// // perform the subtraction
     /// let result = commodity1.subtract(&commodity2).unwrap();
     ///
     /// assert_eq!(Decimal::new(150, 2), result.value);
-    /// assert_eq!(currency, result.currency);
+    /// assert_eq!(currency_code, result.currency_code);
     /// ```
     pub fn subtract(&self, other: &Commodity) -> Result<Commodity, CurrencyError> {
         check_currency_compatible(
@@ -182,8 +225,8 @@ impl Commodity {
         )?;
 
         return Ok(Commodity::new(
-            self.currency.clone(),
             self.value - other.value,
+            self.currency_code,
         ));
     }
 
@@ -191,44 +234,46 @@ impl Commodity {
     ///
     /// # Example
     /// ```
-    /// # use coster::currency::{Commodity, Currency};
+    /// # use coster::currency::{Commodity, CurrencyCode};
     /// # use std::str::FromStr;
     /// use rust_decimal::Decimal;
     /// use std::rc::Rc;
     ///
-    /// let currency = Rc::from(Currency::new("USD", None));
-    /// let commodity = Commodity::new(currency.clone(), Decimal::new(202, 2));
+    /// let currency_code = CurrencyCode::from_str("USD").unwrap();
+    /// let commodity = Commodity::new(Decimal::new(202, 2), currency_code);
     ///
     /// // perform the negation
     /// let result = commodity.negate();
     ///
     /// assert_eq!(Decimal::from_str("-2.02").unwrap(), result.value);
-    /// assert_eq!(currency, result.currency)
+    /// assert_eq!(currency_code, result.currency_code)
     /// ```
     pub fn negate(&self) -> Commodity {
-        Commodity::new(self.currency.clone(), -self.value)
+        Commodity::new(
+            -self.value,
+            self.currency_code, 
+        )
     }
 }
 
 impl fmt::Display for Commodity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} {}", self.value, self.currency)
+        write!(f, "{} {}", self.value, self.currency_code)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Commodity, Currency, CurrencyError};
+    use super::{Commodity, CurrencyCode, CurrencyError};
     use rust_decimal::Decimal;
-    use std::rc::Rc;
 
     #[test]
     fn commodity_incompatible_currency() {
-        let currency1 = Rc::from(Currency::new("USD", None));
-        let currency2 = Rc::from(Currency::new("AUD", None));
+        let currency1 = CurrencyCode::from_str("USD").unwrap();
+        let currency2 = CurrencyCode::from_str("AUD").unwrap();
 
-        let commodity1 = Commodity::new(currency1, Decimal::new(400, 2));
-        let commodity2 = Commodity::new(currency2, Decimal::new(250, 2));
+        let commodity1 = Commodity::new(Decimal::new(400, 2), currency1);
+        let commodity2 = Commodity::new(Decimal::new(250, 2), currency2);
 
         let error1 = commodity1.add(&commodity2).expect_err("expected an error");
 

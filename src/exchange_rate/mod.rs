@@ -1,8 +1,9 @@
+use crate::currency::{CurrencyCode};
 use chrono::{DateTime, Utc};
 
 pub enum ExchangeRateSource {
-    /// Manually entered
-    Manual,
+    /// A local source
+    Local,
     /// From the internet (string indicating the source)
     Internet(String),
 }
@@ -10,7 +11,10 @@ pub enum ExchangeRateSource {
 #[derive(Debug, Clone)]
 pub struct ExchangeRate {
     /// The datetime that this exchange rate represents
-    datetime: DateTime<Utc>,
+    pub datetime: Option<DateTime<Utc>>,
     /// The datetime that this exchange rate was obtained.
-    obtained_datetime: Option<DateTime<Utc>>,
+    pub obtained_datetime: Option<DateTime<Utc>>,
+    /// The base currency for the exchange rate
+    pub base: CurrencyCode,
+    pub rates: Vec<(CurrencyCode, f32)>,
 }

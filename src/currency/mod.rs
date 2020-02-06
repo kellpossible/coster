@@ -5,6 +5,7 @@ extern crate rust_decimal;
 
 use arrayvec::ArrayString;
 use rust_decimal::Decimal;
+use rust_decimal::prelude::Zero;
 use std::fmt;
 use std::str::FromStr;
 use thiserror::Error;
@@ -31,6 +32,8 @@ pub enum CurrencyError {
         CURRENCY_CODE_LENGTH
     )]
     TooLongCurrencyCode(String),
+    #[error("The provided alpha3 code {0} doesn't match any in the iso4217 database")]
+    InvalidISO4217Alpha3(String),
 }
 
 /// Represents a the type of currency held in a [Commodity](Commodity).
@@ -62,15 +65,62 @@ impl Currency {
     pub fn new(code: CurrencyCode, name: Option<String>) -> Currency {
         Currency { code, name }
     }
+
+    pub fn common() -> Currency {
+        Currency { code: CurrencyCode::Common, name: Some(String::from("Common"))}
+    }
+
+    pub fn from_str(code: &str, name: &str) -> Result<Currency, CurrencyError> {
+        let code = CurrencyCode::from_str(code)?;
+
+        let name = if name.len() == 0 {
+            None
+        } else {
+            Some(String::from(name))
+        };
+
+        Ok(Currency::new(code, name))
+    }
+
+    /// Construct a [Currency](Currency) by looking it up in the iso4217
+    /// currency database.
+    /// 
+    /// # Example
+    /// ```
+    /// # use coster::currency::Currency;
+    /// 
+    /// let currency = Currency::from_alpha3("AUD").unwrap();
+    /// assert_eq!("AUD", currency.code);
+    /// assert_eq!(Some(String::from("Australian dollar")), currency.name);
+    /// ```
+    pub fn from_alpha3(alpha3: &str) -> Result<Currency, CurrencyError> {
+        match iso4217::alpha3(alpha3) {
+            Some(code) => {
+                Currency::from_str(alpha3, code.name)
+            },
+            None => Err(CurrencyError::InvalidISO4217Alpha3(String::from(alpha3)))
+        }
+    }
+}
+
+/// Return a vector of all iso4217 currencies
+pub fn all_iso4217_currencies() -> Vec<Currency> {
+    let mut currencies = Vec::new();
+    for iso_currency in iso4217::all() {
+        currencies.push(Currency::from_str(iso_currency.alpha3, iso_currency.name).unwrap());
+    }
+
+    return currencies;
 }
 
 /// The code/id of a [Currency](Currency).
-///
-/// This is a fixed length array of characters of length [CURRENCY_CODE_LENGTH](CURRENCY_CODE_LENGTH),
-/// with a backing implementation based on [ArrayString](ArrayString).
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct CurrencyCode {
-    pub array: CurrencyCodeArray,
+pub enum CurrencyCode {
+    /// This is a fixed length array of characters of length [CURRENCY_CODE_LENGTH](CURRENCY_CODE_LENGTH),
+    /// with a backing implementation based on [ArrayString](ArrayString).
+    Array(CurrencyCodeArray),
+    /// This is a common degenerate currency type, used for sums/checks with multiple currencies
+    Common,
 }
 
 impl CurrencyCode {
@@ -88,16 +138,17 @@ impl CurrencyCode {
             return Err(CurrencyError::TooLongCurrencyCode(String::from(code)));
         }
 
-        return Ok(CurrencyCode {
-            array: CurrencyCodeArray::from(code).unwrap(),
-        });
+        return Ok(CurrencyCode::Array(CurrencyCodeArray::from(code).unwrap()));
     }
 }
 
 impl PartialEq<CurrencyCode> for &str {
     fn eq(&self, other: &CurrencyCode) -> bool {
         match CurrencyCodeArray::from_str(self) {
-            Ok(self_as_code) => self_as_code == other.array,
+            Ok(self_as_code) => match other {
+                CurrencyCode::Array(array) => &self_as_code == array,
+                CurrencyCode::Common => false
+            },
             Err(_) => false,
         }
     }
@@ -105,7 +156,10 @@ impl PartialEq<CurrencyCode> for &str {
 
 impl fmt::Display for CurrencyCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.array)
+        match self {
+            CurrencyCode::Array(array) => write!(f, "{}", array),
+            _ => write!(f, "{:?} Currency", self),
+        }
     }
 }
 
@@ -155,6 +209,11 @@ impl Commodity {
             currency_code: currency_code,
             value: value,
         }
+    }
+
+    /// Create a commodity with a value of zero
+    pub fn zero(currency_code: CurrencyCode) -> Commodity {
+        Commodity::new(Decimal::zero(), currency_code)
     }
 
     pub fn from_str(value: &str, currency_code: &str) -> Result<Commodity, CurrencyError> {

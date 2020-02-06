@@ -3,7 +3,7 @@ extern crate iso4217;
 extern crate nanoid;
 extern crate rust_decimal;
 
-use crate::currency::{Commodity, Currency, CurrencyError};
+use crate::currency::{Commodity, Currency, CurrencyError, CurrencyCode};
 use crate::exchange_rate::ExchangeRate;
 
 use chrono::NaiveDate;
@@ -15,7 +15,7 @@ use std::rc::Rc;
 use thiserror::Error;
 
 const DECIMAL_SCALE: u32 = 2;
-const ID_SIZE: usize = 20;
+const ACCOUNT_ID_SIZE: usize = 20;
 
 /// TODO: add context for the error for where it occurred
 /// within the `Program`
@@ -32,6 +32,8 @@ pub enum AccountingError {
     DateParseError(#[from] chrono::ParseError),
     #[error("invalid transaction {0:?} because {1}")]
     InvalidTransaction(Transaction, String),
+    #[error("failed checksum, the sum of account values in the common currency ({0}) does not equal zero")]
+    FailedCheckSum(Commodity),
 }
 
 pub struct Program {
@@ -42,10 +44,16 @@ impl Program {
     pub fn new(actions: Vec<Box<dyn Action>>) -> Program {
         Program { actions }
     }
+
     pub fn execute(&self, program_state: &mut ProgramState) -> Result<(), AccountingError> {
         for (index, action) in self.actions.iter().enumerate() {
             action.perform(program_state)?;
             program_state.current_action_index = index;
+        }
+
+        let account_sum = program_state.sum_accounts();
+        if account_sum != Commodity::zero(CurrencyCode::Common) {
+            return Err(AccountingError::FailedCheckSum(account_sum));
         }
 
         Ok(())
@@ -79,7 +87,7 @@ impl ProgramState {
 
     /// Get a reference to the `AccountState` associated with a given `Account`.
     ///
-    /// TODO: in the future implement some kind of id caching if required
+    /// TODO: performance, in the future implement some kind of id caching if required
     fn get_account_state(&self, account_id: &str) -> Option<&AccountState> {
         self.account_states
             .iter()
@@ -88,11 +96,20 @@ impl ProgramState {
 
     /// Get a mutable reference to the `AccountState` associated with the given `Account`.
     ///
-    /// TODO: in the future implement some kind of id caching if required
+    /// TODO: performance, in the future implement some kind of id caching if required
     fn get_account_state_mut(&mut self, account_id: &str) -> Option<&mut AccountState> {
         self.account_states
             .iter_mut()
             .find(|account_state| account_state.account.id == account_id)
+    }
+
+    fn sum_accounts(&self, exchange_rate: &ExchangeRate) -> Commodity {
+        let mut sum = Commodity::zero(CurrencyCode::Common);
+
+        for account_state in &self.account_states {
+            account_state.amount
+        }
+        
     }
 }
 
@@ -134,10 +151,10 @@ impl Account {
         category: Option<Rc<AccountCategory>>,
     ) -> Account {
         Account {
-            id: nanoid::generate(ID_SIZE),
-            name: name,
-            currency: currency,
-            category: category,
+            id: nanoid::generate(ACCOUNT_ID_SIZE),
+            name,
+            currency,
+            category,
         }
     }
 }
@@ -485,12 +502,29 @@ mod tests {
         )
         .unwrap();
 
-        //TODO: add a transaction with one amount unspecified
+        let transaction2 = Transaction::new(
+            Some(String::from("Transaction 2")),
+            NaiveDate::from_str("2020-01-02").unwrap(),
+            vec![
+                TransactionElement::new(
+                    account1.clone(),
+                    Some(Commodity::from_str("-1.0", "AUD").unwrap()),
+                    None,
+                ),
+                TransactionElement::new(
+                    account2.clone(),
+                    None,
+                    None,
+                ),
+            ],
+        )
+        .unwrap();
 
         let actions: Vec<Box<dyn Action>> = vec![
             Box::from(open_account1),
             Box::from(open_account2),
             Box::from(transaction1),
+            Box::from(transaction2),
         ];
 
         let program = Program::new(actions);
@@ -511,7 +545,7 @@ mod tests {
 
         assert_eq!(AccountStatus::Open, account1_state_after.status);
         assert_eq!(
-            Commodity::from_str("-2.52", "AUD").unwrap(),
+            Commodity::from_str("-3.52", "AUD").unwrap(),
             account1_state_after.amount
         );
     }

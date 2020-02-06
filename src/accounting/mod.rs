@@ -3,7 +3,7 @@ extern crate iso4217;
 extern crate nanoid;
 extern crate rust_decimal;
 
-use crate::currency::{Commodity, Currency, CurrencyError, CurrencyCode};
+use crate::currency::{Commodity, Currency, CurrencyError};
 use crate::exchange_rate::ExchangeRate;
 
 use chrono::NaiveDate;
@@ -17,8 +17,7 @@ use thiserror::Error;
 const DECIMAL_SCALE: u32 = 2;
 const ACCOUNT_ID_SIZE: usize = 20;
 
-/// TODO: add context for the error for where it occurred
-/// within the `Program`
+/// TODO: add context for the error for where it occurred within the `Program`
 #[derive(Error, Debug)]
 pub enum AccountingError {
     #[error("error relating to currencies")]
@@ -49,11 +48,6 @@ impl Program {
         for (index, action) in self.actions.iter().enumerate() {
             action.perform(program_state)?;
             program_state.current_action_index = index;
-        }
-
-        let account_sum = program_state.sum_accounts();
-        if account_sum != Commodity::zero(CurrencyCode::Common) {
-            return Err(AccountingError::FailedCheckSum(account_sum));
         }
 
         Ok(())
@@ -103,14 +97,14 @@ impl ProgramState {
             .find(|account_state| account_state.account.id == account_id)
     }
 
-    fn sum_accounts(&self, exchange_rate: &ExchangeRate) -> Commodity {
-        let mut sum = Commodity::zero(CurrencyCode::Common);
+    // fn sum_accounts(&self, exchange_rate: &ExchangeRate) -> Commodity {
+    //     let mut sum = Commodity::zero(CurrencyCode::Common);
 
-        for account_state in &self.account_states {
-            account_state.amount
-        }
-        
-    }
+    //     for account_state in &self.account_states {
+    //         account_state.amount
+    //     }
+
+    // }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -511,11 +505,7 @@ mod tests {
                     Some(Commodity::from_str("-1.0", "AUD").unwrap()),
                     None,
                 ),
-                TransactionElement::new(
-                    account2.clone(),
-                    None,
-                    None,
-                ),
+                TransactionElement::new(account2.clone(), None, None),
             ],
         )
         .unwrap();

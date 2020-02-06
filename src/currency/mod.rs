@@ -2,10 +2,12 @@ extern crate arrayvec;
 extern crate chrono;
 extern crate iso4217;
 extern crate rust_decimal;
+extern crate serde;
 
 use arrayvec::ArrayString;
-use rust_decimal::Decimal;
 use rust_decimal::prelude::Zero;
+use rust_decimal::Decimal;
+use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
 use std::str::FromStr;
 use thiserror::Error;
@@ -67,7 +69,10 @@ impl Currency {
     }
 
     pub fn common() -> Currency {
-        Currency { code: CurrencyCode::Common, name: Some(String::from("Common"))}
+        Currency {
+            code: CurrencyCode::Common,
+            name: Some(String::from("Common")),
+        }
     }
 
     pub fn from_str(code: &str, name: &str) -> Result<Currency, CurrencyError> {
@@ -84,21 +89,19 @@ impl Currency {
 
     /// Construct a [Currency](Currency) by looking it up in the iso4217
     /// currency database.
-    /// 
+    ///
     /// # Example
     /// ```
     /// # use coster::currency::Currency;
-    /// 
+    ///
     /// let currency = Currency::from_alpha3("AUD").unwrap();
     /// assert_eq!("AUD", currency.code);
     /// assert_eq!(Some(String::from("Australian dollar")), currency.name);
     /// ```
     pub fn from_alpha3(alpha3: &str) -> Result<Currency, CurrencyError> {
         match iso4217::alpha3(alpha3) {
-            Some(code) => {
-                Currency::from_str(alpha3, code.name)
-            },
-            None => Err(CurrencyError::InvalidISO4217Alpha3(String::from(alpha3)))
+            Some(code) => Currency::from_str(alpha3, code.name),
+            None => Err(CurrencyError::InvalidISO4217Alpha3(String::from(alpha3))),
         }
     }
 }
@@ -114,7 +117,7 @@ pub fn all_iso4217_currencies() -> Vec<Currency> {
 }
 
 /// The code/id of a [Currency](Currency).
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CurrencyCode {
     /// This is a fixed length array of characters of length [CURRENCY_CODE_LENGTH](CURRENCY_CODE_LENGTH),
     /// with a backing implementation based on [ArrayString](ArrayString).
@@ -142,12 +145,52 @@ impl CurrencyCode {
     }
 }
 
+// TODO: make serde a feature flag
+impl<'de> Deserialize<'de> for CurrencyCode {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<CurrencyCode, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::{self, Visitor};
+
+        struct CurrencyCodeVisitor;
+
+        impl<'de> Visitor<'de> for CurrencyCodeVisitor {
+            type Value = CurrencyCode;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str(
+                    format!(
+                        "a string with a maximum of {} characters",
+                        CURRENCY_CODE_LENGTH
+                    )
+                    .as_ref(),
+                )
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                CurrencyCode::from_str(v).map_err(|e| {
+                    E::custom(format!(
+                        "there was an error ({}) parsing the currency code string",
+                        e
+                    ))
+                })
+            }
+        }
+
+        deserializer.deserialize_str(CurrencyCodeVisitor)
+    }
+}
+
 impl PartialEq<CurrencyCode> for &str {
     fn eq(&self, other: &CurrencyCode) -> bool {
         match CurrencyCodeArray::from_str(self) {
             Ok(self_as_code) => match other {
                 CurrencyCode::Array(array) => &self_as_code == array,
-                CurrencyCode::Common => false
+                CurrencyCode::Common => false,
             },
             Err(_) => false,
         }
@@ -301,6 +344,24 @@ impl Commodity {
     /// ```
     pub fn negate(&self) -> Commodity {
         Commodity::new(-self.value, self.currency_code)
+    }
+
+    /// Convert this commodity to a different currency using a conversion rate.
+    ///
+    /// # Example
+    /// ```
+    /// # use coster::currency::{Commodity, CurrencyCode};
+    /// use rust_decimal::Decimal;
+    /// use std::str::FromStr;
+    ///
+    /// let aud = Commodity::from_str("100.00", "AUD").unwrap();
+    /// let usd = aud.convert(CurrencyCode::from_str("USD").unwrap(), Decimal::from_str("0.01").unwrap());
+    ///
+    /// assert_eq!(Decimal::from_str("1.00").unwrap(), usd.value);
+    /// assert_eq!("USD", usd.currency_code);
+    /// ```
+    pub fn convert(&self, currency_code: CurrencyCode, rate: Decimal) -> Commodity {
+        Commodity::new(self.value * rate, currency_code)
     }
 }
 

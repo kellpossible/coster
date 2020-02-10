@@ -17,12 +17,6 @@ type CurrencyCodeArray = ArrayString<[u8; CURRENCY_CODE_LENGTH]>;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum CurrencyError {
-    // #[error("unable to convert commodity {commodity:?} to the currency {currency:?} because {reason:?}")]
-    // UnableToConvert {
-    //     commodity: Commodity,
-    //     currency: Currency,
-    //     reason: String,
-    // },
     #[error("This commodity {this_commodity:?} is incompatible with {other_commodity:?} because {reason:?}")]
     IncompatableCommodity {
         this_commodity: Commodity,
@@ -231,7 +225,7 @@ fn check_currency_compatible(
     other_commodity: &Commodity,
     reason: String,
 ) -> Result<(), CurrencyError> {
-    if this_commodity.currency_code != other_commodity.currency_code {
+    if !this_commodity.compatible_with(other_commodity) {
         return Err(CurrencyError::IncompatableCommodity {
             this_commodity: this_commodity.clone(),
             other_commodity: other_commodity.clone(),
@@ -373,6 +367,23 @@ impl Commodity {
     /// ```
     pub fn convert(&self, currency_code: CurrencyCode, rate: Decimal) -> Commodity {
         Commodity::new(self.value * rate, currency_code)
+    }
+
+    /// Returns true if the currencies of both this commodity, and
+    /// the `other` commodity are compatible for numeric operations.
+    /// 
+    /// # Example
+    /// ```
+    /// # use coster::currency::{Commodity};
+    /// let aud1 = Commodity::from_str("1.0", "AUD").unwrap();
+    /// let aud2 = Commodity::from_str("2.0", "AUD").unwrap();
+    /// let nzd = Commodity::from_str("1.0", "NZD").unwrap();
+    /// 
+    /// assert!(aud1.compatible_with(&aud2));
+    /// assert!(!aud1.compatible_with(&nzd));
+    /// ```
+    pub fn compatible_with(&self, other: &Commodity) -> bool {
+        return self.currency_code == other.currency_code;
     }
 }
 

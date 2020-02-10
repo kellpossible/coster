@@ -7,7 +7,7 @@ extern crate serde;
 use arrayvec::ArrayString;
 use rust_decimal::prelude::Zero;
 use rust_decimal::Decimal;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer};
 use std::fmt;
 use std::str::FromStr;
 use thiserror::Error;
@@ -75,6 +75,17 @@ impl Currency {
         }
     }
 
+    /// Create a [Currency](Currency) from strings, usually for debugging,
+    /// or unit testing purposes.
+    /// 
+    /// # Example
+    /// ```
+    /// # use coster::currency::{Currency, CurrencyCode};
+    /// let currency = Currency::from_str("AUD", "Australian dollar").unwrap();
+    /// 
+    /// assert_eq!(CurrencyCode::from_str("AUD").unwrap(), currency.code);
+    /// assert_eq!("Australian dollar", currency.name.unwrap());
+    /// ```
     pub fn from_str(code: &str, name: &str) -> Result<Currency, CurrencyError> {
         let code = CurrencyCode::from_str(code)?;
 
@@ -224,7 +235,7 @@ fn check_currency_compatible(
         return Err(CurrencyError::IncompatableCommodity {
             this_commodity: this_commodity.clone(),
             other_commodity: other_commodity.clone(),
-            reason: reason,
+            reason,
         });
     }
 
@@ -249,8 +260,8 @@ impl Commodity {
     /// ```
     pub fn new(value: Decimal, currency_code: CurrencyCode) -> Commodity {
         Commodity {
-            currency_code: currency_code,
-            value: value,
+            currency_code,
+            value,
         }
     }
 

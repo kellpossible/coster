@@ -1,3 +1,5 @@
+//! A double entry accounting system
+
 extern crate chrono;
 extern crate iso4217;
 extern crate nanoid;
@@ -183,7 +185,7 @@ impl AccountState {
         AccountState {
             account: account.clone(),
             amount: Commodity::new(Decimal::new(0, DECIMAL_SCALE), account.currency.code),
-            status: status,
+            status,
         }
     }
 }
@@ -262,7 +264,7 @@ impl Action for Transaction {
             }
         }
 
-        let mut sum_currency = match empty_amount_element {
+        let sum_currency = match empty_amount_element {
             Some(empty_i) => {
                 let empty_element = self.elements.get(empty_i).unwrap();
                 empty_element.account.currency.clone()
@@ -280,6 +282,7 @@ impl Action for Transaction {
 
         let mut modified_elements = self.elements.clone();
 
+        // Calculate the sum of elements (not including the empty element if there is one)
         for (i, element) in self.elements.iter().enumerate() {
             match empty_amount_element {
                 Some(empty_i) => {
@@ -295,6 +298,7 @@ impl Action for Transaction {
             }
         }
 
+        // Calculate the value to use for the empty element (negate the sum of the other elements)
         match empty_amount_element {
             Some(empty_i) => {
                 let modified_emtpy_element: &mut TransactionElement =
@@ -404,9 +408,9 @@ impl EditAccountStatus {
         date: NaiveDate,
     ) -> EditAccountStatus {
         EditAccountStatus {
-            account: account,
-            newstatus: newstatus,
-            date: date,
+            account,
+            newstatus,
+            date,
         }
     }
 }

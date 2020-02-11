@@ -1,3 +1,7 @@
+//! A library with primatives representing money/commodities
+//! ([Commodity](Commodity)), and their associated types
+//! ([Currency](Currency)).
+
 extern crate arrayvec;
 extern crate chrono;
 extern crate iso4217;
@@ -32,11 +36,15 @@ pub enum CurrencyError {
     InvalidISO4217Alpha3(String),
 }
 
-/// Represents a the type of currency held in a [Commodity](Commodity).
+/// Represents a the type of currency held in a
+/// [Commodity](Commodity). See [CurrencyCode](CurrencyCode) for the
+/// primative which is genarally stored and used to refer to a given
+/// [Currency](Currency).
 #[derive(Debug, Clone)]
 pub struct Currency {
-    /// Stores the code/id of this currency in a fixed length [ArrayString](ArrayString),
-    /// with a maximum length of [CURRENCY_CODE_LENGTH](CURRENCY_CODE_LENGTH).
+    /// Stores the code/id of this currency in a fixed length
+    /// [ArrayString](ArrayString), with a maximum length of
+    /// [CURRENCY_CODE_LENGTH](CURRENCY_CODE_LENGTH).
     pub code: CurrencyCode,
     /// The human readable name of this currency.
     pub name: Option<String>,

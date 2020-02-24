@@ -34,6 +34,8 @@ pub enum CurrencyError {
     TooLongCurrencyCode(String),
     #[error("The provided alpha3 code {0} doesn't match any in the iso4217 database")]
     InvalidISO4217Alpha3(String),
+    #[error("The provided string {0} is invalid, it should be a decimal followed by a currency. e.g. 1.234 USD")]
+    InvalidCommodityString(String),
 }
 
 /// Represents a the type of currency held in a
@@ -272,10 +274,29 @@ impl Commodity {
         Commodity::new(Decimal::zero(), currency_code)
     }
 
-    pub fn from_str(value: &str, currency_code: &str) -> Result<Commodity, CurrencyError> {
+    /// Construct a [Commodity](Commodity) from a string
+    /// 
+    /// # Example
+    /// ```
+    /// # use coster::currency::{Commodity, CurrencyCode};
+    /// use std::str::FromStr;
+    /// use rust_decimal::Decimal;
+    /// 
+    /// let commodity = Commodity::from_str("1.234 USD").unwrap();
+    /// 
+    /// assert_eq!(Decimal::from_str("1.234").unwrap(), commodity.value);
+    /// assert_eq!(CurrencyCode::from_str("USD").unwrap(), commodity.currency_code);
+    /// ```
+    pub fn from_str(commodity_string: &str) -> Result<Commodity, CurrencyError> {
+        let elements: Vec<&str> = commodity_string.split_whitespace().collect();
+
+        if elements.len() != 2 {
+            return Err(CurrencyError::InvalidCommodityString(String::from(commodity_string)));
+        }
+
         Ok(Commodity::new(
-            Decimal::from_str(value).unwrap(),
-            CurrencyCode::from_str(currency_code)?,
+            Decimal::from_str(elements.get(0).unwrap()).unwrap(),
+            CurrencyCode::from_str(elements.get(1).unwrap())?,
         ))
     }
 
@@ -367,7 +388,7 @@ impl Commodity {
     /// use rust_decimal::Decimal;
     /// use std::str::FromStr;
     ///
-    /// let aud = Commodity::from_str("100.00", "AUD").unwrap();
+    /// let aud = Commodity::from_str("100.00 AUD").unwrap();
     /// let usd = aud.convert(CurrencyCode::from_str("USD").unwrap(), Decimal::from_str("0.01").unwrap());
     ///
     /// assert_eq!(Decimal::from_str("1.00").unwrap(), usd.value);
@@ -383,9 +404,9 @@ impl Commodity {
     /// # Example
     /// ```
     /// # use coster::currency::{Commodity};
-    /// let aud1 = Commodity::from_str("1.0", "AUD").unwrap();
-    /// let aud2 = Commodity::from_str("2.0", "AUD").unwrap();
-    /// let nzd = Commodity::from_str("1.0", "NZD").unwrap();
+    /// let aud1 = Commodity::from_str("1.0 AUD").unwrap();
+    /// let aud2 = Commodity::from_str("2.0 AUD").unwrap();
+    /// let nzd = Commodity::from_str("1.0 NZD").unwrap();
     /// 
     /// assert!(aud1.compatible_with(&aud2));
     /// assert!(!aud1.compatible_with(&nzd));

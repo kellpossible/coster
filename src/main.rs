@@ -1,53 +1,14 @@
-#![feature(proc_macro_hygiene)]
-#![feature(decl_macro)]
+use actix_web::{get, web, App, HttpServer, Responder};
 
-#[macro_use]
-extern crate rocket;
-#[macro_use]
-extern crate serde_derive;
-
-// #[cfg(test)] mod tests;
-
-use std::collections::HashMap;
-
-use rocket::response::Redirect;
-use rocket::Request;
-use rocket_contrib::templates::Template;
-
-#[derive(Serialize)]
-struct TemplateContext {
-    name: String,
-    items: Vec<&'static str>,
+#[get("/{id}/{name}/index.html")]
+async fn index(info: web::Path<(u32, String)>) -> impl Responder {
+    format!("Hello {}! id:{}", info.1, info.0)
 }
 
-#[get("/")]
-fn index() -> Redirect {
-    Redirect::to(uri!(get: name = "Unknown"))
-}
-
-#[get("/hello/<name>")]
-fn get(name: String) -> Template {
-    let context = TemplateContext {
-        name,
-        items: vec!["One", "Two", "Three"],
-    };
-    Template::render("index", &context)
-}
-
-#[catch(404)]
-fn not_found(req: &Request<'_>) -> Template {
-    let mut map = HashMap::new();
-    map.insert("path", req.uri().path());
-    Template::render("error/404", &map)
-}
-
-fn rocket() -> rocket::Rocket {
-    rocket::ignite()
-        .mount("/", routes![index, get])
-        .attach(Template::fairing())
-        .register(catchers![not_found])
-}
-
-fn main() {
-    rocket().launch();
+#[actix_rt::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| App::new().service(index))
+        .bind("127.0.0.1:8080")?
+        .run()
+        .await
 }

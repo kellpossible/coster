@@ -7,13 +7,14 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rocket = "0.4.2"
+actix-web = "2"
+actix-rt = "1"
 serde_derive = "1.0"
 serde_json = "1.0"
-rust_decimal = "1.2.0"
+rust_decimal = "1.2.1"
 iso4217 = "0.3.2"
 sled = "0.31.0"
-nanoid = "0.2.0"
+nanoid = "0.3.0"
 thiserror = "1.0"
 
 [dependencies.arrayvec]
@@ -27,8 +28,3 @@ features = ["serde"]
 [dependencies.serde]
 version = "1.0"
 features = ["derive"]
-
-[dependencies.rocket_contrib]
-version = "0.4.2"
-default-features = false
-features = ["tera_templates"]

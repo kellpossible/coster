@@ -15,6 +15,7 @@ use std::boxed::Box;
 use std::fmt;
 use std::rc::Rc;
 use thiserror::Error;
+use nanoid::nanoid;
 
 const DECIMAL_SCALE: u32 = 2;
 const ACCOUNT_ID_SIZE: usize = 20;
@@ -147,7 +148,7 @@ impl Account {
         category: Option<Rc<AccountCategory>>,
     ) -> Account {
         Account {
-            id: nanoid::generate(ACCOUNT_ID_SIZE),
+            id: nanoid!(ACCOUNT_ID_SIZE),
             name,
             currency,
             category,
@@ -488,12 +489,12 @@ mod tests {
             vec![
                 TransactionElement::new(
                     account1.clone(),
-                    Some(Commodity::from_str("-2.52", "AUD").unwrap()),
+                    Some(Commodity::from_str("-2.52 AUD").unwrap()),
                     None,
                 ),
                 TransactionElement::new(
                     account2.clone(),
-                    Some(Commodity::from_str("2.52", "AUD").unwrap()),
+                    Some(Commodity::from_str("2.52 AUD").unwrap()),
                     None,
                 ),
             ],
@@ -506,7 +507,7 @@ mod tests {
             vec![
                 TransactionElement::new(
                     account1.clone(),
-                    Some(Commodity::from_str("-1.0", "AUD").unwrap()),
+                    Some(Commodity::from_str("-1.0 AUD").unwrap()),
                     None,
                 ),
                 TransactionElement::new(account2.clone(), None, None),
@@ -539,7 +540,7 @@ mod tests {
 
         assert_eq!(AccountStatus::Open, account1_state_after.status);
         assert_eq!(
-            Commodity::from_str("-3.52", "AUD").unwrap(),
+            Commodity::from_str("-3.52 AUD").unwrap(),
             account1_state_after.amount
         );
     }

@@ -5,8 +5,8 @@ extern crate iso4217;
 extern crate nanoid;
 extern crate rust_decimal;
 
-use crate::currency::{Commodity, Currency, CurrencyError};
-use crate::exchange_rate::ExchangeRate;
+use crate::currency::{Commodity, Currency, CurrencyError, CurrencyCode};
+use crate::exchange_rate::{ExchangeRate, ExchangeRateError};
 
 use chrono::NaiveDate;
 use rust_decimal::prelude::Zero;
@@ -20,11 +20,13 @@ use nanoid::nanoid;
 const DECIMAL_SCALE: u32 = 2;
 const ACCOUNT_ID_SIZE: usize = 20;
 
-/// TODO: add context for the error for where it occurred within the `Program`
+/// TODO: add context for the error for where it occurred within the [Program](Program)
 #[derive(Error, Debug)]
 pub enum AccountingError {
     #[error("error relating to currencies")]
     Currency(#[from] CurrencyError),
+    #[error("error relating to exchange rates")]
+    ExchangeRate(#[from] ExchangeRateError),
     #[error("invalid account status ({:?}) for account {}", .status, .account.id)]
     InvalidAccountStatus {
         account: Rc<Account>,
@@ -36,6 +38,8 @@ pub enum AccountingError {
     InvalidTransaction(Transaction, String),
     #[error("failed checksum, the sum of account values in the common currency ({0}) does not equal zero")]
     FailedCheckSum(Commodity),
+    #[error("no exchange rate supplied, unable to convert commodity {0} to currency {1}")]
+    NoExchangeRateSupplied(Commodity, CurrencyCode),
 }
 
 pub struct Program {
@@ -100,14 +104,27 @@ impl ProgramState {
             .find(|account_state| account_state.account.id == account_id)
     }
 
-    // fn sum_accounts(&self, exchange_rate: &ExchangeRate) -> Commodity {
-    //     let mut sum = Commodity::zero(CurrencyCode::Common);
+    /// Sum the values in all the accounts into a single [Commodity](Commodity), and
+    /// use the supplied exchange rate if required to convert a currency in an account
+    /// to the `sum_currency`.
+    fn sum_accounts(&self, sum_currency: CurrencyCode, exchange_rate: Option<&ExchangeRate>) -> Result<Commodity, AccountingError> {
+        let mut sum = Commodity::zero(sum_currency);
 
-    //     for account_state in &self.account_states {
-    //         account_state.amount
-    //     }
+        for account_state in &self.account_states {
+            let account_amount = if account_state.amount.currency_code != sum_currency {
+                match exchange_rate {
+                    Some(rate) => rate.convert(account_state.amount, sum_currency)?,                    None => return Err(AccountingError::NoExchangeRateSupplied(account_state.amount, sum_currency))
+                }
+                
+            } else {
+                account_state.amount
+            };
 
-    // }
+            sum = sum.add(&account_amount)?;
+        }
+
+        Ok(sum)
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]

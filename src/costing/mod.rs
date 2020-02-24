@@ -43,6 +43,6 @@ struct Expense {
     pub shared_by: Vec<Rc<User>>,
     /// The amount of money 
     pub amount: Commodity,
-    /// The exchange rate 
+    /// The exchange rate to use for converting the expense to the working currency
     pub exchange_rate: Option<ExchangeRate>,
 }

@@ -72,13 +72,6 @@ impl Currency {
         Currency { code, name }
     }
 
-    pub fn common() -> Currency {
-        Currency {
-            code: CurrencyCode::Common,
-            name: Some(String::from("Common")),
-        }
-    }
-
     /// Create a [Currency](Currency) from strings, usually for debugging,
     /// or unit testing purposes.
     /// 
@@ -133,15 +126,17 @@ pub fn all_iso4217_currencies() -> Vec<Currency> {
 
 /// The code/id of a [Currency](Currency).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum CurrencyCode {
+pub struct CurrencyCode {
     /// This is a fixed length array of characters of length [CURRENCY_CODE_LENGTH](CURRENCY_CODE_LENGTH),
     /// with a backing implementation based on [ArrayString](ArrayString).
-    Array(CurrencyCodeArray),
-    /// This is a common degenerate currency type, used for sums/checks with multiple currencies
-    Common,
+    code_array: CurrencyCodeArray,
 }
 
 impl CurrencyCode {
+    pub fn new(code_array: CurrencyCodeArray) -> CurrencyCode {
+        CurrencyCode { code_array }
+    }
+
     /// Create a new [Currency](Currency).
     ///
     /// # Example
@@ -156,7 +151,7 @@ impl CurrencyCode {
             return Err(CurrencyError::TooLongCurrencyCode(String::from(code)));
         }
 
-        return Ok(CurrencyCode::Array(CurrencyCodeArray::from(code).unwrap()));
+        return Ok(CurrencyCode::new(CurrencyCodeArray::from(code).unwrap()));
     }
 }
 
@@ -203,10 +198,7 @@ impl<'de> Deserialize<'de> for CurrencyCode {
 impl PartialEq<CurrencyCode> for &str {
     fn eq(&self, other: &CurrencyCode) -> bool {
         match CurrencyCodeArray::from_str(self) {
-            Ok(self_as_code) => match other {
-                CurrencyCode::Array(array) => &self_as_code == array,
-                CurrencyCode::Common => false,
-            },
+            Ok(self_as_code) => self_as_code == other.code_array,
             Err(_) => false,
         }
     }
@@ -214,10 +206,7 @@ impl PartialEq<CurrencyCode> for &str {
 
 impl fmt::Display for CurrencyCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            CurrencyCode::Array(array) => write!(f, "{}", array),
-            _ => write!(f, "{:?} Currency", self),
-        }
+        write!(f, "{}", self.code_array)
     }
 }
 

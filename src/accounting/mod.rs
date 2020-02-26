@@ -5,17 +5,17 @@ extern crate iso4217;
 extern crate nanoid;
 extern crate rust_decimal;
 
-use crate::currency::{Commodity, Currency, CurrencyError, CurrencyCode};
+use crate::currency::{Commodity, Currency, CurrencyCode, CurrencyError};
 use crate::exchange_rate::{ExchangeRate, ExchangeRateError};
 
 use chrono::NaiveDate;
+use nanoid::nanoid;
 use rust_decimal::prelude::Zero;
 use rust_decimal::Decimal;
 use std::boxed::Box;
 use std::fmt;
 use std::rc::Rc;
 use thiserror::Error;
-use nanoid::nanoid;
 
 const DECIMAL_SCALE: u32 = 2;
 const ACCOUNT_ID_SIZE: usize = 20;
@@ -107,15 +107,24 @@ impl ProgramState {
     /// Sum the values in all the accounts into a single [Commodity](Commodity), and
     /// use the supplied exchange rate if required to convert a currency in an account
     /// to the `sum_currency`.
-    fn sum_accounts(&self, sum_currency: CurrencyCode, exchange_rate: Option<&ExchangeRate>) -> Result<Commodity, AccountingError> {
+    fn sum_accounts(
+        &self,
+        sum_currency: CurrencyCode,
+        exchange_rate: Option<&ExchangeRate>,
+    ) -> Result<Commodity, AccountingError> {
         let mut sum = Commodity::zero(sum_currency);
 
         for account_state in &self.account_states {
             let account_amount = if account_state.amount.currency_code != sum_currency {
                 match exchange_rate {
-                    Some(rate) => rate.convert(account_state.amount, sum_currency)?,                    None => return Err(AccountingError::NoExchangeRateSupplied(account_state.amount, sum_currency))
+                    Some(rate) => rate.convert(account_state.amount, sum_currency)?,
+                    None => {
+                        return Err(AccountingError::NoExchangeRateSupplied(
+                            account_state.amount,
+                            sum_currency,
+                        ))
+                    }
                 }
-                
             } else {
                 account_state.amount
             };
@@ -229,18 +238,16 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    fn new(
+    pub fn new(
         description: Option<String>,
         date: NaiveDate,
         elements: Vec<TransactionElement>,
-    ) -> Result<Transaction, AccountingError> {
-        //TODO: perform the commodity sum
-        //TODO: decide what currency to use for the sum type
-        Ok(Transaction {
+    ) -> Transaction {
+        Transaction {
             description,
             date,
             elements,
-        })
+        }
     }
 }
 
@@ -386,7 +393,7 @@ impl Action for Transaction {
 }
 
 #[derive(Debug, Clone)]
-struct TransactionElement {
+pub struct TransactionElement {
     /// The account to perform the transaction to
     pub account: Rc<Account>,
 
@@ -515,8 +522,7 @@ mod tests {
                     None,
                 ),
             ],
-        )
-        .unwrap();
+        );
 
         let transaction2 = Transaction::new(
             Some(String::from("Transaction 2")),
@@ -529,8 +535,7 @@ mod tests {
                 ),
                 TransactionElement::new(account2.clone(), None, None),
             ],
-        )
-        .unwrap();
+        );
 
         let actions: Vec<Box<dyn Action>> = vec![
             Box::from(open_account1),
@@ -559,6 +564,13 @@ mod tests {
         assert_eq!(
             Commodity::from_str("-3.52 AUD").unwrap(),
             account1_state_after.amount
+        );
+
+        assert_eq!(
+            Commodity::from_str("0.0 AUD").unwrap(),
+            program_state
+                .sum_accounts(CurrencyCode::from_str("AUD").unwrap(), None)
+                .unwrap()
         );
     }
 }

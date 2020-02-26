@@ -11,6 +11,7 @@ extern crate serde;
 use arrayvec::ArrayString;
 use rust_decimal::prelude::Zero;
 use rust_decimal::Decimal;
+use rust_decimal::prelude::ToPrimitive;
 use serde::{Deserialize, Deserializer};
 use std::fmt;
 use std::str::FromStr;
@@ -74,12 +75,12 @@ impl Currency {
 
     /// Create a [Currency](Currency) from strings, usually for debugging,
     /// or unit testing purposes.
-    /// 
+    ///
     /// # Example
     /// ```
     /// # use coster::currency::{Currency, CurrencyCode};
     /// let currency = Currency::from_str("AUD", "Australian dollar").unwrap();
-    /// 
+    ///
     /// assert_eq!(CurrencyCode::from_str("AUD").unwrap(), currency.code);
     /// assert_eq!("Australian dollar", currency.name.unwrap());
     /// ```
@@ -264,15 +265,15 @@ impl Commodity {
     }
 
     /// Construct a [Commodity](Commodity) from a string
-    /// 
+    ///
     /// # Example
     /// ```
     /// # use coster::currency::{Commodity, CurrencyCode};
     /// use std::str::FromStr;
     /// use rust_decimal::Decimal;
-    /// 
+    ///
     /// let commodity = Commodity::from_str("1.234 USD").unwrap();
-    /// 
+    ///
     /// assert_eq!(Decimal::from_str("1.234").unwrap(), commodity.value);
     /// assert_eq!(CurrencyCode::from_str("USD").unwrap(), commodity.currency_code);
     /// ```
@@ -280,7 +281,9 @@ impl Commodity {
         let elements: Vec<&str> = commodity_string.split_whitespace().collect();
 
         if elements.len() != 2 {
-            return Err(CurrencyError::InvalidCommodityString(String::from(commodity_string)));
+            return Err(CurrencyError::InvalidCommodityString(String::from(
+                commodity_string,
+            )));
         }
 
         Ok(Commodity::new(
@@ -369,6 +372,82 @@ impl Commodity {
         Commodity::new(-self.value, self.currency_code)
     }
 
+    /// Divide this commodity by the specified integer value
+    /// 
+    /// # Example
+    /// ```
+    /// # use coster::currency::{Commodity};
+    /// use rust_decimal::{Decimal};
+    /// 
+    /// let commodity = Commodity::from_str("4.03 AUD").unwrap();
+    /// let result = commodity.divide(4);
+    /// assert_eq!(Decimal::new(10075, 4), result.value);
+    /// ```
+    pub fn divide(&self, i: i64) -> Commodity {
+        let decimal = Decimal::new(i*100, 2);
+        Commodity::new(self.value/decimal, self.currency_code)
+    }
+
+    /// Divide this commodity by the specified integer value
+    /// 
+    /// # Example
+    /// ```
+    /// # use coster::currency::{Commodity};
+    /// use rust_decimal::{Decimal};
+    /// 
+    /// let commodity = Commodity::from_str("4.03 AUD").unwrap();
+    /// let results = commodity.divide_share(4, 2);
+    /// 
+    /// assert_eq!(Decimal::new(101, 2), results.get(0).unwrap().value);
+    /// assert_eq!(Decimal::new(101, 2), results.get(1).unwrap().value);
+    /// assert_eq!(Decimal::new(101, 2), results.get(2).unwrap().value);
+    /// assert_eq!(Decimal::new(100, 2), results.get(3).unwrap().value);
+    /// ```
+    pub fn divide_share(&self, i: i64, dp: u32) -> Vec<Commodity> {
+        let mut commodities: Vec<Commodity> = Vec::new();
+        let divisor = Decimal::new(i*10_i64.pow(dp), dp);
+        let remainder = self.value%divisor;
+        // = 0.03
+        
+        let mut divided = self.value/divisor;
+        // 4.03 / 0.04 = 100.75
+        // divided.set_scale(dp * 2).unwrap();
+        // = 1.0075
+        let truncated = divided.trunc();
+        // = 1.00
+
+        
+
+        let dp_divisor = Decimal::new(1, dp);
+
+        let remainder_bits = (remainder/dp_divisor).to_i64().unwrap();
+        let remainder_bits_abs = remainder_bits.abs();
+        let i_abs = i.abs();
+
+        dbg!(self.value);
+        dbg!(i);
+        dbg!(divided);
+        dbg!(truncated);
+        dbg!(remainder_bits);
+        dbg!(remainder);
+
+        let sign = Decimal::new(remainder_bits.signum()*i.signum(), 0);
+
+        for commodity_index in 1..=i_abs {
+            let value = if commodity_index <= remainder_bits_abs {
+                truncated + dp_divisor*sign
+            } else {
+                truncated
+            };
+
+            commodities.push(Commodity::new(value, self.currency_code))
+        }
+
+        dbg!(commodities.clone());
+
+        return commodities;
+    }
+
     /// Convert this commodity to a different currency using a conversion rate.
     ///
     /// # Example
@@ -389,14 +468,14 @@ impl Commodity {
 
     /// Returns true if the currencies of both this commodity, and
     /// the `other` commodity are compatible for numeric operations.
-    /// 
+    ///
     /// # Example
     /// ```
     /// # use coster::currency::{Commodity};
     /// let aud1 = Commodity::from_str("1.0 AUD").unwrap();
     /// let aud2 = Commodity::from_str("2.0 AUD").unwrap();
     /// let nzd = Commodity::from_str("1.0 NZD").unwrap();
-    /// 
+    ///
     /// assert!(aud1.compatible_with(&aud2));
     /// assert!(!aud1.compatible_with(&nzd));
     /// ```
@@ -415,6 +494,42 @@ impl fmt::Display for Commodity {
 mod tests {
     use super::{Commodity, CurrencyCode, CurrencyError};
     use rust_decimal::Decimal;
+
+    #[test]
+    fn divide_larger() {
+        let commodity = Commodity::from_str("4.25 AUD").unwrap();
+        let results = commodity.divide_share(4, 2);
+
+        assert_eq!(4, results.len());
+        assert_eq!(Decimal::new(107, 2), results.get(0).unwrap().value);
+        assert_eq!(Decimal::new(106, 2), results.get(1).unwrap().value);
+        assert_eq!(Decimal::new(106, 2), results.get(2).unwrap().value);
+        assert_eq!(Decimal::new(106, 2), results.get(3).unwrap().value);
+    }
+
+    #[test]
+    fn divide_share_negative_dividend() {
+        let commodity = Commodity::from_str("-4.03 AUD").unwrap();
+        let results = commodity.divide_share(4, 2);
+
+        assert_eq!(4, results.len());
+        assert_eq!(Decimal::new(-101, 2), results.get(0).unwrap().value);
+        assert_eq!(Decimal::new(-101, 2), results.get(1).unwrap().value);
+        assert_eq!(Decimal::new(-101, 2), results.get(2).unwrap().value);
+        assert_eq!(Decimal::new(-100, 2), results.get(3).unwrap().value);
+    }
+
+    #[test]
+    fn divide_share_negative_divisor() {
+        let commodity = Commodity::from_str("4.03 AUD").unwrap();
+        let results = commodity.divide_share(-4, 2);
+
+        assert_eq!(4, results.len());
+        assert_eq!(Decimal::new(-101, 2), results.get(0).unwrap().value);
+        assert_eq!(Decimal::new(-101, 2), results.get(1).unwrap().value);
+        assert_eq!(Decimal::new(-101, 2), results.get(2).unwrap().value);
+        assert_eq!(Decimal::new(-100, 2), results.get(3).unwrap().value);
+    }
 
     #[test]
     fn commodity_incompatible_currency() {

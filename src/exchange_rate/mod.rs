@@ -5,11 +5,11 @@ extern crate serde_json;
 extern crate thiserror;
 
 use crate::currency::{Commodity, CurrencyCode};
-use chrono::{DateTime, Utc, NaiveDate};
+use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
-use serde::{Deserialize};
-use thiserror::Error;
+use serde::Deserialize;
 use std::collections::HashMap;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ExchangeRateError {
@@ -55,14 +55,18 @@ impl ExchangeRate {
             Some(base) => {
                 if commodity.currency_code == base {
                     match self.get_rate(&target_currency) {
-                        Some(rate) => return Ok(Commodity::new(rate * commodity.value, target_currency)),
+                        Some(rate) => {
+                            return Ok(Commodity::new(rate * commodity.value, target_currency))
+                        }
                         None => {}
                     };
                 }
-        
+
                 if target_currency == base {
                     match self.get_rate(&commodity.currency_code) {
-                        Some(rate) => return Ok(Commodity::new(commodity.value / rate, target_currency)),
+                        Some(rate) => {
+                            return Ok(Commodity::new(commodity.value / rate, target_currency))
+                        }
                         None => {}
                     };
                 }
@@ -94,12 +98,12 @@ impl ExchangeRate {
 
 #[cfg(test)]
 mod tests {
-    use super::{ExchangeRate, CurrencyCode, Commodity};
-    use serde_json;
+    use super::{Commodity, CurrencyCode, ExchangeRate};
     use chrono::NaiveDate;
     use rust_decimal::Decimal;
-    use std::str::FromStr;
+    use serde_json;
     use std::collections::HashMap;
+    use std::str::FromStr;
 
     #[test]
     fn test_deserialize() {
@@ -118,10 +122,19 @@ mod tests {
         let usd = CurrencyCode::from_str("USD").unwrap();
         let eu = CurrencyCode::from_str("EU").unwrap();
 
-        assert_eq!(NaiveDate::from_ymd(2020, 02, 07), exchange_rate.date.unwrap());
+        assert_eq!(
+            NaiveDate::from_ymd(2020, 02, 07),
+            exchange_rate.date.unwrap()
+        );
         assert_eq!("AUD", exchange_rate.base.unwrap());
-        assert_eq!(Decimal::from_str("2.542").unwrap(), *exchange_rate.get_rate(&usd).unwrap());
-        assert_eq!(Decimal::from_str("1.234").unwrap(), *exchange_rate.get_rate(&eu).unwrap());
+        assert_eq!(
+            Decimal::from_str("2.542").unwrap(),
+            *exchange_rate.get_rate(&usd).unwrap()
+        );
+        assert_eq!(
+            Decimal::from_str("1.234").unwrap(),
+            *exchange_rate.get_rate(&eu).unwrap()
+        );
     }
 
     #[test]
@@ -142,13 +155,19 @@ mod tests {
         {
             let start_commodity = Commodity::new(Decimal::from_str("10.0").unwrap(), aud);
             let converted_commodity = exchange_rate.convert(start_commodity, nzd);
-            assert_eq!(Decimal::from_str("10.412377413656575501005055735").unwrap(), converted_commodity.unwrap().value);
+            assert_eq!(
+                Decimal::from_str("10.412377413656575501005055735").unwrap(),
+                converted_commodity.unwrap().value
+            );
         }
 
         {
             let start_commodity = Commodity::new(Decimal::from_str("10.0").unwrap(), nzd);
             let converted_commodity = exchange_rate.convert(start_commodity, aud);
-            assert_eq!(Decimal::from_str("9.603954603954603954603954604").unwrap(), converted_commodity.unwrap().value);
+            assert_eq!(
+                Decimal::from_str("9.603954603954603954603954604").unwrap(),
+                converted_commodity.unwrap().value
+            );
         }
     }
 
@@ -169,13 +188,19 @@ mod tests {
         {
             let start_commodity = Commodity::new(Decimal::from_str("100.0").unwrap(), usd);
             let converted_commodity = exchange_rate.convert(start_commodity, nok);
-            assert_eq!(Decimal::from_str("926.91220713000").unwrap(), converted_commodity.unwrap().value);
+            assert_eq!(
+                Decimal::from_str("926.91220713000").unwrap(),
+                converted_commodity.unwrap().value
+            );
         }
 
         {
             let start_commodity = Commodity::new(Decimal::from_str("100.0").unwrap(), nok);
             let converted_commodity = exchange_rate.convert(start_commodity, usd);
-            assert_eq!(Decimal::from_str("10.788508256853169187585300627").unwrap(), converted_commodity.unwrap().value);
+            assert_eq!(
+                Decimal::from_str("10.788508256853169187585300627").unwrap(),
+                converted_commodity.unwrap().value
+            );
         }
     }
 }

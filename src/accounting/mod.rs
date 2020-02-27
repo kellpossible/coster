@@ -147,6 +147,7 @@ pub struct AccountCategory {
     pub parent: Option<Rc<AccountCategory>>,
 }
 
+/// The type to use for the id of [Account](Account)s.
 pub type AccountID = String;
 
 /// Details for an account, which holds a [Commodity](Commodity)
@@ -221,6 +222,16 @@ impl AccountState {
             amount: Commodity::new(Decimal::new(0, DECIMAL_SCALE), account.currency.code),
             status,
         }
+    }
+
+    /// Open this account, set the `status` to [Open](AccountStatus::Open)
+    pub fn open(&mut self) {
+        self.status = AccountStatus::Open;
+    }
+
+    // Close this account, set the `status` to [Closed](AccountStatus::Closed)
+    pub fn close(&mut self) {
+        self.status = AccountStatus::Closed;
     }
 }
 

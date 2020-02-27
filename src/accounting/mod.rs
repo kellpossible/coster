@@ -7,6 +7,7 @@ extern crate rust_decimal;
 
 use crate::currency::{Commodity, Currency, CurrencyCode, CurrencyError};
 use crate::exchange_rate::{ExchangeRate, ExchangeRateError};
+use std::collections::HashMap;
 
 use chrono::NaiveDate;
 use nanoid::nanoid;
@@ -40,6 +41,8 @@ pub enum AccountingError {
     FailedCheckSum(Commodity),
     #[error("no exchange rate supplied, unable to convert commodity {0} to currency {1}")]
     NoExchangeRateSupplied(Commodity, CurrencyCode),
+    #[error("the account state with the id {0} was requested but cannot be found")]
+    MissingAccountState(AccountID),
 }
 
 pub struct Program {
@@ -50,89 +53,85 @@ impl Program {
     pub fn new(actions: Vec<Box<dyn Action>>) -> Program {
         Program { actions }
     }
-
-    pub fn execute(&self, program_state: &mut ProgramState) -> Result<(), AccountingError> {
-        for (index, action) in self.actions.iter().enumerate() {
-            action.perform(program_state)?;
-            program_state.current_action_index = index;
-        }
-
-        Ok(())
-    }
 }
 
 pub struct ProgramState {
-    /// list of accounts (can only grow)
-    accounts: Vec<Rc<Account>>,
-
     /// list of states associated with accounts (can only grow)
-    account_states: Vec<AccountState>,
+    pub account_states: HashMap<AccountID, AccountState>,
 
     /// the index of the currently executing action
     current_action_index: usize,
 }
 
+/// Sum the values in all the accounts into a single [Commodity](Commodity), and
+/// use the supplied exchange rate if required to convert a currency in an account
+/// to the `sum_currency`.
+pub fn sum_account_states(
+    account_states: &HashMap<AccountID, AccountState>,
+    sum_currency: CurrencyCode,
+    exchange_rate: Option<&ExchangeRate>,
+) -> Result<Commodity, AccountingError> {
+    let mut sum = Commodity::zero(sum_currency);
+
+    for (key, account_state) in account_states {
+        let account_amount = if account_state.amount.currency_code != sum_currency {
+            match exchange_rate {
+                Some(rate) => rate.convert(account_state.amount, sum_currency)?,
+                None => {
+                    return Err(AccountingError::NoExchangeRateSupplied(
+                        account_state.amount,
+                        sum_currency,
+                    ))
+                }
+            }
+        } else {
+            account_state.amount
+        };
+
+        sum = sum.add(&account_amount)?;
+    }
+
+    Ok(sum)
+}
+
 impl ProgramState {
     pub fn new(accounts: Vec<Rc<Account>>) -> ProgramState {
-        let account_states = accounts
-            .iter()
-            .map(|account: &Rc<Account>| AccountState::new_default(account.clone()))
-            .collect();
+        let mut account_states = HashMap::new();
+
+        for account in accounts {
+            account_states.insert(
+                account.id.clone(),
+                AccountState::new_default(account.clone()),
+            );
+        }
 
         ProgramState {
-            accounts,
             account_states,
             current_action_index: 0,
         }
     }
 
+    pub fn execute_program(&mut self, program: &Program) -> Result<(), AccountingError> {
+        for (index, action) in program.actions.iter().enumerate() {
+            action.perform(self)?;
+            self.current_action_index = index;
+        }
+
+        Ok(())
+    }
+
     /// Get a reference to the `AccountState` associated with a given `Account`.
     ///
     /// TODO: performance, in the future implement some kind of id caching if required
-    fn get_account_state(&self, account_id: &str) -> Option<&AccountState> {
-        self.account_states
-            .iter()
-            .find(|&account_state| account_state.account.id == account_id)
+    fn get_account_state(&self, account_id: &AccountID) -> Option<&AccountState> {
+        self.account_states.get(account_id)
     }
 
     /// Get a mutable reference to the `AccountState` associated with the given `Account`.
     ///
     /// TODO: performance, in the future implement some kind of id caching if required
-    fn get_account_state_mut(&mut self, account_id: &str) -> Option<&mut AccountState> {
-        self.account_states
-            .iter_mut()
-            .find(|account_state| account_state.account.id == account_id)
-    }
-
-    /// Sum the values in all the accounts into a single [Commodity](Commodity), and
-    /// use the supplied exchange rate if required to convert a currency in an account
-    /// to the `sum_currency`.
-    fn sum_accounts(
-        &self,
-        sum_currency: CurrencyCode,
-        exchange_rate: Option<&ExchangeRate>,
-    ) -> Result<Commodity, AccountingError> {
-        let mut sum = Commodity::zero(sum_currency);
-
-        for account_state in &self.account_states {
-            let account_amount = if account_state.amount.currency_code != sum_currency {
-                match exchange_rate {
-                    Some(rate) => rate.convert(account_state.amount, sum_currency)?,
-                    None => {
-                        return Err(AccountingError::NoExchangeRateSupplied(
-                            account_state.amount,
-                            sum_currency,
-                        ))
-                    }
-                }
-            } else {
-                account_state.amount
-            };
-
-            sum = sum.add(&account_amount)?;
-        }
-
-        Ok(sum)
+    fn get_account_state_mut(&mut self, account_id: &AccountID) -> Option<&mut AccountState> {
+        self.account_states.get_mut(account_id)
     }
 }
 
@@ -148,12 +147,14 @@ pub struct AccountCategory {
     pub parent: Option<Rc<AccountCategory>>,
 }
 
+pub type AccountID = String;
+
 /// Details for an account, which holds a [Commodity](Commodity)
 /// with a type of [Currency](Currency).
 #[derive(Debug, Clone)]
 pub struct Account {
     /// A unique identifier for this `Account`
-    pub id: String,
+    pub id: AccountID,
 
     /// The name of this `Account`
     pub name: Option<String>,
@@ -169,34 +170,40 @@ impl Account {
     /// Create a new account and add it to this program state (and create its associated
     /// [AccountState](AccountState))
     pub fn new(
-        name: Option<String>,
+        name: Option<&str>,
         currency: Rc<Currency>,
         category: Option<Rc<AccountCategory>>,
     ) -> Account {
         Account {
             id: nanoid!(ACCOUNT_ID_SIZE),
-            name,
+            name: name.map(|s| String::from(s)),
             currency,
             category,
         }
     }
 }
 
+impl PartialEq for Account {
+    fn eq(&self, other: &Account) -> bool {
+        self.id == other.id
+    }
+}
+
 /// Mutable state associated with an [Account](Account)
 #[derive(Debug, Clone)]
-struct AccountState {
+pub struct AccountState {
     /// The [Account](Account) associated with this state
-    account: Rc<Account>,
+    pub account: Rc<Account>,
 
     /// The amount of the commodity currently stored in this account
-    amount: Commodity,
+    pub amount: Commodity,
 
     /// The status of this account (open/closed/etc...)
-    status: AccountStatus,
+    pub status: AccountStatus,
 }
 
 impl AccountState {
-    fn new(account: Rc<Account>, amount: Commodity, status: AccountStatus) -> AccountState {
+    pub fn new(account: Rc<Account>, amount: Commodity, status: AccountStatus) -> AccountState {
         AccountState {
             account,
             amount,
@@ -204,11 +211,11 @@ impl AccountState {
         }
     }
 
-    fn new_default(account: Rc<Account>) -> AccountState {
+    pub fn new_default(account: Rc<Account>) -> AccountState {
         AccountState::new_default_amount(account, AccountStatus::Closed)
     }
 
-    fn new_default_amount(account: Rc<Account>, status: AccountStatus) -> AccountState {
+    pub fn new_default_amount(account: Rc<Account>, status: AccountStatus) -> AccountState {
         AccountState {
             account: account.clone(),
             amount: Commodity::new(Decimal::new(0, DECIMAL_SCALE), account.currency.code),
@@ -232,9 +239,9 @@ pub enum ActionType {
 
 #[derive(Debug, Clone)]
 pub struct Transaction {
-    description: Option<String>,
-    date: NaiveDate,
-    elements: Vec<TransactionElement>,
+    pub description: Option<String>,
+    pub date: NaiveDate,
+    pub elements: Vec<TransactionElement>,
 }
 
 impl Transaction {
@@ -248,6 +255,10 @@ impl Transaction {
             date,
             elements,
         }
+    }
+
+    pub fn get_element(&self, account: &Account) -> Option<&TransactionElement> {
+        self.elements.iter().find(|e| e.account.as_ref() == account)
     }
 }
 
@@ -348,7 +359,7 @@ impl Action for Transaction {
 
         for transaction in &modified_elements {
             let mut account_state = program_state
-                .get_account_state_mut(transaction.account.id.as_ref())
+                .get_account_state_mut(&transaction.account.id)
                 .expect(
                     format!(
                         "unable to find state for account with id: {}, please ensure this 
@@ -453,7 +464,7 @@ impl Action for EditAccountStatus {
 
     fn perform(&self, program_state: &mut ProgramState) -> Result<(), AccountingError> {
         let mut account_state = program_state
-            .get_account_state_mut(self.account.id.as_ref())
+            .get_account_state_mut(&self.account.id)
             .unwrap();
         account_state.status = self.newstatus;
         return Ok(());
@@ -469,8 +480,8 @@ impl Action for EditAccountStatus {
 #[cfg(test)]
 mod tests {
     use super::{
-        Account, AccountState, AccountStatus, Action, EditAccountStatus, NaiveDate, Program,
-        ProgramState, Transaction, TransactionElement,
+        sum_account_states, Account, AccountState, AccountStatus, Action, EditAccountStatus,
+        NaiveDate, Program, ProgramState, Transaction, TransactionElement,
     };
     use crate::currency::{Commodity, Currency, CurrencyCode};
     use std::rc::Rc;
@@ -479,17 +490,9 @@ mod tests {
     #[test]
     fn execute_program() {
         let currency = Rc::from(Currency::new(CurrencyCode::from_str("AUD").unwrap(), None));
-        let account1 = Rc::from(Account::new(
-            Some(String::from("Account 1")),
-            currency.clone(),
-            None,
-        ));
+        let account1 = Rc::from(Account::new(Some("Account 1"), currency.clone(), None));
 
-        let account2 = Rc::from(Account::new(
-            Some(String::from("Account 2")),
-            currency.clone(),
-            None,
-        ));
+        let account2 = Rc::from(Account::new(Some("Account 2"), currency.clone(), None));
 
         let accounts = vec![account1.clone(), account2.clone()];
 
@@ -547,16 +550,16 @@ mod tests {
         let program = Program::new(actions);
 
         let account1_state_before: AccountState = program_state
-            .get_account_state(account1.id.as_ref())
+            .get_account_state(&account1.id)
             .unwrap()
             .clone();
 
         assert_eq!(AccountStatus::Closed, account1_state_before.status);
 
-        program.execute(&mut program_state).unwrap();
+        program_state.execute_program(&program).unwrap();
 
         let account1_state_after: AccountState = program_state
-            .get_account_state(account1.id.as_ref())
+            .get_account_state(&account1.id)
             .unwrap()
             .clone();
 
@@ -568,9 +571,12 @@ mod tests {
 
         assert_eq!(
             Commodity::from_str("0.0 AUD").unwrap(),
-            program_state
-                .sum_accounts(CurrencyCode::from_str("AUD").unwrap(), None)
-                .unwrap()
+            sum_account_states(
+                &program_state.account_states,
+                CurrencyCode::from_str("AUD").unwrap(),
+                None
+            )
+            .unwrap()
         );
     }
 }

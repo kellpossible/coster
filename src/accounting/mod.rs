@@ -11,7 +11,6 @@ use std::collections::HashMap;
 
 use chrono::NaiveDate;
 use nanoid::nanoid;
-use rust_decimal::prelude::Zero;
 use rust_decimal::Decimal;
 use std::boxed::Box;
 use std::fmt;
@@ -46,11 +45,11 @@ pub enum AccountingError {
 }
 
 pub struct Program {
-    actions: Vec<Box<dyn Action>>,
+    actions: Vec<Rc<dyn Action>>,
 }
 
 impl Program {
-    pub fn new(actions: Vec<Box<dyn Action>>) -> Program {
+    pub fn new(actions: Vec<Rc<dyn Action>>) -> Program {
         Program { actions }
     }
 }
@@ -95,13 +94,17 @@ pub fn sum_account_states(
 }
 
 impl ProgramState {
-    pub fn new(accounts: Vec<Rc<Account>>) -> ProgramState {
+    pub fn new(accounts: &Vec<Rc<Account>>, account_status: AccountStatus) -> ProgramState {
         let mut account_states = HashMap::new();
 
         for account in accounts {
             account_states.insert(
                 account.id.clone(),
-                AccountState::new_default(account.clone()),
+                AccountState::new(
+                    account.clone(),
+                    Commodity::zero(account.currency.code),
+                    account_status,
+                ),
             );
         }
 
@@ -191,7 +194,7 @@ impl PartialEq for Account {
 }
 
 /// Mutable state associated with an [Account](Account)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AccountState {
     /// The [Account](Account) associated with this state
     pub account: Rc<Account>,
@@ -268,6 +271,24 @@ impl Transaction {
         }
     }
 
+    pub fn new_simple(
+        description: Option<&str>,
+        date: NaiveDate,
+        from_account: Rc<Account>,
+        to_account: Rc<Account>,
+        amount: Commodity,
+        exchange_rate: Option<ExchangeRate>,
+    ) -> Transaction {
+        Transaction::new(
+            description.map(|s| String::from(s)),
+            date,
+            vec![
+                TransactionElement::new(from_account, Some(amount), exchange_rate.clone()),
+                TransactionElement::new(to_account, None, exchange_rate),
+            ],
+        )
+    }
+
     pub fn get_element(&self, account: &Account) -> Option<&TransactionElement> {
         self.elements.iter().find(|e| e.account.as_ref() == account)
     }
@@ -325,6 +346,7 @@ impl Action for Transaction {
                 .clone(),
         };
 
+        use crate::accounting::rust_decimal::prelude::Zero;
         let mut sum = Commodity::new(Decimal::zero(), sum_currency.code);
 
         let mut modified_elements = self.elements.clone();
@@ -373,9 +395,9 @@ impl Action for Transaction {
                 .get_account_state_mut(&transaction.account.id)
                 .expect(
                     format!(
-                        "unable to find state for account with id: {}, please ensure this 
-                account was added to the program state before execution.",
-                        transaction.account.id
+                        "unable to find state for account with id: {}, name: {:?} please ensure this account was added to the program state before execution.",
+                        transaction.account.id,
+                        transaction.account.name
                     )
                     .as_ref(),
                 );
@@ -507,7 +529,7 @@ mod tests {
 
         let accounts = vec![account1.clone(), account2.clone()];
 
-        let mut program_state = ProgramState::new(accounts);
+        let mut program_state = ProgramState::new(&accounts, AccountStatus::Closed);
 
         let open_account1 = EditAccountStatus::new(
             account1.clone(),
@@ -551,11 +573,11 @@ mod tests {
             ],
         );
 
-        let actions: Vec<Box<dyn Action>> = vec![
-            Box::from(open_account1),
-            Box::from(open_account2),
-            Box::from(transaction1),
-            Box::from(transaction2),
+        let actions: Vec<Rc<dyn Action>> = vec![
+            Rc::from(open_account1),
+            Rc::from(open_account2),
+            Rc::from(transaction1),
+            Rc::from(transaction2),
         ];
 
         let program = Program::new(actions);

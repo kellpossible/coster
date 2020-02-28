@@ -12,7 +12,7 @@ use crate::currency::{Commodity, Currency, CurrencyError};
 use crate::exchange_rate::ExchangeRate;
 use chrono::{DateTime, Local, NaiveDate, Utc};
 use std::collections::HashMap;
-use std::{convert::TryInto, rc::Rc};
+use std::{cmp::Reverse, convert::TryInto, rc::Rc};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -111,54 +111,236 @@ impl Tab {
     ///
     /// The aim here, is to produce a minimal set of transactions.
     fn balance_transactions(&self) -> Result<Vec<Transaction>, CostingError> {
-        let mut actual_transactions: Vec<Box<dyn Action>> = Vec::new();
-        let mut shared_transactions: Vec<Box<dyn Action>> = Vec::new();
+        let mut actual_transactions: Vec<Rc<dyn Action>> = Vec::new();
+        let mut shared_transactions: Vec<Rc<dyn Action>> = Vec::new();
+
+        let mut accounts: HashMap<AccountID, Rc<Account>> = HashMap::new();
 
         for expense in &self.expenses {
-            actual_transactions
-                .push(Box::from(expense.get_actual_transaction()) as Box<dyn Action>);
-            shared_transactions
-                .push(Box::from(expense.get_shared_transaction()) as Box<dyn Action>);
+            actual_transactions.push(Rc::from(expense.get_actual_transaction()) as Rc<dyn Action>);
+            shared_transactions.push(Rc::from(expense.get_shared_transaction()) as Rc<dyn Action>);
+
+            accounts.insert(expense.account.id.clone(), expense.account.clone());
         }
 
-        let actual_program = Program::new(actual_transactions);
+        let expense_accounts: Vec<Rc<Account>> = accounts.iter().map(|(_, v)| v.clone()).collect();
 
-        let accounts: Vec<Rc<Account>> = self.users.iter().map(|u| u.account.clone()).collect();
-        let mut actual_program_state = ProgramState::new(accounts.clone());
+        let actual_program = Program::new(actual_transactions.clone());
 
-        actual_program_state
-            .execute_program(&actual_program)
-            .unwrap();
+        for user in &self.users {
+            match accounts.insert(user.account.id.clone(), user.account.clone()) {
+                Some(account) => {
+                    panic!(format!(
+                        "there is a duplicate account with id: {}",
+                        account.id
+                    ));
+                }
+                None => {}
+            }
+        }
+
+        let accounts_vec: Vec<Rc<Account>> = accounts.into_iter().map(|(_, v)| v).collect();
+        let mut actual_program_state = ProgramState::new(&accounts_vec, AccountStatus::Open);
+
+        actual_program_state.execute_program(&actual_program)?;
 
         // the shared_program_state (after execution) is the desired
         // end-state where all users have fairly shared the expenses
         // that they have participated in.
         let shared_program = Program::new(shared_transactions);
-        let mut shared_program_state = ProgramState::new(accounts);
-        shared_program_state
-            .execute_program(&shared_program)
-            .unwrap();
+        let mut shared_program_state = ProgramState::new(&accounts_vec, AccountStatus::Open);
+        shared_program_state.execute_program(&shared_program)?;
 
-        let account_states_from = &actual_program_state.account_states;
-        let account_states_to = &shared_program_state.account_states;
+        let account_states_from = &mut actual_program_state.account_states;
+        let account_states_to = &mut shared_program_state.account_states;
 
-        let account_differences = account_state_difference(account_states_from, account_states_to)?;
+        let from_sum_with_expenses =
+            sum_account_states(account_states_from, self.working_currency.code, None)?;
+        assert_eq!(
+            Commodity::zero(self.working_currency.code),
+            from_sum_with_expenses
+        );
+        let to_sum_with_expenses =
+            sum_account_states(account_states_to, self.working_currency.code, None)?;
+        assert_eq!(
+            Commodity::zero(self.working_currency.code),
+            to_sum_with_expenses
+        );
 
-        let from_sum = sum_account_states(account_states_from, self.working_currency.code, None);
-        dbg!(from_sum);
-        let to_sum = sum_account_states(account_states_to, self.working_currency.code, None);
-        dbg!(to_sum);
+        let mut account_states_from_without_expenses = account_states_from.clone();
+        let mut account_states_to_without_expenses = account_states_to.clone();
+
+        // remove the expense accounts from the states
+        for account in &expense_accounts {
+            account_states_from_without_expenses.remove(&account.id);
+            account_states_to_without_expenses.remove(&account.id);
+        }
+
+        let account_differences = account_state_difference(
+            &account_states_from_without_expenses,
+            &account_states_to_without_expenses,
+        )?;
+
         let differences_sum =
-            sum_account_states(&account_differences, self.working_currency.code, None);
-        dbg!(differences_sum);
+            sum_account_states(&account_differences, self.working_currency.code, None)?;
 
-        // for each user
-        // if the account differences are large
+        assert_eq!(Commodity::zero(self.working_currency.code), differences_sum);
 
-        //
+        let mut negative_differences: Vec<AccountState> = Vec::new();
+        let mut positive_differences: Vec<AccountState> = Vec::new();
 
-        Ok(Vec::new())
+        let zero = Commodity::zero(self.working_currency.code);
+
+        // create two lists of account state differences associated with those users
+        // one list of negative, and one list of positive
+        for (_, state) in &account_differences {
+            if state.amount.less_than(&zero)? {
+                negative_differences.push(state.clone());
+            } else if state.amount.greater_than(&zero)? {
+                positive_differences.push(state.clone());
+            }
+        }
+
+        // sort lists smallest (abs) to largest.
+        negative_differences.sort_unstable_by_key(|state| Reverse(state.amount));
+        positive_differences.sort_unstable_by_key(|state| state.amount);
+
+        dbg!(&negative_differences);
+        dbg!(&positive_differences);
+
+        let mut balancing_transactions: Vec<Transaction> = Vec::new();
+        let mut to_remove_positive: Vec<usize> = Vec::new();
+
+        for negative_difference_state in &mut negative_differences {
+            if negative_difference_state.amount == zero {
+                continue;
+            }
+
+            // turns the negative difference (the debt), into a
+            // positive number to use for comparison with the positive
+            // differences (the accounts which are owed)
+            let negated_negative_state_amount = negative_difference_state.amount.negate();
+
+            let today = Local::today().naive_local();
+
+            // find continue on to find the first state which is
+            // bigger or equal to the selected state if found, create
+            // a transaction to cancel out the selected state's debt,
+            // altering the two states involved.
+            for i in 0..positive_differences.len() {
+                let positive_difference_state = positive_differences.get_mut(i).unwrap();
+
+                if positive_difference_state.amount >= negated_negative_state_amount {
+                    let mut transactions = balance_entire_negative_into_positive(
+                        today,
+                        negative_difference_state,
+                        positive_difference_state,
+                        &zero,
+                    )?;
+                    balancing_transactions.append(&mut transactions);
+
+                    if positive_difference_state.amount == zero {
+                        to_remove_positive.push(i);
+                    }
+
+                    break;
+                }
+            }
+
+            // if no bigger/equal state has been found, then restart
+            // the search at the start of the list, (ignoring self),
+            // and create transactions cancelling out the selected
+            // state's debt, until finished.
+            if negative_difference_state.amount != zero {
+                for i in 0..positive_differences.len() {
+                    let positive_difference_state = positive_differences.get_mut(i).unwrap();
+
+                    if positive_difference_state.amount <= negated_negative_state_amount {
+                        balancing_transactions.push(Transaction::new_simple(
+                            Some("balancing"),
+                            today,
+                            negative_difference_state.account.clone(),
+                            positive_difference_state.account.clone(),
+                            positive_difference_state.amount.negate(),
+                            None,
+                        ));
+
+                        negative_difference_state.amount = negative_difference_state
+                            .amount
+                            .add(&positive_difference_state.amount)?;
+                        positive_difference_state.amount = zero;
+                    } else {
+                        let mut transactions = balance_entire_negative_into_positive(
+                            today,
+                            negative_difference_state,
+                            positive_difference_state,
+                            &zero,
+                        )?;
+                        balancing_transactions.append(&mut transactions);
+                    }
+
+                    if positive_difference_state.amount == zero {
+                        to_remove_positive.push(i);
+                    }
+
+                    if negative_difference_state.amount == zero {
+                        break;
+                    }
+                }
+            }
+
+            // remove positive differences with a now zero amount
+            for i in &to_remove_positive {
+                positive_differences.remove(*i);
+            }
+
+            to_remove_positive.clear();
+        }
+
+        // apply the transactions to the actual account states, and
+        // check that it matches the desired account states
+
+        // dbg!(&balancing_transactions);
+
+        let mut actual_with_balancing_transactions = actual_transactions.clone();
+        balancing_transactions.iter().for_each(|bt| actual_with_balancing_transactions.push(Rc::from(bt.clone())));
+
+        let actual_balanced_program = Program::new(actual_with_balancing_transactions);
+        let mut actual_balanced_transactions_states =
+            ProgramState::new(&accounts_vec, AccountStatus::Open);
+        actual_balanced_transactions_states.execute_program(&actual_balanced_program)?;
+
+        dbg!(&actual_balanced_transactions_states.account_states);
+
+        let actual_balanced_sum = sum_account_states(&actual_balanced_transactions_states.account_states, self.working_currency.code, None)?;
+        assert_eq!(zero, actual_balanced_sum);
+        assert_eq!(account_states_to, &actual_balanced_transactions_states.account_states);
+
+        Ok(balancing_transactions)
     }
+}
+
+fn balance_entire_negative_into_positive(
+    date: NaiveDate,
+    negative_difference_state: &mut AccountState,
+    positive_difference_state: &mut AccountState,
+    zero: &Commodity,
+) -> Result<Vec<Transaction>, CostingError> {
+    let transactions = vec![Transaction::new_simple(
+        Some("balancing"),
+        date,
+        negative_difference_state.account.clone(),
+        positive_difference_state.account.clone(),
+        negative_difference_state.amount,
+        None,
+    )];
+
+    positive_difference_state.amount = positive_difference_state
+        .amount
+        .add(&negative_difference_state.amount)?;
+    negative_difference_state.amount = *zero;
+
+    return Ok(transactions);
 }
 
 struct UserAction<T> {

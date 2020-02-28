@@ -212,7 +212,7 @@ impl fmt::Display for CurrencyCode {
 }
 
 /// A commodity, which holds a value of a type of [Currrency](Currency)
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Commodity {
     pub value: Decimal,
     pub currency_code: CurrencyCode,
@@ -220,6 +220,7 @@ pub struct Commodity {
 
 /// Check whether the currencies of two commodities are compatible (the same),
 /// if they aren't then return a [IncompatableCommodity](CurrencyError::IncompatableCommodity) error in the `Result`.
+#[inline]
 fn check_currency_compatible(
     this_commodity: &Commodity,
     other_commodity: &Commodity,
@@ -409,7 +410,7 @@ impl Commodity {
         let remainder = self.value % divisor;
         // = 0.03
 
-        let mut divided = self.value / divisor;
+        let divided = self.value / divisor;
         // 4.03 / 0.04 = 100.75
         // divided.set_scale(dp * 2).unwrap();
         // = 1.0075
@@ -479,6 +480,78 @@ impl Commodity {
     /// ```
     pub fn compatible_with(&self, other: &Commodity) -> bool {
         return self.currency_code == other.currency_code;
+    }
+
+    /// Compare whether this commodity has a value less than another commodity.
+    ///
+    /// Will return an error if the commodities have incompatible currencies.
+    ///
+    /// # Example
+    /// ```
+    /// # use coster::currency::{Commodity};
+    /// let aud1 = Commodity::from_str("1.0 AUD").unwrap();
+    /// let aud2 = Commodity::from_str("2.0 AUD").unwrap();
+    ///
+    /// assert_eq!(true, aud1.less_than(&aud2).unwrap());
+    /// assert_eq!(false, aud2.less_than(&aud1).unwrap());
+    /// ```
+    pub fn less_than(&self, other: &Commodity) -> Result<bool, CurrencyError> {
+        check_currency_compatible(
+            self,
+            other,
+            String::from("cannot compare commodities with different currencies"),
+        )?;
+
+        Ok(self.value < other.value)
+    }
+
+    /// Compare whether this commodity has a value greater than another commodity.
+    ///
+    /// Will return an error if the commodities have incompatible currencies.
+    ///
+    /// # Example
+    /// ```
+    /// # use coster::currency::{Commodity};
+    /// let aud1 = Commodity::from_str("1.0 AUD").unwrap();
+    /// let aud2 = Commodity::from_str("2.0 AUD").unwrap();
+    ///
+    /// assert_eq!(false, aud1.greater_than(&aud2).unwrap());
+    /// assert_eq!(true, aud2.greater_than(&aud1).unwrap());
+    /// ```
+    pub fn greater_than(&self, other: &Commodity) -> Result<bool, CurrencyError> {
+        check_currency_compatible(
+            self,
+            other,
+            String::from("cannot compare commodities with different currencies"),
+        )?;
+
+        Ok(self.value > other.value)
+    }
+}
+
+impl PartialOrd for Commodity {
+    fn partial_cmp(&self, other: &Commodity) -> Option<std::cmp::Ordering> {
+        check_currency_compatible(
+            self,
+            other,
+            String::from("cannot compare commodities with different currencies"),
+        )
+        .unwrap();
+
+        self.value.partial_cmp(&other.value)
+    }
+}
+
+impl Ord for Commodity {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        check_currency_compatible(
+            self,
+            other,
+            String::from("cannot compare commodities with different currencies"),
+        )
+        .unwrap();
+
+        self.value.cmp(&other.value)
     }
 }
 

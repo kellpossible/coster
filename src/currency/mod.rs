@@ -17,7 +17,12 @@ use std::fmt;
 use std::str::FromStr;
 use thiserror::Error;
 
+/// The length of the [CurrencyCodeArray](CurrencyCodeArray) type,
+/// used to store the code/id for a given [Currency](Currency) in
+/// [CurrencyCode](CurrencyCode).
 pub const CURRENCY_CODE_LENGTH: usize = 8;
+
+/// The type used to store the value of a [CurrencyCode](CurrencyCode).
 type CurrencyCodeArray = ArrayString<[u8; CURRENCY_CODE_LENGTH]>;
 
 #[derive(Error, Debug, PartialEq)]
@@ -143,7 +148,6 @@ impl CurrencyCode {
     /// # Example
     /// ```
     /// # use coster::currency::CurrencyCode;
-    ///
     /// let currency_code = CurrencyCode::from_str("AUD").unwrap();
     /// assert_eq!("AUD", currency_code);
     /// ```

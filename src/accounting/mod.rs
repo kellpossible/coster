@@ -1,4 +1,4 @@
-//! A double entry accounting system
+//! A double entry accounting system.
 
 extern crate chrono;
 extern crate iso4217;
@@ -12,12 +12,10 @@ use std::collections::HashMap;
 use chrono::NaiveDate;
 use nanoid::nanoid;
 use rust_decimal::Decimal;
-use std::boxed::Box;
 use std::fmt;
 use std::rc::Rc;
 use thiserror::Error;
 
-const DECIMAL_SCALE: u32 = 2;
 const ACCOUNT_ID_SIZE: usize = 20;
 
 /// TODO: add context for the error for where it occurred within the [Program](Program)
@@ -44,6 +42,8 @@ pub enum AccountingError {
     MissingAccountState(AccountID),
 }
 
+/// A collection of [Action](Action)s to be executed in order to
+/// mutate some [ProgramState](ProgramState).
 pub struct Program {
     actions: Vec<Rc<dyn Action>>,
 }
@@ -54,6 +54,7 @@ impl Program {
     }
 }
 
+/// The state of a [Program](Program) being executed.
 pub struct ProgramState {
     /// list of states associated with accounts (can only grow)
     pub account_states: HashMap<AccountID, AccountState>,
@@ -72,7 +73,7 @@ pub fn sum_account_states(
 ) -> Result<Commodity, AccountingError> {
     let mut sum = Commodity::zero(sum_currency);
 
-    for (key, account_state) in account_states {
+    for (_, account_state) in account_states {
         let account_amount = if account_state.amount.currency_code != sum_currency {
             match exchange_rate {
                 Some(rate) => rate.convert(account_state.amount, sum_currency)?,
@@ -114,6 +115,7 @@ impl ProgramState {
         }
     }
 
+    /// Execute a given [Program](Program) to mutate this state.
     pub fn execute_program(&mut self, program: &Program) -> Result<(), AccountingError> {
         for (index, action) in program.actions.iter().enumerate() {
             action.perform(self)?;
@@ -124,23 +126,22 @@ impl ProgramState {
     }
 
     /// Get a reference to the `AccountState` associated with a given `Account`.
-    ///
-    /// TODO: performance, in the future implement some kind of id caching if required
-    fn get_account_state(&self, account_id: &AccountID) -> Option<&AccountState> {
+    pub fn get_account_state(&self, account_id: &AccountID) -> Option<&AccountState> {
         self.account_states.get(account_id)
     }
 
     /// Get a mutable reference to the `AccountState` associated with the given `Account`.
-    ///
-    /// TODO: performance, in the future implement some kind of id caching if required
-    fn get_account_state_mut(&mut self, account_id: &AccountID) -> Option<&mut AccountState> {
+    pub fn get_account_state_mut(&mut self, account_id: &AccountID) -> Option<&mut AccountState> {
         self.account_states.get_mut(account_id)
     }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
+/// The status of an [Account](Account) stored within an [AccountState](AccountState).
 pub enum AccountStatus {
+    /// The account is open
     Open,
+    /// The account is closed
     Closed,
 }
 
@@ -172,7 +173,7 @@ pub struct Account {
 
 impl Account {
     /// Create a new account and add it to this program state (and create its associated
-    /// [AccountState](AccountState))
+    /// [AccountState](AccountState)).
     pub fn new(
         name: Option<&str>,
         currency: Rc<Currency>,
@@ -193,7 +194,7 @@ impl PartialEq for Account {
     }
 }
 
-/// Mutable state associated with an [Account](Account)
+/// Mutable state associated with an [Account](Account).
 #[derive(Debug, Clone, PartialEq)]
 pub struct AccountState {
     /// The [Account](Account) associated with this state
@@ -207,22 +208,11 @@ pub struct AccountState {
 }
 
 impl AccountState {
+    /// Create a new [AccountState](AccountState).
     pub fn new(account: Rc<Account>, amount: Commodity, status: AccountStatus) -> AccountState {
         AccountState {
             account,
             amount,
-            status,
-        }
-    }
-
-    pub fn new_default(account: Rc<Account>) -> AccountState {
-        AccountState::new_default_amount(account, AccountStatus::Closed)
-    }
-
-    pub fn new_default_amount(account: Rc<Account>, status: AccountStatus) -> AccountState {
-        AccountState {
-            account: account.clone(),
-            amount: Commodity::new(Decimal::new(0, DECIMAL_SCALE), account.currency.code),
             status,
         }
     }
@@ -238,27 +228,38 @@ impl AccountState {
     }
 }
 
-/// Represents an action which can modify [ProgramState](ProgramState)
+/// Represents an action which can modify [ProgramState](ProgramState).
 pub trait Action: fmt::Display + fmt::Debug {
-    /// The date/time (in the account history) that the action was performed
+    /// The date/time (in the account history) that the action was performed.
     fn date(&self) -> NaiveDate;
 
-    /// Perform the action to mutate the [ProgramState](ProgramState)
+    /// Perform the action to mutate the [ProgramState](ProgramState).
     fn perform(&self, program_state: &mut ProgramState) -> Result<(), AccountingError>;
 }
 
-pub enum ActionType {
-    Transaction,
-}
-
+/// A movement of [Commodity](Commodity) between two or more accounts
+/// on a given `date`. Implements [Action](Action) so it can be
+/// applied to change [AccountState](AccountState)s.
+///
+/// The sum of the [Commodity](Commodity) `amount`s contained within a
+/// transaction's [TransactionElement](TransactionElement)s needs to
+/// be equal to zero, or one of the elements needs to have a `None`
+/// value `amount`.
 #[derive(Debug, Clone)]
 pub struct Transaction {
+    /// Description of this transaction.
     pub description: Option<String>,
+    /// The date that the transaction occurred.
     pub date: NaiveDate,
+    /// Elements which compose this transaction.
+    ///
+    /// See [Transaction](Transaction) for more information about the
+    /// constraints which apply to this field.
     pub elements: Vec<TransactionElement>,
 }
 
 impl Transaction {
+    /// Create a new [Transaction](Transaction).
     pub fn new(
         description: Option<String>,
         date: NaiveDate,
@@ -271,6 +272,42 @@ impl Transaction {
         }
     }
 
+    /// Create a new simple [Transaction](Transaction), containing
+    /// only two elements, transfering an `amount` from `from_account`
+    /// to `to_account` on the given `date`, with the given
+    /// `exchange_rate` (required if the currencies of the accounts
+    /// are different).
+    /// 
+    /// # Example
+    /// ```
+    /// # use coster::accounting::Transaction;
+    /// # use std::rc::Rc;
+    /// use coster::accounting::Account;
+    /// use coster::currency::{Currency, Commodity};
+    /// use chrono::Local;
+    /// 
+    /// let aud = Rc::from(Currency::from_alpha3("AUD").unwrap());
+    /// 
+    /// let account1 = Rc::from(Account::new(Some("Account 1"), aud.clone(), None));
+    /// let account2 = Rc::from(Account::new(Some("Account 2"), aud.clone(), None));
+    /// 
+    /// let transaction = Transaction::new_simple(
+    ///    Some("balancing"),
+    ///    Local::today().naive_local(),
+    ///    account1.clone(),
+    ///    account2.clone(),
+    ///    Commodity::from_str("100.0 AUD").unwrap(),
+    ///    None,
+    /// );
+    /// 
+    /// assert_eq!(2, transaction.elements.len());
+    /// let element0 = transaction.elements.get(0).unwrap();
+    /// let element1 = transaction.elements.get(1).unwrap();
+    /// assert_eq!(Some(Commodity::from_str("-100.0 AUD").unwrap()), element0.amount);
+    /// assert_eq!(account1, element0.account);
+    /// assert_eq!(account2, element1.account);
+    /// assert_eq!(None, element1.amount);
+    /// ```
     pub fn new_simple(
         description: Option<&str>,
         date: NaiveDate,
@@ -283,7 +320,7 @@ impl Transaction {
             description.map(|s| String::from(s)),
             date,
             vec![
-                TransactionElement::new(from_account, Some(amount), exchange_rate.clone()),
+                TransactionElement::new(from_account, Some(amount.negate()), exchange_rate.clone()),
                 TransactionElement::new(to_account, None, exchange_rate),
             ],
         )
@@ -437,11 +474,17 @@ impl Action for Transaction {
 }
 
 #[derive(Debug, Clone)]
+/// An element of a [Transaction](Transaction).
 pub struct TransactionElement {
     /// The account to perform the transaction to
     pub account: Rc<Account>,
 
-    /// The amount of [Commodity](Commodity) to add to the account
+    /// The amount of [Commodity](Commodity) to add to the account.
+    /// 
+    /// This may be `None`, if it is the only element within a
+    /// [Transaction](Transaction), which is None. If it is `None`,
+    /// it's amount will be automatically calculated from the amounts
+    /// in the other elements present in the transaction.
     pub amount: Option<Commodity>,
 
     /// The exchange rate to use for converting the amount in this element
@@ -450,6 +493,7 @@ pub struct TransactionElement {
 }
 
 impl TransactionElement {
+    /// Create a new [TransactionElement](TransactionElement).
     pub fn new(
         account: Rc<Account>,
         amount: Option<Commodity>,
@@ -464,6 +508,9 @@ impl TransactionElement {
 }
 
 #[derive(Debug)]
+/// A type of [Action](Action) to edit the
+/// [AccountStatus](AccountStatus) of a given [Account](Account)'s
+/// [AccountState](AccountState).
 pub struct EditAccountStatus {
     account: Rc<Account>,
     newstatus: AccountStatus,
@@ -471,6 +518,7 @@ pub struct EditAccountStatus {
 }
 
 impl EditAccountStatus {
+    /// Create a new [EditAccountStatus](EditAccountStatus).
     pub fn new(
         account: Rc<Account>,
         newstatus: AccountStatus,

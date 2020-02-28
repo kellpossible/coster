@@ -1,8 +1,4 @@
 //! This module holds the business logic for the `coster` application.
-//!
-//! What do we want this to do?
-//!
-//! 1. Create a new Tab (a list of expenses and their associated users)
 
 use crate::accounting::{
     sum_account_states, Account, AccountID, AccountState, AccountStatus, AccountingError, Action,
@@ -24,6 +20,8 @@ pub enum CostingError {
 }
 
 #[derive(Debug)]
+/// Represents a person using this system, and to be associated with
+/// [Expense](Expenses) in a [Tab](Tab).
 pub struct User {
     pub id: String,
     pub name: String,
@@ -85,7 +83,9 @@ fn account_state_difference(
     Ok(result)
 }
 
-struct Tab {
+/// A collection of expenses, and users who are responsible
+/// for/associated with those expenses.
+pub struct Tab {
     pub working_currency: Rc<Currency>,
     pub users: Vec<Rc<User>>,
     pub expenses: Vec<Expense>,
@@ -109,8 +109,11 @@ impl Tab {
     /// expenses, will ensure that each user has fairly shared each
     /// expense that they have participated in.
     ///
-    /// The aim here, is to produce a minimal set of transactions.
-    fn balance_transactions(&self) -> Result<Vec<Transaction>, CostingError> {
+    /// The aim here, is to produce a minimal set of transactions,
+    /// which favour users who have smaller debts making less
+    /// transactions, and those with larget debts making more
+    /// transactions.
+    pub fn balance_transactions(&self) -> Result<Vec<Transaction>, CostingError> {
         let mut actual_transactions: Vec<Rc<dyn Action>> = Vec::new();
         let mut shared_transactions: Vec<Rc<dyn Action>> = Vec::new();
 
@@ -261,7 +264,7 @@ impl Tab {
                             today,
                             negative_difference_state.account.clone(),
                             positive_difference_state.account.clone(),
-                            positive_difference_state.amount.negate(),
+                            positive_difference_state.amount,
                             None,
                         ));
 
@@ -331,7 +334,7 @@ fn balance_entire_negative_into_positive(
         date,
         negative_difference_state.account.clone(),
         positive_difference_state.account.clone(),
-        negative_difference_state.amount,
+        negative_difference_state.amount.negate(),
         None,
     )];
 
@@ -354,6 +357,8 @@ struct Ownership<T> {
     data: T,
 }
 
+/// An expense which is paid by a user on a given `date`, and which is
+/// to be shared by a list of users.
 pub struct Expense {
     /// The description of this expense
     pub description: String,

@@ -1,13 +1,20 @@
 extern crate chrono;
 extern crate rust_decimal;
+
+#[cfg(feature = "serde")]
 extern crate serde;
+#[cfg(feature = "serde")]
 extern crate serde_json;
+
 extern crate thiserror;
 
 use crate::currency::{Commodity, CurrencyCode};
 use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
+
+#[cfg(feature = "serde")]
 use serde::Deserialize;
+
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -25,7 +32,8 @@ pub enum ExchangeRateSource {
 }
 
 // TODO: make serde a feature flag
-#[derive(Debug, Clone, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Deserialize))]
+#[derive(Debug, Clone)]
 pub struct ExchangeRate {
     /// The datetime that this exchange rate represents
     pub date: Option<NaiveDate>,
@@ -101,12 +109,14 @@ mod tests {
     use super::{Commodity, CurrencyCode, ExchangeRate};
     use chrono::NaiveDate;
     use rust_decimal::Decimal;
-    use serde_json;
     use std::collections::HashMap;
     use std::str::FromStr;
 
+    #[cfg(feature = "serde")]
     #[test]
     fn test_deserialize() {
+        use serde_json;
+
         let data = r#"
             {
                 "date": "2020-02-07",

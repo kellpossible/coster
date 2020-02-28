@@ -92,7 +92,7 @@ pub struct Tab {
 }
 
 impl Tab {
-    /// Construct a new [Tab](Tab)
+    /// Construct a new [Tab](Tab).
     pub fn new(
         working_currency: Rc<Currency>,
         users: Vec<Rc<User>>,
@@ -323,6 +323,9 @@ impl Tab {
     }
 }
 
+/// Create a transaction that pays the entire debt of the account of
+/// `negative_difference_state` the account of
+/// `positive_difference_state`.
 fn balance_entire_negative_into_positive(
     date: NaiveDate,
     negative_difference_state: &mut AccountState,

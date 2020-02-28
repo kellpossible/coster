@@ -6,13 +6,17 @@ extern crate arrayvec;
 extern crate chrono;
 extern crate iso4217;
 extern crate rust_decimal;
+
+#[cfg(feature = "serde")]
 extern crate serde;
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Deserializer};
 
 use arrayvec::ArrayString;
 use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::prelude::Zero;
 use rust_decimal::Decimal;
-use serde::{Deserialize, Deserializer};
 use std::fmt;
 use std::str::FromStr;
 use thiserror::Error;
@@ -160,7 +164,7 @@ impl CurrencyCode {
     }
 }
 
-// TODO: make serde a feature flag
+#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for CurrencyCode {
     fn deserialize<D>(deserializer: D) -> std::result::Result<CurrencyCode, D::Error>
     where
@@ -316,6 +320,7 @@ impl Commodity {
     /// assert_eq!(Decimal::new(650, 2), result.value);
     /// assert_eq!(currency_code, result.currency_code);
     /// ```
+    #[inline]
     pub fn add(&self, other: &Commodity) -> Result<Commodity, CurrencyError> {
         check_currency_compatible(
             self,
@@ -345,6 +350,7 @@ impl Commodity {
     /// assert_eq!(Decimal::new(150, 2), result.value);
     /// assert_eq!(currency_code, result.currency_code);
     /// ```
+    #[inline]
     pub fn subtract(&self, other: &Commodity) -> Result<Commodity, CurrencyError> {
         check_currency_compatible(
             self,
@@ -373,6 +379,7 @@ impl Commodity {
     /// assert_eq!(Decimal::from_str("-2.02").unwrap(), result.value);
     /// assert_eq!(currency_code, result.currency_code)
     /// ```
+    #[inline]
     pub fn negate(&self) -> Commodity {
         Commodity::new(-self.value, self.currency_code)
     }
@@ -388,6 +395,7 @@ impl Commodity {
     /// let result = commodity.divide(4);
     /// assert_eq!(Decimal::new(10075, 4), result.value);
     /// ```
+    #[inline]
     pub fn divide(&self, i: i64) -> Commodity {
         let decimal = Decimal::new(i * 100, 2);
         Commodity::new(self.value / decimal, self.currency_code)
@@ -465,6 +473,7 @@ impl Commodity {
     /// assert_eq!(Decimal::from_str("1.00").unwrap(), usd.value);
     /// assert_eq!("USD", usd.currency_code);
     /// ```
+    #[inline]
     pub fn convert(&self, currency_code: CurrencyCode, rate: Decimal) -> Commodity {
         Commodity::new(self.value * rate, currency_code)
     }
@@ -482,6 +491,7 @@ impl Commodity {
     /// assert!(aud1.compatible_with(&aud2));
     /// assert!(!aud1.compatible_with(&nzd));
     /// ```
+    #[inline]
     pub fn compatible_with(&self, other: &Commodity) -> bool {
         return self.currency_code == other.currency_code;
     }
@@ -499,6 +509,7 @@ impl Commodity {
     /// assert_eq!(true, aud1.less_than(&aud2).unwrap());
     /// assert_eq!(false, aud2.less_than(&aud1).unwrap());
     /// ```
+    #[inline]
     pub fn less_than(&self, other: &Commodity) -> Result<bool, CurrencyError> {
         check_currency_compatible(
             self,
@@ -522,6 +533,7 @@ impl Commodity {
     /// assert_eq!(false, aud1.greater_than(&aud2).unwrap());
     /// assert_eq!(true, aud2.greater_than(&aud1).unwrap());
     /// ```
+    #[inline]
     pub fn greater_than(&self, other: &Commodity) -> Result<bool, CurrencyError> {
         check_currency_compatible(
             self,
@@ -534,6 +546,7 @@ impl Commodity {
 }
 
 impl PartialOrd for Commodity {
+    #[inline]
     fn partial_cmp(&self, other: &Commodity) -> Option<std::cmp::Ordering> {
         check_currency_compatible(
             self,
@@ -547,6 +560,7 @@ impl PartialOrd for Commodity {
 }
 
 impl Ord for Commodity {
+    #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         check_currency_compatible(
             self,

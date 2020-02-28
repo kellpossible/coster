@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Luke Frisken <l.frisken@gmail.com>"]
 edition = "2018"
 
+[features]
+default = ["std", "serde"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -27,4 +30,6 @@ features = ["serde"]
 
 [dependencies.serde]
 version = "1.0"
+optional = true
 features = ["derive"]
+

@@ -226,6 +226,10 @@ impl AccountState {
     pub fn close(&mut self) {
         self.status = AccountStatus::Closed;
     }
+
+    pub fn eq_approx(&self, other: &AccountState, epsilon: Decimal) -> bool {
+        self.account == other.account && self.status == other.status && self.amount.eq_approx(other.amount, epsilon)
+    } 
 }
 
 /// Represents an action which can modify [ProgramState](ProgramState).

@@ -313,20 +313,23 @@ impl Tab {
             ProgramState::new(&accounts_vec, AccountStatus::Open);
         actual_balanced_transactions_states.execute_program(&actual_balanced_program)?;
 
+        let actual_balanced_states = &actual_balanced_transactions_states.account_states;
+
         let actual_balanced_sum = sum_account_states(
-            &actual_balanced_transactions_states.account_states,
+            &actual_balanced_states,
             self.working_currency.code,
             None,
         )?;
         assert!(actual_balanced_sum.eq_approx(zero, Commodity::default_epsilon()));
 
         dbg!(&account_states_to);
-        dbg!(&actual_balanced_transactions_states.account_states);
+        dbg!(&actual_balanced_states);
 
-        assert_eq!(
-            account_states_to,
-            &actual_balanced_transactions_states.account_states
-        );
+        assert_eq!(account_states_to.len(), actual_balanced_states.len());
+        for (id, to_state) in account_states_to {
+            let balanced_state = actual_balanced_states.get(id).unwrap();
+            to_state.eq_approx(balanced_state, Commodity::default_epsilon());
+        }
 
         let settlements: Vec<Settlement> = balancing_transactions
             .iter()
@@ -697,8 +700,6 @@ mod tests {
         let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.clone(), None));
 
         let expenses = vec![
-            // user2 and user3 each owe 100.0 to user1.
-            // user1 is owed 200.0
             Expense::new(
                 "Cheese",
                 expenses_account.clone(),
@@ -708,8 +709,9 @@ mod tests {
                 Commodity::from_str("300.0 AUD").unwrap(),
                 None,
             ),
-            // user2 and user3 both owe 250.0 to user1.
-            // user1 is owed 500.0
+            // user2 and user3 each owe 100.0 to user1.
+            // user1 is owed 200.0
+
             Expense::new(
                 "Pickles",
                 expenses_account.clone(),
@@ -719,8 +721,9 @@ mod tests {
                 Commodity::from_str("500.0 AUD").unwrap(),
                 None,
             ),
-            // user1 and user3 both owe 33.333 to user2
-            // user2 is owed 66.666
+            // user2 and user3 both owe 250.0 to user1.
+            // user1 is owed 500.0
+            
             Expense::new(
                 "Buns",
                 expenses_account.clone(),
@@ -730,10 +733,18 @@ mod tests {
                 Commodity::from_str("100.0 AUD").unwrap(),
                 None,
             ),
+            // user1 and user3 both owe 33.333 to user2
+            // user2 is owed 66.666
+
             // Expected totals after all this:
             // user1 is owed a total of 666.666
-            // user2 owes 316.666 to user1
+            // user2 owes 283.333 to user1
             // user3 owes 383.333 to user1
+            // together, the users spent a total of 900.00
+            // after balancing:
+            // user1 spent 133.333
+            // user2 spent 383.333
+            // user3 spent 383.333
         ];
 
         let tab = Tab::new(
@@ -749,7 +760,7 @@ mod tests {
         let user2_settlement = settlements.iter().find(|s| s.sender == user2).unwrap();
         assert!(user2_settlement.receiver == user1);
         assert!(user2_settlement.amount.eq_approx(
-            Commodity::from_str("316.66666666666 AUD").unwrap(),
+            Commodity::from_str("283.33333333333 AUD").unwrap(),
             Commodity::default_epsilon()
         ));
 

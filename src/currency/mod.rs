@@ -417,6 +417,14 @@ impl Commodity {
     /// assert_eq!(Decimal::new(100, 2), results.get(3).unwrap().value);
     /// ```
     pub fn divide_share(&self, i: i64, dp: u32) -> Vec<Commodity> {
+        // TODO: rework this algorithm
+        // 
+        // Consider the following idea:
+        // Use the normal divide, then round it. Sum it up, and
+        // subtract this from the original number, to get the
+        // remainder. Add the remainder one digit at a time to the
+        // resulting shares.
+
         let mut commodities: Vec<Commodity> = Vec::new();
         let divisor = Decimal::new(i * 10_i64.pow(dp), dp);
         let remainder = self.value % divisor;

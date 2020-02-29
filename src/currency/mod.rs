@@ -345,13 +345,13 @@ impl Commodity {
     /// let commodity2 = Commodity::new(Decimal::new(250, 2), currency_code);
     ///
     /// // perform the subtraction
-    /// let result = commodity1.subtract(&commodity2).unwrap();
+    /// let result = commodity1.sub(&commodity2).unwrap();
     ///
     /// assert_eq!(Decimal::new(150, 2), result.value);
     /// assert_eq!(currency_code, result.currency_code);
     /// ```
     #[inline]
-    pub fn subtract(&self, other: &Commodity) -> Result<Commodity, CurrencyError> {
+    pub fn sub(&self, other: &Commodity) -> Result<Commodity, CurrencyError> {
         check_currency_compatible(
             self,
             other,
@@ -374,13 +374,13 @@ impl Commodity {
     /// let commodity = Commodity::new(Decimal::new(202, 2), currency_code);
     ///
     /// // perform the negation
-    /// let result = commodity.negate();
+    /// let result = commodity.neg();
     ///
     /// assert_eq!(Decimal::from_str("-2.02").unwrap(), result.value);
     /// assert_eq!(currency_code, result.currency_code)
     /// ```
     #[inline]
-    pub fn negate(&self) -> Commodity {
+    pub fn neg(&self) -> Commodity {
         Commodity::new(-self.value, self.currency_code)
     }
 
@@ -392,11 +392,11 @@ impl Commodity {
     /// use rust_decimal::{Decimal};
     ///
     /// let commodity = Commodity::from_str("4.03 AUD").unwrap();
-    /// let result = commodity.divide(4);
+    /// let result = commodity.div_i64(4);
     /// assert_eq!(Decimal::new(10075, 4), result.value);
     /// ```
     #[inline]
-    pub fn divide(&self, i: i64) -> Commodity {
+    pub fn div_i64(&self, i: i64) -> Commodity {
         let decimal = Decimal::new(i * 100, 2);
         Commodity::new(self.value / decimal, self.currency_code)
     }
@@ -506,11 +506,11 @@ impl Commodity {
     /// let aud1 = Commodity::from_str("1.0 AUD").unwrap();
     /// let aud2 = Commodity::from_str("2.0 AUD").unwrap();
     ///
-    /// assert_eq!(true, aud1.less_than(&aud2).unwrap());
-    /// assert_eq!(false, aud2.less_than(&aud1).unwrap());
+    /// assert_eq!(true, aud1.lt(&aud2).unwrap());
+    /// assert_eq!(false, aud2.lt(&aud1).unwrap());
     /// ```
     #[inline]
-    pub fn less_than(&self, other: &Commodity) -> Result<bool, CurrencyError> {
+    pub fn lt(&self, other: &Commodity) -> Result<bool, CurrencyError> {
         check_currency_compatible(
             self,
             other,
@@ -530,11 +530,11 @@ impl Commodity {
     /// let aud1 = Commodity::from_str("1.0 AUD").unwrap();
     /// let aud2 = Commodity::from_str("2.0 AUD").unwrap();
     ///
-    /// assert_eq!(false, aud1.greater_than(&aud2).unwrap());
-    /// assert_eq!(true, aud2.greater_than(&aud1).unwrap());
+    /// assert_eq!(false, aud1.gt(&aud2).unwrap());
+    /// assert_eq!(true, aud2.gt(&aud1).unwrap());
     /// ```
     #[inline]
-    pub fn greater_than(&self, other: &Commodity) -> Result<bool, CurrencyError> {
+    pub fn gt(&self, other: &Commodity) -> Result<bool, CurrencyError> {
         check_currency_compatible(
             self,
             other,
@@ -640,7 +640,7 @@ mod tests {
         );
 
         let error2 = commodity1
-            .subtract(&commodity2)
+            .sub(&commodity2)
             .expect_err("expected an error");
 
         assert_eq!(

@@ -320,7 +320,7 @@ impl Transaction {
             description.map(|s| String::from(s)),
             date,
             vec![
-                TransactionElement::new(from_account, Some(amount.negate()), exchange_rate.clone()),
+                TransactionElement::new(from_account, Some(amount.neg()), exchange_rate.clone()),
                 TransactionElement::new(to_account, None, exchange_rate),
             ],
         )
@@ -409,7 +409,7 @@ impl Action for Transaction {
             Some(empty_i) => {
                 let modified_emtpy_element: &mut TransactionElement =
                     modified_elements.get_mut(empty_i).unwrap();
-                let negated_sum = sum.negate();
+                let negated_sum = sum.neg();
                 modified_emtpy_element.amount = Some(negated_sum.clone());
 
                 sum = match sum.add(&negated_sum) {

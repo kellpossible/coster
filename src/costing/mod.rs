@@ -68,7 +68,7 @@ fn account_state_difference(
 
         let difference_amount = to_state
             .amount
-            .subtract(&from_state.amount)
+            .sub(&from_state.amount)
             .map_err(|e| AccountingError::Currency(e))?;
 
         let difference_state = AccountState::new(
@@ -113,7 +113,7 @@ impl Tab {
     /// which favour users who have smaller debts making less
     /// transactions, and those with larget debts making more
     /// transactions.
-    pub fn balance_transactions(&self) -> Result<Vec<Transaction>, CostingError> {
+    pub fn balance_transactions(&self) -> Result<Vec<Settlement>, CostingError> {
         let mut actual_transactions: Vec<Rc<dyn Action>> = Vec::new();
         let mut shared_transactions: Vec<Rc<dyn Action>> = Vec::new();
 
@@ -197,9 +197,9 @@ impl Tab {
         // create two lists of account state differences associated with those users
         // one list of negative, and one list of positive
         for (_, state) in &account_differences {
-            if state.amount.less_than(&zero)? {
+            if state.amount.lt(&zero)? {
                 negative_differences.push(state.clone());
-            } else if state.amount.greater_than(&zero)? {
+            } else if state.amount.gt(&zero)? {
                 positive_differences.push(state.clone());
             }
         }
@@ -222,7 +222,7 @@ impl Tab {
             // turns the negative difference (the debt), into a
             // positive number to use for comparison with the positive
             // differences (the accounts which are owed)
-            let negated_negative_state_amount = negative_difference_state.amount.negate();
+            let negated_negative_state_amount = negative_difference_state.amount.neg();
 
             let today = Local::today().naive_local();
 
@@ -319,7 +319,38 @@ impl Tab {
         assert_eq!(zero, actual_balanced_sum);
         assert_eq!(account_states_to, &actual_balanced_transactions_states.account_states);
 
-        Ok(balancing_transactions)
+        let settlements: Vec<Settlement> = balancing_transactions.iter().map(|transaction: &Transaction| {
+            assert_eq!(2, transaction.elements.len());
+            
+            let element0: &TransactionElement = transaction.elements.get(0).unwrap();
+            let element1: &TransactionElement = transaction.elements.get(1).unwrap();
+
+            let (sender_element, receiver_element) = if element0.amount.is_none() {
+                (element1, element0)
+            } else {
+                (element0, element1)
+            };
+
+            // there is an assumption that the balancing transactions
+            // are set to be a negative amount to take from the
+            // sender's account, and an automatically calculated none
+            // amount for the receiver's account.
+            let amount = sender_element.amount.unwrap().neg();
+
+            assert!(amount.gt(&zero).unwrap());
+            assert!(receiver_element.amount.is_none());
+
+            let sender = self.get_user_with_account(&sender_element.account).unwrap();
+            let receiver = self.get_user_with_account(&receiver_element.account).unwrap();
+
+            Settlement::new(sender.clone(), receiver.clone(), amount)
+        }).collect();
+
+        Ok(settlements)
+    }
+
+    fn get_user_with_account(&self, account: &Account) -> Option<Rc<User>> {
+        self.users.iter().find(|u| *u.account == *account).map(|u: &Rc<User>| u.clone())
     }
 }
 
@@ -337,7 +368,7 @@ fn balance_entire_negative_into_positive(
         date,
         negative_difference_state.account.clone(),
         positive_difference_state.account.clone(),
-        negative_difference_state.amount.negate(),
+        negative_difference_state.amount.neg(),
         None,
     )];
 
@@ -360,8 +391,42 @@ struct Ownership<T> {
     data: T,
 }
 
+/// Represents the settlement of a debt that one user owes another.
+#[derive(Debug)]
+pub struct Settlement {
+    /// The user who has a debt and needs to send the money.
+    sender: Rc<User>,
+    /// The user who is owed money.
+    receiver: Rc<User>,
+    /// The amount of money the `sender` needs to send to the `receiver`.
+    amount: Commodity,
+}
+
+impl Settlement {
+    /// Create a new [Settlement](Settlement).
+    fn new(sender: Rc<User>, receiver: Rc<User>, amount: Commodity) -> Settlement {
+        Settlement {
+            sender,
+            receiver,
+            amount,
+        }
+    }
+
+    fn to_transaction(&self, date: NaiveDate) -> Transaction {
+        Transaction::new_simple(
+            Some("Settlement"),
+            date,
+            self.sender.account.clone(), 
+            self.receiver.account.clone(), 
+            self.amount,
+            None,
+        )
+    }
+}
+
 /// An expense which is paid by a user on a given `date`, and which is
 /// to be shared by a list of users.
+#[derive(Debug)]
 pub struct Expense {
     /// The description of this expense
     pub description: String,
@@ -473,7 +538,7 @@ impl Expense {
             vec![
                 TransactionElement::new(
                     self.paid_by.account.clone(),
-                    Some(self.amount.negate()),
+                    Some(self.amount.neg()),
                     self.exchange_rate.clone(),
                 ),
                 TransactionElement::new(self.account.clone(), None, self.exchange_rate.clone()),
@@ -526,8 +591,8 @@ impl Expense {
         // TODO: perhaps consider using divide_share instead
         let divided = self
             .amount
-            .divide(self.shared_by.len().try_into().unwrap())
-            .negate();
+            .div_i64(self.shared_by.len().try_into().unwrap())
+            .neg();
 
         for user in &self.shared_by {
             let element = TransactionElement::new(
@@ -585,6 +650,6 @@ mod tests {
             vec![expense],
         );
 
-        tab.balance_transactions().unwrap();
+        let settlements = tab.balance_transactions().unwrap();
     }
 }

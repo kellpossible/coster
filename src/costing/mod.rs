@@ -114,6 +114,8 @@ impl Tab {
     /// transactions, and those with larget debts making more
     /// transactions.
     pub fn balance_transactions(&self) -> Result<Vec<Settlement>, CostingError> {
+        let zero = Commodity::zero(self.working_currency.code);
+
         let mut actual_transactions: Vec<Rc<dyn Action>> = Vec::new();
         let mut shared_transactions: Vec<Rc<dyn Action>> = Vec::new();
 
@@ -159,16 +161,10 @@ impl Tab {
 
         let from_sum_with_expenses =
             sum_account_states(account_states_from, self.working_currency.code, None)?;
-        assert_eq!(
-            Commodity::zero(self.working_currency.code),
-            from_sum_with_expenses
-        );
+        assert!(from_sum_with_expenses.eq_approx(zero, Commodity::default_epsilon()));
         let to_sum_with_expenses =
             sum_account_states(account_states_to, self.working_currency.code, None)?;
-        assert_eq!(
-            Commodity::zero(self.working_currency.code),
-            to_sum_with_expenses
-        );
+        assert!(to_sum_with_expenses.eq_approx(zero, Commodity::default_epsilon()));
 
         let mut account_states_from_without_expenses = account_states_from.clone();
         let mut account_states_to_without_expenses = account_states_to.clone();
@@ -187,12 +183,10 @@ impl Tab {
         let differences_sum =
             sum_account_states(&account_differences, self.working_currency.code, None)?;
 
-        assert_eq!(Commodity::zero(self.working_currency.code), differences_sum);
+        assert!(differences_sum.eq_approx(zero, Commodity::default_epsilon()));
 
         let mut negative_differences: Vec<AccountState> = Vec::new();
         let mut positive_differences: Vec<AccountState> = Vec::new();
-
-        let zero = Commodity::zero(self.working_currency.code);
 
         // create two lists of account state differences associated with those users
         // one list of negative, and one list of positive
@@ -224,6 +218,7 @@ impl Tab {
             // differences (the accounts which are owed)
             let negated_negative_state_amount = negative_difference_state.amount.neg();
 
+            // cache today's date
             let today = Local::today().naive_local();
 
             // find continue on to find the first state which is
@@ -306,51 +301,73 @@ impl Tab {
         // dbg!(&balancing_transactions);
 
         let mut actual_with_balancing_transactions = actual_transactions.clone();
-        balancing_transactions.iter().for_each(|bt| actual_with_balancing_transactions.push(Rc::from(bt.clone())));
+        balancing_transactions
+            .iter()
+            .for_each(|bt| actual_with_balancing_transactions.push(Rc::from(bt.clone())));
 
+        // run a program which includes the actual transactions, plus
+        // the proposed balancing transactions, in order to test that
+        // the proposed transactions produce the desired result.
         let actual_balanced_program = Program::new(actual_with_balancing_transactions);
         let mut actual_balanced_transactions_states =
             ProgramState::new(&accounts_vec, AccountStatus::Open);
         actual_balanced_transactions_states.execute_program(&actual_balanced_program)?;
 
+        let actual_balanced_sum = sum_account_states(
+            &actual_balanced_transactions_states.account_states,
+            self.working_currency.code,
+            None,
+        )?;
+        assert!(actual_balanced_sum.eq_approx(zero, Commodity::default_epsilon()));
+
+        dbg!(&account_states_to);
         dbg!(&actual_balanced_transactions_states.account_states);
 
-        let actual_balanced_sum = sum_account_states(&actual_balanced_transactions_states.account_states, self.working_currency.code, None)?;
-        assert_eq!(zero, actual_balanced_sum);
-        assert_eq!(account_states_to, &actual_balanced_transactions_states.account_states);
+        assert_eq!(
+            account_states_to,
+            &actual_balanced_transactions_states.account_states
+        );
 
-        let settlements: Vec<Settlement> = balancing_transactions.iter().map(|transaction: &Transaction| {
-            assert_eq!(2, transaction.elements.len());
-            
-            let element0: &TransactionElement = transaction.elements.get(0).unwrap();
-            let element1: &TransactionElement = transaction.elements.get(1).unwrap();
+        let settlements: Vec<Settlement> = balancing_transactions
+            .iter()
+            .map(|transaction: &Transaction| {
+                assert_eq!(2, transaction.elements.len());
 
-            let (sender_element, receiver_element) = if element0.amount.is_none() {
-                (element1, element0)
-            } else {
-                (element0, element1)
-            };
+                let element0: &TransactionElement = transaction.elements.get(0).unwrap();
+                let element1: &TransactionElement = transaction.elements.get(1).unwrap();
 
-            // there is an assumption that the balancing transactions
-            // are set to be a negative amount to take from the
-            // sender's account, and an automatically calculated none
-            // amount for the receiver's account.
-            let amount = sender_element.amount.unwrap().neg();
+                let (sender_element, receiver_element) = if element0.amount.is_none() {
+                    (element1, element0)
+                } else {
+                    (element0, element1)
+                };
 
-            assert!(amount.gt(&zero).unwrap());
-            assert!(receiver_element.amount.is_none());
+                // there is an assumption that the balancing transactions
+                // are set to be a negative amount to take from the
+                // sender's account, and an automatically calculated none
+                // amount for the receiver's account.
+                let amount = sender_element.amount.unwrap().neg();
 
-            let sender = self.get_user_with_account(&sender_element.account).unwrap();
-            let receiver = self.get_user_with_account(&receiver_element.account).unwrap();
+                assert!(amount.gt(&zero).unwrap());
+                assert!(receiver_element.amount.is_none());
 
-            Settlement::new(sender.clone(), receiver.clone(), amount)
-        }).collect();
+                let sender = self.get_user_with_account(&sender_element.account).unwrap();
+                let receiver = self
+                    .get_user_with_account(&receiver_element.account)
+                    .unwrap();
+
+                Settlement::new(sender.clone(), receiver.clone(), amount)
+            })
+            .collect();
 
         Ok(settlements)
     }
 
     fn get_user_with_account(&self, account: &Account) -> Option<Rc<User>> {
-        self.users.iter().find(|u| *u.account == *account).map(|u: &Rc<User>| u.clone())
+        self.users
+            .iter()
+            .find(|u| *u.account == *account)
+            .map(|u: &Rc<User>| u.clone())
     }
 }
 
@@ -416,8 +433,8 @@ impl Settlement {
         Transaction::new_simple(
             Some("Settlement"),
             date,
-            self.sender.account.clone(), 
-            self.receiver.account.clone(), 
+            self.sender.account.clone(),
+            self.receiver.account.clone(),
             self.amount,
             None,
         )
@@ -635,7 +652,7 @@ mod tests {
         let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.clone(), None));
 
         let expense = Expense::new(
-            "some expense",
+            "Petrol",
             expenses_account.clone(),
             NaiveDate::from_ymd(2020, 2, 27),
             user1.clone(),
@@ -656,10 +673,91 @@ mod tests {
 
         let user2_settlement = settlements.iter().find(|s| s.sender == user2).unwrap();
         assert!(user2_settlement.receiver == user1);
-        assert_eq!(Commodity::from_str("150.0 AUD").unwrap(), user2_settlement.amount);
+        assert_eq!(
+            Commodity::from_str("150.0 AUD").unwrap(),
+            user2_settlement.amount
+        );
 
         let user3_settlement = settlements.iter().find(|s| s.sender == user3).unwrap();
         assert!(user3_settlement.receiver == user1);
-        assert_eq!(Commodity::from_str("150.0 AUD").unwrap(), user3_settlement.amount);
+        assert_eq!(
+            Commodity::from_str("150.0 AUD").unwrap(),
+            user3_settlement.amount
+        );
+    }
+
+    #[test]
+    fn balance_complex() {
+        let aud = Rc::from(Currency::from_alpha3("AUD").unwrap());
+
+        let user1 = Rc::from(User::new("user1", "User 1", None, aud.clone()));
+        let user2 = Rc::from(User::new("user2", "User 2", None, aud.clone()));
+        let user3 = Rc::from(User::new("user3", "User 3", None, aud.clone()));
+
+        let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.clone(), None));
+
+        let expenses = vec![
+            // user2 and user3 each owe 100.0 to user1.
+            // user1 is owed 200.0
+            Expense::new(
+                "Cheese",
+                expenses_account.clone(),
+                NaiveDate::from_ymd(2020, 2, 27),
+                user1.clone(),
+                vec![user1.clone(), user2.clone(), user3.clone()],
+                Commodity::from_str("300.0 AUD").unwrap(),
+                None,
+            ),
+            // user2 and user3 both owe 250.0 to user1.
+            // user1 is owed 500.0
+            Expense::new(
+                "Pickles",
+                expenses_account.clone(),
+                NaiveDate::from_ymd(2020, 2, 27),
+                user1.clone(),
+                vec![user2.clone(), user3.clone()],
+                Commodity::from_str("500.0 AUD").unwrap(),
+                None,
+            ),
+            // user1 and user3 both owe 33.333 to user2
+            // user2 is owed 66.666
+            Expense::new(
+                "Buns",
+                expenses_account.clone(),
+                NaiveDate::from_ymd(2020, 2, 27),
+                user2.clone(),
+                vec![user1.clone(), user2.clone(), user3.clone()],
+                Commodity::from_str("100.0 AUD").unwrap(),
+                None,
+            ),
+            // Expected totals after all this:
+            // user1 is owed a total of 666.666
+            // user2 owes 316.666 to user1
+            // user3 owes 383.333 to user1
+        ];
+
+        let tab = Tab::new(
+            aud.clone(),
+            vec![user1.clone(), user2.clone(), user3.clone()],
+            expenses,
+        );
+
+        let settlements = tab.balance_transactions().unwrap();
+
+        assert_eq!(2, settlements.len());
+
+        let user2_settlement = settlements.iter().find(|s| s.sender == user2).unwrap();
+        assert!(user2_settlement.receiver == user1);
+        assert!(user2_settlement.amount.eq_approx(
+            Commodity::from_str("316.66666666666 AUD").unwrap(),
+            Commodity::default_epsilon()
+        ));
+
+        let user3_settlement = settlements.iter().find(|s| s.sender == user3).unwrap();
+        assert!(user3_settlement.receiver == user1);
+        assert!(user3_settlement.amount.eq_approx(
+            Commodity::from_str("383.33333333333 AUD").unwrap(),
+            Commodity::default_epsilon()
+        ));
     }
 }

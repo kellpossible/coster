@@ -543,6 +543,44 @@ impl Commodity {
 
         Ok(self.value > other.value)
     }
+
+    /// Return the absolute value of this commodity (if the value is
+    /// negative, then make it positive).
+    ///
+    /// # Example
+    /// ```
+    /// # use coster::currency::{Commodity};
+    /// let aud1 = Commodity::from_str("-1.0 AUD").unwrap();
+    /// assert_eq!(Commodity::from_str("1.0 AUD").unwrap(), aud1.abs());
+    ///
+    /// let aud2 = Commodity::from_str("2.0 AUD").unwrap();
+    /// assert_eq!(Commodity::from_str("2.0 AUD").unwrap(), aud2.abs());
+    /// ```
+    #[inline]
+    pub fn abs(&self) -> Commodity {
+        return Commodity::new(self.value.abs(), self.currency_code);
+    }
+
+    /// The default epsilon to use for comparisons between different [Commodity](Commodity)s.
+    #[inline]
+    pub fn default_epsilon() -> Decimal {
+        Decimal::new(1, 6)
+    }
+
+    #[inline]
+    pub fn eq_approx(&self, other: Commodity, epsilon: Decimal) -> bool {
+        if other.currency_code != self.currency_code {
+            return false;
+        }
+
+        let diff = if self.value > other.value {
+            self.value - other.value
+        } else {
+            other.value - self.value
+        };
+
+        return diff <= epsilon;
+    }
 }
 
 impl PartialOrd for Commodity {
@@ -639,9 +677,7 @@ mod tests {
             error1
         );
 
-        let error2 = commodity1
-            .sub(&commodity2)
-            .expect_err("expected an error");
+        let error2 = commodity1.sub(&commodity2).expect_err("expected an error");
 
         assert_eq!(
             CurrencyError::IncompatableCommodity {

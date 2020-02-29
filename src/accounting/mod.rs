@@ -277,7 +277,7 @@ impl Transaction {
     /// to `to_account` on the given `date`, with the given
     /// `exchange_rate` (required if the currencies of the accounts
     /// are different).
-    /// 
+    ///
     /// # Example
     /// ```
     /// # use coster::accounting::Transaction;
@@ -285,12 +285,12 @@ impl Transaction {
     /// use coster::accounting::Account;
     /// use coster::currency::{Currency, Commodity};
     /// use chrono::Local;
-    /// 
+    ///
     /// let aud = Rc::from(Currency::from_alpha3("AUD").unwrap());
-    /// 
+    ///
     /// let account1 = Rc::from(Account::new(Some("Account 1"), aud.clone(), None));
     /// let account2 = Rc::from(Account::new(Some("Account 2"), aud.clone(), None));
-    /// 
+    ///
     /// let transaction = Transaction::new_simple(
     ///    Some("balancing"),
     ///    Local::today().naive_local(),
@@ -299,7 +299,7 @@ impl Transaction {
     ///    Commodity::from_str("100.0 AUD").unwrap(),
     ///    None,
     /// );
-    /// 
+    ///
     /// assert_eq!(2, transaction.elements.len());
     /// let element0 = transaction.elements.get(0).unwrap();
     /// let element1 = transaction.elements.get(1).unwrap();
@@ -480,7 +480,7 @@ pub struct TransactionElement {
     pub account: Rc<Account>,
 
     /// The amount of [Commodity](Commodity) to add to the account.
-    /// 
+    ///
     /// This may be `None`, if it is the only element within a
     /// [Transaction](Transaction), which is None. If it is `None`,
     /// it's amount will be automatically calculated from the amounts

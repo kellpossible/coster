@@ -395,11 +395,11 @@ struct Ownership<T> {
 #[derive(Debug)]
 pub struct Settlement {
     /// The user who has a debt and needs to send the money.
-    sender: Rc<User>,
+    pub sender: Rc<User>,
     /// The user who is owed money.
-    receiver: Rc<User>,
+    pub receiver: Rc<User>,
     /// The amount of money the `sender` needs to send to the `receiver`.
-    amount: Commodity,
+    pub amount: Commodity,
 }
 
 impl Settlement {
@@ -625,7 +625,7 @@ mod tests {
     use std::rc::Rc;
 
     #[test]
-    fn balance() {
+    fn balance_simple() {
         let aud = Rc::from(Currency::from_alpha3("AUD").unwrap());
 
         let user1 = Rc::from(User::new("user1", "User 1", None, aud.clone()));
@@ -651,5 +651,15 @@ mod tests {
         );
 
         let settlements = tab.balance_transactions().unwrap();
+
+        assert_eq!(2, settlements.len());
+
+        let user2_settlement = settlements.iter().find(|s| s.sender == user2).unwrap();
+        assert!(user2_settlement.receiver == user1);
+        assert_eq!(Commodity::from_str("150.0 AUD").unwrap(), user2_settlement.amount);
+
+        let user3_settlement = settlements.iter().find(|s| s.sender == user3).unwrap();
+        assert!(user3_settlement.receiver == user1);
+        assert_eq!(Commodity::from_str("150.0 AUD").unwrap(), user3_settlement.amount);
     }
 }

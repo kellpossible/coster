@@ -17,5 +17,5 @@ nanoid = "0.3.0"
 thiserror = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
-commodity = { git = "https://github.com/kellpossible/commodity", features = ["serde-support"] }
-doublecount = { git = "https://github.com/kellpossible/doublecount", features = ["serde-support"] }
+commodity = { version = "0.2", features = ["serde-support"] }
+doublecount = { version = "0.2", features = ["serde-support"] }

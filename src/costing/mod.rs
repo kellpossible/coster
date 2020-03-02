@@ -4,7 +4,7 @@ use doublecount::{
     sum_account_states, Account, AccountID, AccountState, AccountStatus, AccountingError, Action,
     Program, ProgramState, Transaction, TransactionElement,
 };
-use doublecount::exchange_rate::ExchangeRate;
+use commodity::exchange_rate::ExchangeRate;
 use commodity::{Commodity, Currency, CommodityError};
 use chrono::{DateTime, Local, NaiveDate, Utc};
 use std::collections::HashMap;
@@ -474,6 +474,7 @@ impl Expense {
     /// use commodity::{Commodity, Currency};
     /// use std::rc::Rc;
     /// use chrono::NaiveDate;
+    /// use std::str::FromStr;
     ///
     /// let aud = Rc::from(Currency::from_alpha3("AUD").unwrap());
     /// let user1 = Rc::from(User::new("user1", "User 1", None, aud.clone()));
@@ -526,6 +527,7 @@ impl Expense {
     /// use commodity::{Commodity, Currency};
     /// use std::rc::Rc;
     /// use chrono::NaiveDate;
+    /// use std::str::FromStr;
     ///
     /// let aud = Rc::from(Currency::from_alpha3("AUD").unwrap());
     /// let user1 = Rc::from(User::new("user1", "User 1", None, aud.clone()));
@@ -575,6 +577,7 @@ impl Expense {
     /// use commodity::{Commodity, Currency};
     /// use std::rc::Rc;
     /// use chrono::NaiveDate;
+    /// use std::str::FromStr;
     ///
     /// let aud = Rc::from(Currency::from_alpha3("AUD").unwrap());
     /// let user1 = Rc::from(User::new("user1", "User 1", None, aud.clone()));
@@ -639,10 +642,12 @@ impl Expense {
 
 mod tests {
     use super::{Expense, Tab, User};
-    use doublecount::{Account, Transaction, exchange_rate::ExchangeRate};
+    use doublecount::{Account, Transaction};
     use commodity::{Commodity, Currency};
+    use commodity::exchange_rate::ExchangeRate;
     use chrono::NaiveDate;
     use std::rc::Rc;
+    use std::str::FromStr;
 
     #[test]
     fn balance_simple() {

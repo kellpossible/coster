@@ -452,8 +452,9 @@ dependencies = [
 
 [[package]]
 name = "commodity"
-version = "0.1.0"
-source = "git+https://github.com/kellpossible/commodity#b6524faaf32170ab3655e6ea9f4f4a3babb7ecb6"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b46cbf50d17a5ccff437a6ed7aa706ae71a0b63db0067b2102879f3cec6f76ea"
 dependencies = [
  "arrayvec",
  "chrono",
@@ -536,8 +537,9 @@ dependencies = [
 
 [[package]]
 name = "doublecount"
-version = "0.1.0"
-source = "git+https://github.com/kellpossible/doublecount#c7cc2670c45c2dd0440bcb92f3c833a98441aa65"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "832d954e0b5a31f2795beed1c3021cafd57629a81db5c7220fe7547c80e160c8"
 dependencies = [
  "chrono",
  "commodity",

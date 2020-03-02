@@ -11,18 +11,7 @@ This project is inspired by [SplittyPie](https://github.com/cowbell/splittypie),
 
 ## Libraries
 
-### costing
+The following libraries were developed to service this application's needs, but they should also hopefully be useful for other purposes:
 
-The business logic for this application.
-
-### accounting
-
-A double entry accounting system.
-
-### currency
-
-Primitives for representing monetary values with associated currencies, and methods for converting them.
-
-### exchange_rate
-
-Primitives for representing exchange rates between currencies, methods for querying online exchange rate APIs.
++ [Doublecount](https://github.com/kellpossible/doublecount) - A double entry accounting system/library.
++ [Commodity](https://github.com/kellpossible/commodity) - A library for representing commodities/currencies.

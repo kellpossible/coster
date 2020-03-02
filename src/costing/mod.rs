@@ -1,11 +1,11 @@
 //! This module holds the business logic for the `coster` application.
 
-use crate::accounting::{
+use doublecount::{
     sum_account_states, Account, AccountID, AccountState, AccountStatus, AccountingError, Action,
     Program, ProgramState, Transaction, TransactionElement,
 };
-use crate::currency::{Commodity, Currency, CurrencyError};
-use crate::exchange_rate::ExchangeRate;
+use doublecount::exchange_rate::ExchangeRate;
+use commodity::{Commodity, Currency, CommodityError};
 use chrono::{DateTime, Local, NaiveDate, Utc};
 use std::collections::HashMap;
 use std::{cmp::Reverse, convert::TryInto, rc::Rc};
@@ -16,7 +16,7 @@ pub enum CostingError {
     #[error("error relating to accounting")]
     Accounting(#[from] AccountingError),
     #[error("error relating to currencies")]
-    Currency(#[from] CurrencyError),
+    Currency(#[from] CommodityError),
 }
 
 #[derive(Debug)]
@@ -470,8 +470,8 @@ impl Expense {
     /// # Example
     /// ```
     /// # use coster::costing::{Expense, User};
-    /// use coster::accounting::{Transaction, Account};
-    /// use coster::currency::{Commodity, Currency};
+    /// use doublecount::{Transaction, Account};
+    /// use commodity::{Commodity, Currency};
     /// use std::rc::Rc;
     /// use chrono::NaiveDate;
     ///
@@ -522,8 +522,8 @@ impl Expense {
     /// # Example
     /// ```
     /// # use coster::costing::{Expense, User};
-    /// use coster::accounting::{Transaction, Account};
-    /// use coster::currency::{Commodity, Currency};
+    /// use doublecount::{Transaction, Account};
+    /// use commodity::{Commodity, Currency};
     /// use std::rc::Rc;
     /// use chrono::NaiveDate;
     ///
@@ -571,8 +571,8 @@ impl Expense {
     /// # Example
     /// ```
     /// # use coster::costing::{Expense, User};
-    /// use coster::accounting::{Transaction, Account};
-    /// use coster::currency::{Commodity, Currency};
+    /// use doublecount::{Transaction, Account};
+    /// use commodity::{Commodity, Currency};
     /// use std::rc::Rc;
     /// use chrono::NaiveDate;
     ///
@@ -639,8 +639,8 @@ impl Expense {
 
 mod tests {
     use super::{Expense, Tab, User};
-    use crate::accounting::{Account, Transaction};
-    use crate::currency::{Commodity, Currency};
+    use doublecount::{Account, Transaction, exchange_rate::ExchangeRate};
+    use commodity::{Commodity, Currency};
     use chrono::NaiveDate;
     use std::rc::Rc;
 
@@ -719,7 +719,7 @@ mod tests {
                 user1.clone(),
                 vec![user2.clone(), user3.clone()],
                 Commodity::from_str("500.0 AUD").unwrap(),
-                None,
+                None::<ExchangeRate>,
             ),
             // user2 and user3 both owe 250.0 to user1.
             // user1 is owed 500.0
@@ -731,7 +731,7 @@ mod tests {
                 user2.clone(),
                 vec![user1.clone(), user2.clone(), user3.clone()],
                 Commodity::from_str("100.0 AUD").unwrap(),
-                None,
+                None::<ExchangeRate>,
             ),
             // user1 and user3 both owe 33.333 to user2
             // user2 is owed 66.666

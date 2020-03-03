@@ -35,7 +35,7 @@ impl User {
             id: String::from(id),
             name: String::from(name),
             email: email.map(|e| String::from(e)),
-            account: Rc::from(Account::new(Some(id), currency, None)),
+            account: Rc::from(Account::new(Some(id), currency.code, None)),
         }
     }
 }
@@ -116,8 +116,8 @@ impl Tab {
     pub fn balance_transactions(&self) -> Result<Vec<Settlement>, CostingError> {
         let zero = Commodity::zero(self.working_currency.code);
 
-        let mut actual_transactions: Vec<Rc<dyn Action>> = Vec::new();
-        let mut shared_transactions: Vec<Rc<dyn Action>> = Vec::new();
+        let mut actual_transactions: Vec<Rc<dyn Action>> = Vec::with_capacity(self.expenses.len());
+        let mut shared_transactions: Vec<Rc<dyn Action>> = Vec::with_capacity(self.expenses.len());
 
         let mut accounts: HashMap<AccountID, Rc<Account>> = HashMap::new();
 
@@ -185,8 +185,8 @@ impl Tab {
 
         assert!(differences_sum.eq_approx(zero, Commodity::default_epsilon()));
 
-        let mut negative_differences: Vec<AccountState> = Vec::new();
-        let mut positive_differences: Vec<AccountState> = Vec::new();
+        let mut negative_differences: Vec<AccountState> = Vec::with_capacity(account_differences.len());
+        let mut positive_differences: Vec<AccountState> = Vec::with_capacity(account_differences.len());
 
         // create two lists of account state differences associated with those users
         // one list of negative, and one list of positive
@@ -257,8 +257,8 @@ impl Tab {
                         balancing_transactions.push(Transaction::new_simple(
                             Some("balancing"),
                             today,
-                            negative_difference_state.account.clone(),
-                            positive_difference_state.account.clone(),
+                            negative_difference_state.account.id,
+                            positive_difference_state.account.id,
                             positive_difference_state.amount,
                             None,
                         ));
@@ -354,9 +354,9 @@ impl Tab {
                 assert!(amount.gt(&zero).unwrap());
                 assert!(receiver_element.amount.is_none());
 
-                let sender = self.get_user_with_account(&sender_element.account).unwrap();
+                let sender = self.get_user_with_account(&sender_element.account_id).unwrap();
                 let receiver = self
-                    .get_user_with_account(&receiver_element.account)
+                    .get_user_with_account(&receiver_element.account_id)
                     .unwrap();
 
                 Settlement::new(sender.clone(), receiver.clone(), amount)
@@ -366,10 +366,10 @@ impl Tab {
         Ok(settlements)
     }
 
-    fn get_user_with_account(&self, account: &Account) -> Option<Rc<User>> {
+    fn get_user_with_account(&self, account_id: &AccountID) -> Option<Rc<User>> {
         self.users
             .iter()
-            .find(|u| *u.account == *account)
+            .find(|u| &u.account.id == account_id)
             .map(|u: &Rc<User>| u.clone())
     }
 }
@@ -386,8 +386,8 @@ fn balance_entire_negative_into_positive(
     let transactions = vec![Transaction::new_simple(
         Some("balancing"),
         date,
-        negative_difference_state.account.clone(),
-        positive_difference_state.account.clone(),
+        negative_difference_state.account.id,
+        positive_difference_state.account.id,
         negative_difference_state.amount.neg(),
         None,
     )];
@@ -436,8 +436,8 @@ impl Settlement {
         Transaction::new_simple(
             Some("Settlement"),
             date,
-            self.sender.account.clone(),
-            self.receiver.account.clone(),
+            self.sender.account.id,
+            self.receiver.account.id,
             self.amount,
             None,
         )
@@ -480,7 +480,7 @@ impl Expense {
     /// let user1 = Rc::from(User::new("user1", "User 1", None, aud.clone()));
     /// let user2 = Rc::from(User::new("user2", "User 2", None, aud.clone()));
     ///
-    /// let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.clone(), None));
+    /// let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.code, None));
     ///
     /// let expense = Expense::new(
     ///    "some expense", expenses_account.clone(),
@@ -534,7 +534,7 @@ impl Expense {
     /// let user2 = Rc::from(User::new("user2", "User 2", None, aud.clone()));
     /// let user3 = Rc::from(User::new("user3", "User 3", None, aud.clone()));
     ///
-    /// let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.clone(), None));
+    /// let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.code, None));
     ///
     /// let expense = Expense::new(
     ///    "some expense", expenses_account.clone(),
@@ -548,9 +548,9 @@ impl Expense {
     /// let actual_transaction = expense.get_actual_transaction();
     ///
     /// assert_eq!(2, actual_transaction.elements.len());
-    /// let user1_element = actual_transaction.get_element(&user1.account).unwrap();
+    /// let user1_element = actual_transaction.get_element(&user1.account.id).unwrap();
     /// assert_eq!(Some(Commodity::from_str("-300.0 AUD").unwrap()), user1_element.amount);
-    /// let expense_element = actual_transaction.get_element(&expenses_account).unwrap();
+    /// let expense_element = actual_transaction.get_element(&expenses_account.id).unwrap();
     /// assert_eq!(None, expense_element.amount);
     /// ```
     pub fn get_actual_transaction(&self) -> Transaction {
@@ -559,11 +559,11 @@ impl Expense {
             self.date,
             vec![
                 TransactionElement::new(
-                    self.paid_by.account.clone(),
+                    self.paid_by.account.id,
                     Some(self.amount.neg()),
                     self.exchange_rate.clone(),
                 ),
-                TransactionElement::new(self.account.clone(), None, self.exchange_rate.clone()),
+                TransactionElement::new(self.account.id, None, self.exchange_rate.clone()),
             ],
         )
     }
@@ -584,7 +584,7 @@ impl Expense {
     /// let user2 = Rc::from(User::new("user2", "User 2", None, aud.clone()));
     /// let user3 = Rc::from(User::new("user3", "User 3", None, aud.clone()));
     ///
-    /// let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.clone(), None));
+    /// let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.code, None));
     ///
     /// let expense = Expense::new(
     ///    "some expense", expenses_account.clone(),
@@ -598,18 +598,18 @@ impl Expense {
     /// let shared_transaction = expense.get_shared_transaction();
     ///
     /// assert_eq!(3, shared_transaction.elements.len());
-    /// assert!(shared_transaction.get_element(&user1.account).is_none());
+    /// assert!(shared_transaction.get_element(&user1.account.id).is_none());
     ///
-    /// let user2_element = shared_transaction.get_element(&user2.account).unwrap();
-    /// let user3_element = shared_transaction.get_element(&user3.account).unwrap();
+    /// let user2_element = shared_transaction.get_element(&user2.account.id).unwrap();
+    /// let user3_element = shared_transaction.get_element(&user3.account.id).unwrap();
     /// assert_eq!(Some(Commodity::from_str("-150.0 AUD").unwrap()), user2_element.amount);
     /// assert_eq!(Some(Commodity::from_str("-150.0 AUD").unwrap()), user3_element.amount);
     ///
-    /// let expense_element = shared_transaction.get_element(&expenses_account).unwrap();
+    /// let expense_element = shared_transaction.get_element(&expenses_account.id).unwrap();
     /// assert_eq!(None, expense_element.amount);
     /// ```
     pub fn get_shared_transaction(&self) -> Transaction {
-        let mut elements: Vec<TransactionElement> = Vec::new();
+        let mut elements: Vec<TransactionElement> = Vec::with_capacity(self.shared_by.len());
 
         // TODO: perhaps consider using divide_share instead
         let divided = self
@@ -619,7 +619,7 @@ impl Expense {
 
         for user in &self.shared_by {
             let element = TransactionElement::new(
-                user.account.clone(),
+                user.account.id,
                 Some(divided),
                 self.exchange_rate.clone(),
             );
@@ -627,7 +627,7 @@ impl Expense {
         }
 
         elements.push(TransactionElement::new(
-            self.account.clone(),
+            self.account.id,
             None,
             self.exchange_rate.clone(),
         ));
@@ -657,7 +657,7 @@ mod tests {
         let user2 = Rc::from(User::new("user2", "User 2", None, aud.clone()));
         let user3 = Rc::from(User::new("user3", "User 3", None, aud.clone()));
 
-        let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.clone(), None));
+        let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.code, None));
 
         let expense = Expense::new(
             "Petrol",
@@ -702,7 +702,7 @@ mod tests {
         let user2 = Rc::from(User::new("user2", "User 2", None, aud.clone()));
         let user3 = Rc::from(User::new("user3", "User 3", None, aud.clone()));
 
-        let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.clone(), None));
+        let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.code, None));
 
         let expenses = vec![
             Expense::new(

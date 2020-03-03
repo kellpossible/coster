@@ -452,9 +452,9 @@ dependencies = [
 
 [[package]]
 name = "commodity"
-version = "0.2.0"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b46cbf50d17a5ccff437a6ed7aa706ae71a0b63db0067b2102879f3cec6f76ea"
+checksum = "3033b6d49075547426ccc1bdd6825b06a839fd70530a2ef7556585bd71dcb06f"
 dependencies = [
  "arrayvec",
  "chrono",
@@ -537,16 +537,17 @@ dependencies = [
 
 [[package]]
 name = "doublecount"
-version = "0.2.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "832d954e0b5a31f2795beed1c3021cafd57629a81db5c7220fe7547c80e160c8"
+checksum = "414281b4acd7c0735d3e4de49b234ad8bc4cf5a60ddc3c4624f3a85573873b68"
 dependencies = [
+ "arrayvec",
  "chrono",
  "commodity",
  "nanoid",
  "rust_decimal",
  "serde",
- "serde_json",
+ "serde_derive",
  "thiserror",
 ]
 
@@ -1362,9 +1363,9 @@ dependencies = [
 
 [[package]]
 name = "regex-syntax"
-version = "0.6.15"
+version = "0.6.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7246cd0a0a6ec2239a5405b2b16e3f404fa0dcc6d28f5f5b877bf80e33e0f294"
+checksum = "1132f845907680735a84409c3bebc64d1364a5683ffbce899550cd09d5eaefc1"
 
 [[package]]
 name = "resolv-conf"

@@ -5,7 +5,7 @@ use doublecount::{
     Program, ProgramState, Transaction, TransactionElement,
 };
 use commodity::exchange_rate::ExchangeRate;
-use commodity::{Commodity, Currency, CommodityError};
+use commodity::{Commodity, CommodityType, CommodityError};
 use chrono::{DateTime, Local, NaiveDate, Utc};
 use std::collections::HashMap;
 use std::{cmp::Reverse, convert::TryInto, rc::Rc};
@@ -30,12 +30,12 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(id: &str, name: &str, email: Option<&str>, currency: Rc<Currency>) -> User {
+    pub fn new(id: &str, name: &str, email: Option<&str>, currency: Rc<CommodityType>) -> User {
         User {
             id: String::from(id),
             name: String::from(name),
             email: email.map(|e| String::from(e)),
-            account: Rc::from(Account::new(Some(id), currency.code, None)),
+            account: Rc::from(Account::new(Some(id), currency.id, None)),
         }
     }
 }
@@ -69,7 +69,7 @@ fn account_state_difference(
         let difference_amount = to_state
             .amount
             .sub(&from_state.amount)
-            .map_err(|e| AccountingError::Currency(e))?;
+            .map_err(|e| AccountingError::Commodity(e))?;
 
         let difference_state = AccountState::new(
             to_state.account.clone(),
@@ -86,7 +86,7 @@ fn account_state_difference(
 /// A collection of expenses, and users who are responsible
 /// for/associated with those expenses.
 pub struct Tab {
-    pub working_currency: Rc<Currency>,
+    pub working_currency: Rc<CommodityType>,
     pub users: Vec<Rc<User>>,
     pub expenses: Vec<Expense>,
 }
@@ -94,7 +94,7 @@ pub struct Tab {
 impl Tab {
     /// Construct a new [Tab](Tab).
     pub fn new(
-        working_currency: Rc<Currency>,
+        working_currency: Rc<CommodityType>,
         users: Vec<Rc<User>>,
         expenses: Vec<Expense>,
     ) -> Tab {
@@ -114,7 +114,7 @@ impl Tab {
     /// transactions, and those with larget debts making more
     /// transactions.
     pub fn balance_transactions(&self) -> Result<Vec<Settlement>, CostingError> {
-        let zero = Commodity::zero(self.working_currency.code);
+        let zero = Commodity::zero(self.working_currency.id);
 
         let mut actual_transactions: Vec<Rc<dyn Action>> = Vec::with_capacity(self.expenses.len());
         let mut shared_transactions: Vec<Rc<dyn Action>> = Vec::with_capacity(self.expenses.len());
@@ -160,10 +160,10 @@ impl Tab {
         let account_states_to = &mut shared_program_state.account_states;
 
         let from_sum_with_expenses =
-            sum_account_states(account_states_from, self.working_currency.code, None)?;
+            sum_account_states(account_states_from, self.working_currency.id, None)?;
         assert!(from_sum_with_expenses.eq_approx(zero, Commodity::default_epsilon()));
         let to_sum_with_expenses =
-            sum_account_states(account_states_to, self.working_currency.code, None)?;
+            sum_account_states(account_states_to, self.working_currency.id, None)?;
         assert!(to_sum_with_expenses.eq_approx(zero, Commodity::default_epsilon()));
 
         let mut account_states_from_without_expenses = account_states_from.clone();
@@ -181,7 +181,7 @@ impl Tab {
         )?;
 
         let differences_sum =
-            sum_account_states(&account_differences, self.working_currency.code, None)?;
+            sum_account_states(&account_differences, self.working_currency.id, None)?;
 
         assert!(differences_sum.eq_approx(zero, Commodity::default_epsilon()));
 
@@ -317,7 +317,7 @@ impl Tab {
 
         let actual_balanced_sum = sum_account_states(
             &actual_balanced_states,
-            self.working_currency.code,
+            self.working_currency.id,
             None,
         )?;
         assert!(actual_balanced_sum.eq_approx(zero, Commodity::default_epsilon()));
@@ -471,16 +471,16 @@ impl Expense {
     /// ```
     /// # use coster::costing::{Expense, User};
     /// use doublecount::{Transaction, Account};
-    /// use commodity::{Commodity, Currency};
+    /// use commodity::{Commodity, CommodityType};
     /// use std::rc::Rc;
     /// use chrono::NaiveDate;
     /// use std::str::FromStr;
     ///
-    /// let aud = Rc::from(Currency::from_alpha3("AUD").unwrap());
+    /// let aud = Rc::from(CommodityType::from_currency_alpha3("AUD").unwrap());
     /// let user1 = Rc::from(User::new("user1", "User 1", None, aud.clone()));
     /// let user2 = Rc::from(User::new("user2", "User 2", None, aud.clone()));
     ///
-    /// let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.code, None));
+    /// let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.id, None));
     ///
     /// let expense = Expense::new(
     ///    "some expense", expenses_account.clone(),
@@ -524,17 +524,17 @@ impl Expense {
     /// ```
     /// # use coster::costing::{Expense, User};
     /// use doublecount::{Transaction, Account};
-    /// use commodity::{Commodity, Currency};
+    /// use commodity::{Commodity, CommodityType};
     /// use std::rc::Rc;
     /// use chrono::NaiveDate;
     /// use std::str::FromStr;
     ///
-    /// let aud = Rc::from(Currency::from_alpha3("AUD").unwrap());
+    /// let aud = Rc::from(CommodityType::from_currency_alpha3("AUD").unwrap());
     /// let user1 = Rc::from(User::new("user1", "User 1", None, aud.clone()));
     /// let user2 = Rc::from(User::new("user2", "User 2", None, aud.clone()));
     /// let user3 = Rc::from(User::new("user3", "User 3", None, aud.clone()));
     ///
-    /// let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.code, None));
+    /// let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.id, None));
     ///
     /// let expense = Expense::new(
     ///    "some expense", expenses_account.clone(),
@@ -574,17 +574,17 @@ impl Expense {
     /// ```
     /// # use coster::costing::{Expense, User};
     /// use doublecount::{Transaction, Account};
-    /// use commodity::{Commodity, Currency};
+    /// use commodity::{Commodity, CommodityType};
     /// use std::rc::Rc;
     /// use chrono::NaiveDate;
     /// use std::str::FromStr;
     ///
-    /// let aud = Rc::from(Currency::from_alpha3("AUD").unwrap());
+    /// let aud = Rc::from(CommodityType::from_currency_alpha3("AUD").unwrap());
     /// let user1 = Rc::from(User::new("user1", "User 1", None, aud.clone()));
     /// let user2 = Rc::from(User::new("user2", "User 2", None, aud.clone()));
     /// let user3 = Rc::from(User::new("user3", "User 3", None, aud.clone()));
     ///
-    /// let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.code, None));
+    /// let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.id, None));
     ///
     /// let expense = Expense::new(
     ///    "some expense", expenses_account.clone(),
@@ -643,7 +643,7 @@ impl Expense {
 mod tests {
     use super::{Expense, Tab, User};
     use doublecount::{Account, Transaction};
-    use commodity::{Commodity, Currency};
+    use commodity::{Commodity, CommodityType};
     use commodity::exchange_rate::ExchangeRate;
     use chrono::NaiveDate;
     use std::rc::Rc;
@@ -651,13 +651,13 @@ mod tests {
 
     #[test]
     fn balance_simple() {
-        let aud = Rc::from(Currency::from_alpha3("AUD").unwrap());
+        let aud = Rc::from(CommodityType::from_currency_alpha3("AUD").unwrap());
 
         let user1 = Rc::from(User::new("user1", "User 1", None, aud.clone()));
         let user2 = Rc::from(User::new("user2", "User 2", None, aud.clone()));
         let user3 = Rc::from(User::new("user3", "User 3", None, aud.clone()));
 
-        let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.code, None));
+        let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.id, None));
 
         let expense = Expense::new(
             "Petrol",
@@ -696,13 +696,13 @@ mod tests {
 
     #[test]
     fn balance_complex() {
-        let aud = Rc::from(Currency::from_alpha3("AUD").unwrap());
+        let aud = Rc::from(CommodityType::from_currency_alpha3("AUD").unwrap());
 
         let user1 = Rc::from(User::new("user1", "User 1", None, aud.clone()));
         let user2 = Rc::from(User::new("user2", "User 2", None, aud.clone()));
         let user3 = Rc::from(User::new("user3", "User 3", None, aud.clone()));
 
-        let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.code, None));
+        let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.id, None));
 
         let expenses = vec![
             Expense::new(

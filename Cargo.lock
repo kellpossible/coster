@@ -452,9 +452,9 @@ dependencies = [
 
 [[package]]
 name = "commodity"
-version = "0.2.3"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3033b6d49075547426ccc1bdd6825b06a839fd70530a2ef7556585bd71dcb06f"
+checksum = "68c854f7fe26d7be1b88207a0bfa42dd5ad11e58f86ae6af5283ef423a67bcc1"
 dependencies = [
  "arrayvec",
  "chrono",
@@ -537,9 +537,9 @@ dependencies = [
 
 [[package]]
 name = "doublecount"
-version = "0.4.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "414281b4acd7c0735d3e4de49b234ad8bc4cf5a60ddc3c4624f3a85573873b68"
+checksum = "16d960c460e451e1b0160009c955d4dd1c90580095c535ae0f114156e90812fd"
 dependencies = [
  "arrayvec",
  "chrono",

@@ -19,23 +19,27 @@ pub enum CostingError {
     Currency(#[from] CommodityError),
 }
 
-#[derive(Debug)]
 /// Represents a person using this system, and to be associated with
 /// [Expense](Expenses) in a [Tab](Tab).
+#[derive(Debug)]
 pub struct User {
-    pub id: String,
+    /// The id of this user
+    pub id: i32,
+    /// The name of this user
     pub name: String,
+    /// The email address for this user
     pub email: Option<String>,
+    /// The [Account](Account) associated with this user
     pub account: Rc<Account>,
 }
 
 impl User {
-    pub fn new(id: &str, name: &str, email: Option<&str>, currency: Rc<CommodityType>) -> User {
+    pub fn new(id: i32, name: &str, email: Option<&str>, currency: Rc<CommodityType>) -> User {
         User {
-            id: String::from(id),
+            id,
             name: String::from(name),
             email: email.map(|e| String::from(e)),
-            account: Rc::from(Account::new(Some(id), currency.id, None)),
+            account: Rc::from(Account::new(Some(format!("{} {}", id.to_string(), name).as_ref()), currency.id, None)),
         }
     }
 }
@@ -85,20 +89,28 @@ fn account_state_difference(
 
 /// A collection of expenses, and users who are responsible
 /// for/associated with those expenses.
+#[derive(Debug)]
 pub struct Tab {
+    /// The id of this tab
+    pub id: i32,
+    /// The working currency of this tab
     pub working_currency: Rc<CommodityType>,
+    /// The users involved with this tab
     pub users: Vec<Rc<User>>,
+    /// The expenses recorded on this tab
     pub expenses: Vec<Expense>,
 }
 
 impl Tab {
     /// Construct a new [Tab](Tab).
     pub fn new(
+        id: i32,
         working_currency: Rc<CommodityType>,
         users: Vec<Rc<User>>,
         expenses: Vec<Expense>,
     ) -> Tab {
         Tab {
+            id,
             working_currency,
             users,
             expenses,
@@ -448,6 +460,8 @@ impl Settlement {
 /// to be shared by a list of users.
 #[derive(Debug)]
 pub struct Expense {
+    /// The id of this expense
+    pub id: i32,
     /// The description of this expense
     pub description: String,
     /// The account that this expense will be attributed to
@@ -469,7 +483,7 @@ impl Expense {
     ///
     /// # Example
     /// ```
-    /// # use coster::costing::{Expense, User};
+    /// # use costing::{Expense, User};
     /// use doublecount::{Transaction, Account};
     /// use commodity::{Commodity, CommodityType};
     /// use std::rc::Rc;
@@ -477,12 +491,13 @@ impl Expense {
     /// use std::str::FromStr;
     ///
     /// let aud = Rc::from(CommodityType::from_currency_alpha3("AUD").unwrap());
-    /// let user1 = Rc::from(User::new("user1", "User 1", None, aud.clone()));
-    /// let user2 = Rc::from(User::new("user2", "User 2", None, aud.clone()));
+    /// let user1 = Rc::from(User::new(1, "User 1", None, aud.clone()));
+    /// let user2 = Rc::from(User::new(2, "User 2", None, aud.clone()));
     ///
     /// let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.id, None));
     ///
     /// let expense = Expense::new(
+    ///    1,
     ///    "some expense", expenses_account.clone(),
     ///    NaiveDate::from_ymd(2020, 2, 27),
     ///    user1.clone(),
@@ -498,6 +513,7 @@ impl Expense {
     /// assert_eq!(Commodity::from_str("300.0 AUD").unwrap(), expense.amount);
     /// ```
     pub fn new(
+        id: i32,
         description: &str,
         account: Rc<Account>,
         date: NaiveDate,
@@ -507,6 +523,7 @@ impl Expense {
         exchange_rate: Option<ExchangeRate>,
     ) -> Expense {
         Expense {
+            id,
             description: String::from(description),
             account,
             date,
@@ -522,7 +539,7 @@ impl Expense {
     ///
     /// # Example
     /// ```
-    /// # use coster::costing::{Expense, User};
+    /// # use costing::{Expense, User};
     /// use doublecount::{Transaction, Account};
     /// use commodity::{Commodity, CommodityType};
     /// use std::rc::Rc;
@@ -530,13 +547,14 @@ impl Expense {
     /// use std::str::FromStr;
     ///
     /// let aud = Rc::from(CommodityType::from_currency_alpha3("AUD").unwrap());
-    /// let user1 = Rc::from(User::new("user1", "User 1", None, aud.clone()));
-    /// let user2 = Rc::from(User::new("user2", "User 2", None, aud.clone()));
-    /// let user3 = Rc::from(User::new("user3", "User 3", None, aud.clone()));
+    /// let user1 = Rc::from(User::new(1, "User 1", None, aud.clone()));
+    /// let user2 = Rc::from(User::new(2, "User 2", None, aud.clone()));
+    /// let user3 = Rc::from(User::new(3, "User 3", None, aud.clone()));
     ///
     /// let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.id, None));
     ///
     /// let expense = Expense::new(
+    ///    1,
     ///    "some expense", expenses_account.clone(),
     ///    NaiveDate::from_ymd(2020, 2, 27),
     ///    user1.clone(),
@@ -572,7 +590,7 @@ impl Expense {
     ///
     /// # Example
     /// ```
-    /// # use coster::costing::{Expense, User};
+    /// # use costing::{Expense, User};
     /// use doublecount::{Transaction, Account};
     /// use commodity::{Commodity, CommodityType};
     /// use std::rc::Rc;
@@ -580,13 +598,14 @@ impl Expense {
     /// use std::str::FromStr;
     ///
     /// let aud = Rc::from(CommodityType::from_currency_alpha3("AUD").unwrap());
-    /// let user1 = Rc::from(User::new("user1", "User 1", None, aud.clone()));
-    /// let user2 = Rc::from(User::new("user2", "User 2", None, aud.clone()));
-    /// let user3 = Rc::from(User::new("user3", "User 3", None, aud.clone()));
+    /// let user1 = Rc::from(User::new(1, "User 1", None, aud.clone()));
+    /// let user2 = Rc::from(User::new(2, "User 2", None, aud.clone()));
+    /// let user3 = Rc::from(User::new(3, "User 3", None, aud.clone()));
     ///
     /// let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.id, None));
     ///
     /// let expense = Expense::new(
+    ///    1,
     ///    "some expense", expenses_account.clone(),
     ///    NaiveDate::from_ymd(2020, 2, 27),
     ///    user1.clone(),
@@ -653,13 +672,14 @@ mod tests {
     fn balance_simple() {
         let aud = Rc::from(CommodityType::from_currency_alpha3("AUD").unwrap());
 
-        let user1 = Rc::from(User::new("user1", "User 1", None, aud.clone()));
-        let user2 = Rc::from(User::new("user2", "User 2", None, aud.clone()));
-        let user3 = Rc::from(User::new("user3", "User 3", None, aud.clone()));
+        let user1 = Rc::from(User::new(1, "User 1", None, aud.clone()));
+        let user2 = Rc::from(User::new(2, "User 2", None, aud.clone()));
+        let user3 = Rc::from(User::new(3, "User 3", None, aud.clone()));
 
         let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.id, None));
 
         let expense = Expense::new(
+            1,
             "Petrol",
             expenses_account.clone(),
             NaiveDate::from_ymd(2020, 2, 27),
@@ -670,6 +690,7 @@ mod tests {
         );
 
         let tab = Tab::new(
+            1,
             aud.clone(),
             vec![user1.clone(), user2.clone(), user3.clone()],
             vec![expense],
@@ -698,14 +719,15 @@ mod tests {
     fn balance_complex() {
         let aud = Rc::from(CommodityType::from_currency_alpha3("AUD").unwrap());
 
-        let user1 = Rc::from(User::new("user1", "User 1", None, aud.clone()));
-        let user2 = Rc::from(User::new("user2", "User 2", None, aud.clone()));
-        let user3 = Rc::from(User::new("user3", "User 3", None, aud.clone()));
+        let user1 = Rc::from(User::new(1, "User 1", None, aud.clone()));
+        let user2 = Rc::from(User::new(2, "User 2", None, aud.clone()));
+        let user3 = Rc::from(User::new(3, "User 3", None, aud.clone()));
 
         let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.id, None));
 
         let expenses = vec![
             Expense::new(
+                1,
                 "Cheese",
                 expenses_account.clone(),
                 NaiveDate::from_ymd(2020, 2, 27),
@@ -718,6 +740,7 @@ mod tests {
             // user1 is owed 200.0
 
             Expense::new(
+                2,
                 "Pickles",
                 expenses_account.clone(),
                 NaiveDate::from_ymd(2020, 2, 27),
@@ -730,6 +753,7 @@ mod tests {
             // user1 is owed 500.0
             
             Expense::new(
+                3,
                 "Buns",
                 expenses_account.clone(),
                 NaiveDate::from_ymd(2020, 2, 27),
@@ -753,6 +777,7 @@ mod tests {
         ];
 
         let tab = Tab::new(
+            1,
             aud.clone(),
             vec![user1.clone(), user2.clone(), user3.clone()],
             expenses,

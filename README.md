@@ -6,8 +6,9 @@ This project is inspired by [SplittyPie](https://github.com/cowbell/splittypie),
 
 + Currency per expense - groups can submit expenses with different currencies
 + Written in Rust - simpler distribution, and for my own learning purposes.
-+ Support for a local database using [sled](https://github.com/spacejam/sled)
-+ For simplicity, initially not a Progressive Web App, but the option remains open to compile the library to Web Assembly for client-side calculations/interactions, hopefully using a rust front-end framework like [yew](https://github.com/yewstack/yew) or similar.
++ Support for a local database using [rusqlite](https://crates.io/crates/rusqlite)
++ Uses [yew](https://github.com/yewstack/yew) for the front-end logic.
++ Explore using [web-view](https://github.com/Boscop/web-view) in the future to provide a desktop application.
 
 ## Libraries
 
@@ -15,3 +16,10 @@ The following libraries were developed to service this application's needs, but 
 
 + [Doublecount](https://github.com/kellpossible/doublecount) - A double entry accounting system/library.
 + [Commodity](https://github.com/kellpossible/commodity) - A library for representing commodities/currencies.
+
+## TODO
+
+- [ ] Create a JSON rest API
+- [ ] Create GUI with yew
+- [ ] Support cookies to remember user on client
+- [ ] Implement database migrations with [migrant](https://crates.io/crates/migrant)

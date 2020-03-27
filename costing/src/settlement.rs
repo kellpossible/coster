@@ -1,9 +1,9 @@
 use crate::user::User;
 
-use std::rc::Rc;
-use commodity::Commodity;
 use chrono::NaiveDate;
+use commodity::Commodity;
 use doublecount::Transaction;
+use std::rc::Rc;
 
 /// Represents the settlement of a debt that one user owes another.
 #[derive(Debug)]

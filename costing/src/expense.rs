@@ -1,10 +1,9 @@
 use crate::user::User;
+use chrono::{Local, NaiveDate};
+use commodity::{exchange_rate::ExchangeRate, Commodity};
 use doublecount::{Account, Transaction, TransactionElement};
-use commodity::{Commodity, exchange_rate::ExchangeRate};
-use chrono::{NaiveDate, Local};
-use std::rc::Rc;
 use std::convert::TryInto;
-
+use std::rc::Rc;
 
 /// An expense which is paid by a user on a given `date`, and which is
 /// to be shared by a list of users.
@@ -187,11 +186,8 @@ impl Expense {
             .neg();
 
         for user in &self.shared_by {
-            let element = TransactionElement::new(
-                user.account.id,
-                Some(divided),
-                self.exchange_rate.clone(),
-            );
+            let element =
+                TransactionElement::new(user.account.id, Some(divided), self.exchange_rate.clone());
             elements.push(element);
         }
 

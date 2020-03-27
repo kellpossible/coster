@@ -1,18 +1,17 @@
-use crate::expense::Expense;
-use crate::user::{User, UserID};
 use crate::actions::UserAction;
-use crate::settlement::Settlement;
 use crate::error::CostingError;
+use crate::expense::Expense;
+use crate::settlement::Settlement;
+use crate::user::{User, UserID};
+use chrono::{Local, NaiveDate};
+use commodity::{Commodity, CommodityType};
 use doublecount::{
     sum_account_states, Account, AccountID, AccountState, AccountStatus, AccountingError, Action,
     Program, ProgramState, Transaction, TransactionElement,
 };
-use commodity::{Commodity, CommodityType};
-use chrono::{Local, NaiveDate};
 use std::cmp::Reverse;
-use std::rc::Rc;
 use std::collections::HashMap;
-
+use std::rc::Rc;
 
 pub type TabID = i32;
 
@@ -44,7 +43,7 @@ impl Tab {
             working_currency,
             users,
             expenses,
-            user_actions: vec!(),
+            user_actions: vec![],
         }
     }
     /// Produce a set of transactions, that, when applied to the
@@ -128,8 +127,10 @@ impl Tab {
 
         assert!(differences_sum.eq_approx(zero, Commodity::default_epsilon()));
 
-        let mut negative_differences: Vec<AccountState> = Vec::with_capacity(account_differences.len());
-        let mut positive_differences: Vec<AccountState> = Vec::with_capacity(account_differences.len());
+        let mut negative_differences: Vec<AccountState> =
+            Vec::with_capacity(account_differences.len());
+        let mut positive_differences: Vec<AccountState> =
+            Vec::with_capacity(account_differences.len());
 
         // create two lists of account state differences associated with those users
         // one list of negative, and one list of positive
@@ -258,11 +259,8 @@ impl Tab {
 
         let actual_balanced_states = &actual_balanced_transactions_states.account_states;
 
-        let actual_balanced_sum = sum_account_states(
-            &actual_balanced_states,
-            self.working_currency.id,
-            None,
-        )?;
+        let actual_balanced_sum =
+            sum_account_states(&actual_balanced_states, self.working_currency.id, None)?;
         assert!(actual_balanced_sum.eq_approx(zero, Commodity::default_epsilon()));
 
         dbg!(&account_states_to);
@@ -297,7 +295,9 @@ impl Tab {
                 assert!(amount.gt(&zero).unwrap());
                 assert!(receiver_element.amount.is_none());
 
-                let sender = self.get_user_with_account(&sender_element.account_id).unwrap();
+                let sender = self
+                    .get_user_with_account(&sender_element.account_id)
+                    .unwrap();
                 let receiver = self
                     .get_user_with_account(&receiver_element.account_id)
                     .unwrap();

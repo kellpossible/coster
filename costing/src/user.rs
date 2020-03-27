@@ -1,5 +1,5 @@
-use doublecount::Account;
 use commodity::CommodityType;
+use doublecount::Account;
 use std::rc::Rc;
 
 pub type UserID = i32;
@@ -24,7 +24,11 @@ impl User {
             id,
             name: String::from(name),
             email: email.map(|e| String::from(e)),
-            account: Rc::from(Account::new(Some(format!("{} {}", id.to_string(), name).as_ref()), currency.id, None)),
+            account: Rc::from(Account::new(
+                Some(format!("{} {}", id.to_string(), name).as_ref()),
+                currency.id,
+                None,
+            )),
         }
     }
 }

@@ -1,6 +1,6 @@
-use thiserror::Error;
 use commodity::CommodityError;
 use doublecount::AccountingError;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum CostingError {

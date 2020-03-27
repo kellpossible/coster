@@ -1,25 +1,25 @@
 //! This module holds the business logic for the `coster` application.
 
 mod actions;
-mod tab;
-mod user;
+mod error;
 mod expense;
 mod settlement;
-mod error;
+mod tab;
+mod user;
 
 pub use actions::*;
-pub use tab::*;
-pub use user::*;
+pub use error::*;
 pub use expense::*;
 pub use settlement::*;
-pub use error::*;
+pub use tab::*;
+pub use user::*;
 
 mod tests {
     use super::{Expense, Tab, User};
-    use doublecount::{Account, Transaction};
-    use commodity::{Commodity, CommodityType};
-    use commodity::exchange_rate::ExchangeRate;
     use chrono::NaiveDate;
+    use commodity::exchange_rate::ExchangeRate;
+    use commodity::{Commodity, CommodityType};
+    use doublecount::{Account, Transaction};
     use std::rc::Rc;
     use std::str::FromStr;
 
@@ -93,7 +93,6 @@ mod tests {
             ),
             // user2 and user3 each owe 100.0 to user1.
             // user1 is owed 200.0
-
             Expense::new(
                 2,
                 "Pickles",
@@ -106,7 +105,6 @@ mod tests {
             ),
             // user2 and user3 both owe 250.0 to user1.
             // user1 is owed 500.0
-            
             Expense::new(
                 3,
                 "Buns",

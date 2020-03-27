@@ -1,6 +1,6 @@
+use crate::expense::ExpenseID;
 use crate::tab::TabID;
 use crate::user::UserID;
-use crate::expense::ExpenseID;
 use commodity::CommodityError;
 use doublecount::AccountingError;
 use thiserror::Error;

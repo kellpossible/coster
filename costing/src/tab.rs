@@ -30,21 +30,21 @@ pub struct Tab {
     /// The expenses recorded on this tab
     pub expenses: Vec<Expense>,
     /// Actions performed by the users of this tab
-    pub user_actions: Vec<Rc<dyn UserAction>>,
+    pub user_actions: Vec<Box<dyn UserAction>>,
 }
 
 impl Tab {
     /// Construct a new [Tab](Tab).
     pub fn new(
         id: TabID,
-        name: String,
+        name: &str,
         working_currency: Rc<CommodityType>,
         users: Vec<Rc<User>>,
         expenses: Vec<Expense>,
     ) -> Tab {
         Tab {
             id,
-            name,
+            name: String::from(name),
             working_currency,
             users,
             expenses,

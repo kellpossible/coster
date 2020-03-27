@@ -46,6 +46,7 @@ mod tests {
 
         let tab = Tab::new(
             1,
+            String::from("Test"),
             aud.clone(),
             vec![user1.clone(), user2.clone(), user3.clone()],
             vec![expense],
@@ -131,6 +132,7 @@ mod tests {
 
         let tab = Tab::new(
             1,
+            String::from("Test"),
             aud.clone(),
             vec![user1.clone(), user2.clone(), user3.clone()],
             expenses,

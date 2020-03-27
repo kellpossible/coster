@@ -5,12 +5,14 @@ use doublecount::{Account, Transaction, TransactionElement};
 use std::convert::TryInto;
 use std::rc::Rc;
 
+pub type ExpenseID = i32;
+
 /// An expense which is paid by a user on a given `date`, and which is
 /// to be shared by a list of users.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Expense {
     /// The id of this expense
-    pub id: i32,
+    pub id: ExpenseID,
     /// The description of this expense
     pub description: String,
     /// The account that this expense will be attributed to
@@ -62,7 +64,7 @@ impl Expense {
     /// assert_eq!(Commodity::from_str("300.0 AUD").unwrap(), expense.amount);
     /// ```
     pub fn new(
-        id: i32,
+        id: ExpenseID,
         description: &str,
         account: Rc<Account>,
         date: NaiveDate,

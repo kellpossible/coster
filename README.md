@@ -22,4 +22,4 @@ The following libraries were developed to service this application's needs, but 
 - [ ] Create a JSON rest API
 - [ ] Create GUI with yew
 - [ ] Support cookies to remember user on client
-- [ ] Implement database migrations with [migrant](https://crates.io/crates/migrant)
+- [ ] Implement database migrations with [migrant](https://crates.io/crates/migrant) or [refinery](https://github.com/rust-db/refinery).

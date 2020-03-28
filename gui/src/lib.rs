@@ -10,7 +10,7 @@ use web_sys::console;
 use yew::{html, Component, ComponentLink, Html, ShouldRender};
 
 #[derive(RustEmbed)]
-#[folder = "i18n/"]
+#[folder = "i18n/mo"]
 struct Translations;
 
 pub struct Model {
@@ -51,14 +51,9 @@ pub fn setup_translations() {
     console::log_1(&"Setting the translator version 3!".into());
     let window = web_sys::window().expect("no global `window` exists");
     let navigator = window.navigator();
-    let language = navigator
-        .language()
-        .expect("expected there to be a language set");
-
     let languages = navigator
         .languages();
 
-    
     let requested_languages = convert_vec_str_to_langids_lossy(languages.iter().map(|js_value| js_value.as_string().expect("language value should be a string.")));
     let available_languages = convert_vec_str_to_langids_lossy(&["en-GB", "ru"]);
     let default_language: LanguageIdentifier = "en-GB".parse().expect("Parsing langid failed.");

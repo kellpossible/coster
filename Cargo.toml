@@ -19,3 +19,6 @@ costing = { path = "./costing" }
 commodity = { version = "0.3", features = ["serde-support"] }
 rust-embed = "5.5.1"
 mime_guess = "2"
+
+[build-dependencies]
+ignore = "0.4"

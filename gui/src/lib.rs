@@ -1,28 +1,28 @@
-use yew::prelude::*;
 use wasm_bindgen::prelude::*;
+use web_sys::console;
+use yew::{html, Component, ComponentLink, Html, ShouldRender};
 
-struct Model {
+pub struct Model {
     link: ComponentLink<Self>,
-    value: i64,
 }
 
-enum Msg {
-    AddOne,
+pub enum Msg {
+    Click,
 }
 
 impl Component for Model {
     type Message = Msg;
     type Properties = ();
+
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self {
-            link,
-            value: 0,
-        }
+        Model { link }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::AddOne => self.value += 1
+            Msg::Click => {
+                console::log_1(&"Hello using web-sys on button".into());
+            }
         }
         true
     }
@@ -30,8 +30,7 @@ impl Component for Model {
     fn view(&self) -> Html {
         html! {
             <div>
-                <button onclick=self.link.callback(|_| Msg::AddOne)>{ "+1" }</button>
-                <p>{ self.value }</p>
+                <button onclick=self.link.callback(|_| Msg::Click)>{ "Click" }</button>
             </div>
         }
     }
@@ -40,7 +39,6 @@ impl Component for Model {
 // Called when the wasm module is instantiated
 #[wasm_bindgen(start)]
 pub fn main() -> Result<(), JsValue> {
-    yew::initialize();
-    App::<Model>::new().mount_to_body();
+    yew::start_app::<Model>();
     Ok(())
 }

@@ -12,7 +12,7 @@ async fn main() {
     let dist = warp::path("dist").and(warp::path::tail()).and_then(serve);
 
     let routes = index_html.or(dist);
-    warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
+    warp::serve(routes).run(([0, 0, 0, 0], 8080)).await;
 }
 
 async fn serve_index() -> Result<impl Reply, Rejection> {

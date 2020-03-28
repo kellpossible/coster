@@ -3,7 +3,6 @@ use crate::expense::{Expense, ExpenseID};
 use crate::tab::Tab;
 use crate::user::{User, UserID};
 use chrono::{DateTime, Utc};
-use nanoid::nanoid;
 use std::fmt;
 use std::{hash::Hash, rc::Rc};
 

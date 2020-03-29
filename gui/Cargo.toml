@@ -24,3 +24,4 @@ tr = { version = "0.1", default-features = false, features = ["gettext"] }
 rust-embed = "5.5.1"
 fluent-langneg = "0.12.1"
 unic-langid = "0.8.0"
+anyhow = "1.0"

@@ -9,6 +9,8 @@ use wasm_bindgen::prelude::*;
 use web_sys::console;
 use yew::{html, Component, ComponentLink, Html, ShouldRender};
 
+mod test;
+
 #[derive(RustEmbed)]
 #[folder = "i18n/mo"]
 struct Translations;

@@ -245,31 +245,37 @@ fn i18n_msgmerge(crate_name: &str, i18n_config: &Map<String, toml::Value>, pot_d
 }
 
 fn i18n_msgfmt(crate_name: &str, i18n_config: &Map<String, toml::Value>, po_dir: &Path, mo_dir: &Path) {
-    let po_file_path = po_dir.join(crate_name).with_extension("po");
+    let locales = i18n_config_locales(i18n_config);
 
-    if !po_file_path.exists() {
-        panic!(format!("po file {:?} does not exist", po_file_path));
+    for locale in locales {
+        let po_file_path = po_dir.join(locale.clone()).join(crate_name).with_extension("po");
+
+        if !po_file_path.exists() {
+            panic!(format!("po file {:?} does not exist", po_file_path));
+        }
+
+        let mo_locale_dir = mo_dir.join(locale);
+
+        if !mo_locale_dir.exists() {
+            create_dir_all(mo_locale_dir.clone()).expect("trouble creating mo directory");
+        }
+
+        let mo_file_path = mo_locale_dir.join(crate_name).with_extension("mo");
+
+        let mut msgfmt = Command::new("msgfmt");
+        msgfmt.args(&[
+            format!("--output-file={}", mo_file_path.to_str().expect("mo file path is not valid utf-8")).as_str(),
+            po_file_path.to_str().expect("po file path is not valid utf-8"),
+        ]);
+
+        let output = msgfmt
+            .spawn()
+            .expect("msgfmt command failed")
+            .wait_with_output()
+            .expect("failed to wait for msgfmt command completion");
+
+        assert!(output.status.success());
     }
-
-    if !mo_dir.exists() {
-        create_dir_all(mo_dir.clone()).expect("trouble creating mo directory");
-    }
-
-    let mo_file_path = mo_dir.join(crate_name).with_extension("mo");
-
-    let mut msgfmt = Command::new("msgfmt");
-    msgfmt.args(&[
-        format!("--output-file={}", mo_file_path.to_str().expect("mo file path is not valid utf-8")).as_str(),
-        po_file_path.to_str().expect("po file path is not valid utf-8"),
-    ]);
-
-    let output = msgfmt
-        .spawn()
-        .expect("msgfmt command failed")
-        .wait_with_output()
-        .expect("failed to wait for msgfmt command completion");
-
-    assert!(output.status.success());
 }
 
 fn build_i18n(config: toml::Value) {
@@ -314,7 +320,7 @@ fn build_i18n(config: toml::Value) {
 
         i18n_msginit(subcrate.as_str(), i18n_config, pot_dir.as_path(), po_dir.as_path());
         i18n_msgmerge(subcrate.as_str(), i18n_config, pot_dir.as_path(), po_dir.as_path());
-        // i18n_msgfmt(subcrate.as_str(), i18n_config, pot_dir.as_path(), po_dir.as_path())
+        i18n_msgfmt(subcrate.as_str(), i18n_config, po_dir.as_path(), mo_dir.as_path())
     }
 }
 

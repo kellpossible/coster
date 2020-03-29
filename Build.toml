@@ -1,5 +1,5 @@
 [i18n]
 src_locale = "en-GB"
-locales = ["ru"]
+locales = ["ru", "es"]
 crates = ["gui"]
 xtr = true

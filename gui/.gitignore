@@ -2,4 +2,4 @@
 **/*.rs.bk
 .vscode
 /i18n/mo
-/i18n/pot/tmp
+/i18n/pot

@@ -13,10 +13,13 @@ fn main() {
     build_wasm_frontend();
 }
 
+// TODO: read into structs using serde
 fn read_toml_config() -> toml::Value {
     let toml_path = Path::new("Build.toml");
     let toml_str = read_to_string(toml_path).expect("trouble reading Cargo.toml");
-    toml::from_str(toml_str.as_ref()).expect("trouble parsing Cargo.toml")
+    let config = toml::from_str(toml_str.as_ref()).expect("trouble parsing Cargo.toml");
+    println!("cargo:rerun-if-changed=Build.toml");
+    config
 }
 
 /// Build the wasm component used for the front end of the website.
@@ -73,11 +76,11 @@ fn i18n_xtr(crate_name: &str, src_dir: &Path, pot_dir: &Path) {
     }
 
     let mut pot_paths = Vec::new();
-    let pot_tmp_dir = pot_dir.join("tmp");
+    let pot_src_dir = pot_dir.join("src");
 
     // create pot and pot/tmp if they don't exist
-    if !pot_tmp_dir.exists() {
-        create_dir_all(pot_tmp_dir.clone()).expect("trouble creating gui/pot/tmp directory");
+    if !pot_src_dir.exists() {
+        create_dir_all(pot_src_dir.clone()).expect("trouble creating pot/src directory");
     }
 
     for path in rs_files {
@@ -91,12 +94,10 @@ fn i18n_xtr(crate_name: &str, src_dir: &Path, pot_dir: &Path) {
             .file_stem()
             .expect("expected rs file path would have a filename");
 
-        let pot_path = pot_tmp_dir
+        let pot_path = pot_src_dir
             .join(src_dir_relative)
             .join(file_stem)
             .with_extension("pot");
-        println!("pot_path: {:?}", pot_path);
-        println!("path: {:?}", path);
 
         let pot_dir = pot_path
             .parent()
@@ -114,6 +115,8 @@ fn i18n_xtr(crate_name: &str, src_dir: &Path, pot_dir: &Path) {
             "Luke Frisken",
             "--msgid-bugs-address",
             "l.frisken@gmail.com",
+            "--default-domain",
+            crate_name,
             "-o",
             pot_path.to_str().expect("path isn't valid unicode"),
             path.to_str().expect("path isn't valid unicode"),
@@ -151,6 +154,22 @@ fn i18n_xtr(crate_name: &str, src_dir: &Path, pot_dir: &Path) {
 
     msgcat.join().expect("problem executing msgcat");
 }
+// TODO: replace with serde deserialize into structs
+fn i18n_config_locales(i18n_config: &Map<String, toml::Value>) -> Vec<String> {
+    i18n_config
+        .get("locales")
+        .expect("expected `locales` entry under i18n in Build.toml")
+        .as_array()
+        .expect("expected `locales` in under i18n in Build.toml to be an array")
+        .iter()
+        .map(|p| {
+            String::from(
+                p.as_str()
+                    .expect("expected `locales` entries under i18n in Build.toml to be an array of strings"),
+            )
+        })
+        .collect()
+}
 
 fn i18n_msginit(crate_name: &str, i18n_config: &Map<String, toml::Value>, pot_dir: &Path, po_dir: &Path) {
     let pot_file_path = pot_dir.join(crate_name).with_extension("pot");
@@ -163,20 +182,8 @@ fn i18n_msginit(crate_name: &str, i18n_config: &Map<String, toml::Value>, pot_di
         create_dir_all(po_dir.clone()).expect("trouble creating pot directory");
     }
 
-    let locales: Vec<String> = i18n_config
-        .get("locales")
-        .expect("expected `locales` entry under i18n in Build.toml")
-        .as_array()
-        .expect("expected `locales` in under i18n in Build.toml to be an array")
-        .iter()
-        .map(|p| {
-            String::from(
-                p.as_str()
-                    .expect("expected `locales` entries under i18n in Build.toml to be an array of strings"),
-            )
-        })
-        .collect();
-
+    let locales = i18n_config_locales(i18n_config);
+    
     for locale in locales {
         let po_locale_dir = po_dir.join(locale.clone());
         let po_path = po_locale_dir.join(crate_name).with_extension("po");
@@ -186,12 +193,83 @@ fn i18n_msginit(crate_name: &str, i18n_config: &Map<String, toml::Value>, pot_di
             let mut msginit = Command::new("msginit");
             msginit.args(&[
                 format!("--input={}", pot_file_path.to_str().expect("pot file path is not valid utf-8")),
-                format!("--locale={}", locale),
+                format!("--locale={}.UTF-8", locale),
                 format!("--output={}", po_path.to_str().expect("po file path is not valid utf-8")),
-
             ]);
+
+            let output = msginit
+                .spawn()
+                .expect("msginit command failed")
+                .wait_with_output()
+                .expect("failed to wait for msginit command completion");
+
+            assert!(output.status.success());
         }
     }
+}
+
+fn i18n_msgmerge(crate_name: &str, i18n_config: &Map<String, toml::Value>, pot_dir: &Path, po_dir: &Path) {
+    let pot_file_path = pot_dir.join(crate_name).with_extension("pot");
+
+    if !pot_file_path.exists() {
+        panic!(format!("pot file {:?} does not exist", pot_file_path));
+    }
+
+    let locales = i18n_config_locales(i18n_config);
+
+    for locale in locales {
+        let po_file_path = po_dir.join(locale).join(crate_name).with_extension("po");
+
+        if !po_file_path.exists() {
+            panic!(format!("po file {:?} does not exist", po_file_path));
+        }
+
+        println!("updating: {:?}", po_file_path);
+
+        let mut msgmerge = Command::new("msgmerge");
+        msgmerge.args(&[
+            "--backup=none",
+            "--update",
+            po_file_path.to_str().expect("po file path is not valid utf-8"),
+            pot_file_path.to_str().expect("pot; file path is not valid utf-8"),
+        ]);
+
+        let output = msgmerge
+            .spawn()
+            .expect("msgmerge command failed")
+            .wait_with_output()
+            .expect("failed to wait for msgmerge command completion");
+
+        assert!(output.status.success());
+    }
+}
+
+fn i18n_msgfmt(crate_name: &str, i18n_config: &Map<String, toml::Value>, po_dir: &Path, mo_dir: &Path) {
+    let po_file_path = po_dir.join(crate_name).with_extension("po");
+
+    if !po_file_path.exists() {
+        panic!(format!("po file {:?} does not exist", po_file_path));
+    }
+
+    if !mo_dir.exists() {
+        create_dir_all(mo_dir.clone()).expect("trouble creating mo directory");
+    }
+
+    let mo_file_path = mo_dir.join(crate_name).with_extension("mo");
+
+    let mut msgfmt = Command::new("msgfmt");
+    msgfmt.args(&[
+        format!("--output-file={}", mo_file_path.to_str().expect("mo file path is not valid utf-8")).as_str(),
+        po_file_path.to_str().expect("po file path is not valid utf-8"),
+    ]);
+
+    let output = msgfmt
+        .spawn()
+        .expect("msgfmt command failed")
+        .wait_with_output()
+        .expect("failed to wait for msgfmt command completion");
+
+    assert!(output.status.success());
 }
 
 fn build_i18n(config: toml::Value) {
@@ -228,12 +306,15 @@ fn build_i18n(config: toml::Value) {
         let src_dir = crate_dir.join("src");
         let pot_dir = i18n_dir.join("pot");
         let po_dir = i18n_dir.join("po");
+        let mo_dir = i18n_dir.join("mo");
 
         if do_xtr {
             i18n_xtr(subcrate.as_str(), src_dir.as_path(), pot_dir.as_path());
         }
 
         i18n_msginit(subcrate.as_str(), i18n_config, pot_dir.as_path(), po_dir.as_path());
+        i18n_msgmerge(subcrate.as_str(), i18n_config, pot_dir.as_path(), po_dir.as_path());
+        // i18n_msgfmt(subcrate.as_str(), i18n_config, pot_dir.as_path(), po_dir.as_path())
     }
 }
 

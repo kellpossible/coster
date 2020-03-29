@@ -1,18 +1,21 @@
 use std::env;
 use std::ffi::OsStr;
-use std::fs::{create_dir_all, remove_file, read_to_string};
+use std::fs::{create_dir_all, read_to_string, remove_file, File};
 use std::path::Path;
 use std::process::Command;
-use toml;
+
 use ignore::Walk;
 use subprocess::Exec;
+use toml;
+use toml::map::Map;
 
 fn main() {
     build_wasm_frontend();
 }
 
 fn read_toml_config() -> toml::Value {
-    let toml_str = read_to_string("Cargo.coml").expect("trouble reading Cargo.toml");
+    let toml_path = Path::new("Build.toml");
+    let toml_str = read_to_string(toml_path).expect("trouble reading Cargo.toml");
     toml::from_str(toml_str.as_ref()).expect("trouble parsing Cargo.toml")
 }
 
@@ -24,9 +27,9 @@ fn read_toml_config() -> toml::Value {
 /// Runs the command `wasm-pack build --target web --out-dir
 /// ../public/js/gui`
 fn build_wasm_frontend() {
-    let toml_config = read_toml_config();
+    let config = read_toml_config();
     ensure_gui_watch_rerun();
-    build_wasm_i18n();
+    build_i18n(config);
     build_wasm();
 
     // enable panic here for debugging due to a stupid feature where
@@ -48,10 +51,9 @@ fn ensure_gui_watch_rerun() {
     }
 }
 
-fn build_wasm_i18n() {
+fn i18n_xtr(crate_name: &str, src_dir: &Path, pot_dir: &Path) {
     let mut rs_files: Vec<Box<Path>> = Vec::new();
 
-    let src_dir = Path::new("gui/src");
     for result in Walk::new(src_dir) {
         match result {
             Ok(entry) => {
@@ -66,19 +68,17 @@ fn build_wasm_i18n() {
                     None => {}
                 }
             }
-            Err(err) => eprintln!("error walking directory gui/src: {}", err),
+            Err(err) => eprintln!("error walking directory {}/src: {}", crate_name, err),
         }
     }
 
-    let i18n_dir = Path::new("gui/i18n");
-    let pot_dir = i18n_dir.join("pot");
+    let mut pot_paths = Vec::new();
     let pot_tmp_dir = pot_dir.join("tmp");
 
+    // create pot and pot/tmp if they don't exist
     if !pot_tmp_dir.exists() {
         create_dir_all(pot_tmp_dir.clone()).expect("trouble creating gui/pot/tmp directory");
     }
-
-    let mut pot_paths = Vec::new();
 
     for path in rs_files {
         let parent_dir = path
@@ -138,24 +138,103 @@ fn build_wasm_i18n() {
     let combined_pot_file_path = pot_dir.join("gui.pot");
 
     if combined_pot_file_path.exists() {
-        remove_file(combined_pot_file_path.clone()).expect("unable to delete gui.pot");
+        remove_file(combined_pot_file_path.clone()).expect("unable to delete .pot");
     }
 
     let combined_pot_file =
-        File::create(combined_pot_file_path).expect("unable to create gui.pot file");
+        File::create(combined_pot_file_path).expect("unable to create .pot file");
 
     // ====== run the `msgcat` command to combine pot files into gui.pot =======
     let msgcat = Exec::cmd("msgcat")
         .args(msgcat_args.as_slice())
         .stdout(combined_pot_file);
 
-    let msgcat_out = msgcat
-        .capture()
-        .expect("problem executing msgcat")
-        .stdout_str();
+    msgcat.join().expect("problem executing msgcat");
+}
 
+fn i18n_msginit(crate_name: &str, i18n_config: &Map<String, toml::Value>, pot_dir: &Path, po_dir: &Path) {
+    let pot_file_path = pot_dir.join(crate_name).with_extension("pot");
 
+    if !pot_file_path.exists() {
+        panic!(format!("pot file {:?} does not exist", pot_file_path));
+    }
     
+    if !po_dir.exists() {
+        create_dir_all(po_dir.clone()).expect("trouble creating pot directory");
+    }
+
+    let locales: Vec<String> = i18n_config
+        .get("locales")
+        .expect("expected `locales` entry under i18n in Build.toml")
+        .as_array()
+        .expect("expected `locales` in under i18n in Build.toml to be an array")
+        .iter()
+        .map(|p| {
+            String::from(
+                p.as_str()
+                    .expect("expected `locales` entries under i18n in Build.toml to be an array of strings"),
+            )
+        })
+        .collect();
+
+    for locale in locales {
+        let po_locale_dir = po_dir.join(locale.clone());
+        let po_path = po_locale_dir.join(crate_name).with_extension("po");
+
+        if !po_path.exists() {
+            create_dir_all(po_locale_dir).expect("problem creating po locale directory");
+            let mut msginit = Command::new("msginit");
+            msginit.args(&[
+                format!("--input={}", pot_file_path.to_str().expect("pot file path is not valid utf-8")),
+                format!("--locale={}", locale),
+                format!("--output={}", po_path.to_str().expect("po file path is not valid utf-8")),
+
+            ]);
+        }
+    }
+}
+
+fn build_i18n(config: toml::Value) {
+    let i18n_config = config
+        .as_table()
+        .expect("expected toml root to be a table")
+        .get("i18n")
+        .expect("expected there to be an i18n entry in the Build.toml")
+        .as_table()
+        .expect("expected the i18n entry in Build.toml to be a table with children");
+
+    let crates: Vec<String> = i18n_config
+        .get("crates")
+        .expect("expected `crates` entry under i18n in Build.toml")
+        .as_array()
+        .expect("expected `crates` in Build.toml to be an array")
+        .iter()
+        .map(|p| {
+            String::from(
+                p.as_str()
+                    .expect("expected `crates` entries in Build.toml to be an array of strings"),
+            )
+        })
+        .collect();
+
+    let do_xtr = match i18n_config.get("xtr") {
+        Some(xtr_value) => xtr_value.as_bool().expect("expected xtr in Build.toml to be a boolean"),
+        None => true,
+    };
+
+    for subcrate in crates {
+        let crate_dir = Path::new(subcrate.as_str());
+        let i18n_dir = crate_dir.join("i18n");
+        let src_dir = crate_dir.join("src");
+        let pot_dir = i18n_dir.join("pot");
+        let po_dir = i18n_dir.join("po");
+
+        if do_xtr {
+            i18n_xtr(subcrate.as_str(), src_dir.as_path(), pot_dir.as_path());
+        }
+
+        i18n_msginit(subcrate.as_str(), i18n_config, pot_dir.as_path(), po_dir.as_path());
+    }
 }
 
 fn build_wasm() {

@@ -1,0 +1,5 @@
+[i18n]
+src_locale = "en-GB"
+locales = ["ru"]
+crates = ["gui"]
+xtr = true

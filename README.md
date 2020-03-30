@@ -19,7 +19,7 @@ The following libraries were developed to service this application's needs, but 
 
 ## TODO
 
-- [ ] Implement `gettext` translation capabilities using the `build.rs` script
+- [x] Implement `gettext` translation capabilities using the `build.rs` script
 - [ ] Create a JSON rest API
 - [ ] Create GUI with yew
 - [ ] Support cookies to remember user on client

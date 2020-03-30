@@ -1,3 +1,7 @@
+use std::ffi::OsStr;
+use std::path::Path;
+
+use anyhow::{anyhow, Result};
 use fluent_langneg::convert_vec_str_to_langids_lossy;
 use fluent_langneg::negotiate_languages;
 use fluent_langneg::NegotiationStrategy;
@@ -49,14 +53,37 @@ impl Component for Model {
     }
 }
 
+fn available_languages() -> Result<Vec<String>> {
+    Translations::iter()
+        .map(|filename_cow| filename_cow.to_string())
+        .map(|filename| {
+            let path: &Path = Path::new(&filename);
+
+            let ancestors: Vec<String> = path
+                .ancestors()
+                .map(|path| path.to_str().expect("path should be a valid utf-8 string").to_string())
+                .collect();
+
+            ancestors.get(0).map(|first_ancestor| first_ancestor.clone())   
+        });
+
+    // TODO: filter out None values
+    // TODO: collect and return
+
+    Ok(vec![])
+}
+
 pub fn setup_translations() {
     console::log_1(&"Setting the translator version 3!".into());
     let window = web_sys::window().expect("no global `window` exists");
     let navigator = window.navigator();
-    let languages = navigator
-        .languages();
+    let languages = navigator.languages();
 
-    let requested_languages = convert_vec_str_to_langids_lossy(languages.iter().map(|js_value| js_value.as_string().expect("language value should be a string.")));
+    let requested_languages = convert_vec_str_to_langids_lossy(languages.iter().map(|js_value| {
+        js_value
+            .as_string()
+            .expect("language value should be a string.")
+    }));
     let available_languages = convert_vec_str_to_langids_lossy(&["en-GB", "ru"]);
     let default_language: LanguageIdentifier = "en-GB".parse().expect("Parsing langid failed.");
 
@@ -64,8 +91,8 @@ pub fn setup_translations() {
         &requested_languages,
         &available_languages,
         Some(&default_language),
-        NegotiationStrategy::Filtering
-      );
+        NegotiationStrategy::Filtering,
+    );
 
     console::log_1(&format!("Requested Languages: {:?}", requested_languages).into());
     console::log_1(&format!("Supported Languages: {:?}", supported_languages).into());
@@ -74,16 +101,17 @@ pub fn setup_translations() {
         Some(language_id) => {
             if language_id != &&default_language {
                 let language_id_string = language_id.to_string();
-                let f = Translations::get(format!("{}/lib.mo", language_id_string).as_ref()).expect("could not read the file");
+                let f = Translations::get(format!("{}/lib.mo", language_id_string).as_ref())
+                    .expect("could not read the file");
                 let catalog = Catalog::parse(&*f).expect("could not parse the catalog");
                 set_translator!(catalog);
             }
-        },
+        }
         None => {
             // do nothing
         }
     }
-    
+
     console::log_1(&"Completed setting translations!".into());
 }
 

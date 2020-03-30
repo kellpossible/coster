@@ -8,16 +8,29 @@ use ignore::Walk;
 use subprocess::Exec;
 use toml;
 use toml::map::Map;
+use serde_derive::Deserialize;
 
 fn main() {
     build_wasm_frontend();
 }
 
-// TODO: read into structs using serde
-fn read_toml_config() -> toml::Value {
+#[derive(Deserialize)]
+struct BuildConfig {
+    i18n: Option<I18nConfig>
+}
+
+#[derive(Deserialize)]
+struct I18nConfig {
+    src_locale: String,
+    locales: Vec<String>,
+    crates: Vec<String>,
+    xtr: Option<bool>,
+}
+
+fn read_toml_config() -> BuildConfig{
     let toml_path = Path::new("Build.toml");
     let toml_str = read_to_string(toml_path).expect("trouble reading Cargo.toml");
-    let config = toml::from_str(toml_str.as_ref()).expect("trouble parsing Cargo.toml");
+    let config: BuildConfig = toml::from_str(toml_str.as_ref()).expect("trouble parsing Cargo.toml");
     println!("cargo:rerun-if-changed=Build.toml");
     config
 }
@@ -32,7 +45,13 @@ fn read_toml_config() -> toml::Value {
 fn build_wasm_frontend() {
     let config = read_toml_config();
     ensure_gui_watch_rerun();
-    build_i18n(config);
+
+    match config.i18n {
+        Some(i18n_config) => {
+            build_i18n(&i18n_config);
+        },
+        None => {},
+    }
     build_wasm();
 
     // enable panic here for debugging due to a stupid feature where
@@ -154,24 +173,8 @@ fn i18n_xtr(crate_name: &str, src_dir: &Path, pot_dir: &Path) {
 
     msgcat.join().expect("problem executing msgcat");
 }
-// TODO: replace with serde deserialize into structs
-fn i18n_config_locales(i18n_config: &Map<String, toml::Value>) -> Vec<String> {
-    i18n_config
-        .get("locales")
-        .expect("expected `locales` entry under i18n in Build.toml")
-        .as_array()
-        .expect("expected `locales` in under i18n in Build.toml to be an array")
-        .iter()
-        .map(|p| {
-            String::from(
-                p.as_str()
-                    .expect("expected `locales` entries under i18n in Build.toml to be an array of strings"),
-            )
-        })
-        .collect()
-}
 
-fn i18n_msginit(crate_name: &str, i18n_config: &Map<String, toml::Value>, pot_dir: &Path, po_dir: &Path) {
+fn i18n_msginit(crate_name: &str, i18n_config: &I18nConfig, pot_dir: &Path, po_dir: &Path) {
     let pot_file_path = pot_dir.join(crate_name).with_extension("pot");
 
     if !pot_file_path.exists() {
@@ -181,10 +184,8 @@ fn i18n_msginit(crate_name: &str, i18n_config: &Map<String, toml::Value>, pot_di
     if !po_dir.exists() {
         create_dir_all(po_dir.clone()).expect("trouble creating pot directory");
     }
-
-    let locales = i18n_config_locales(i18n_config);
     
-    for locale in locales {
+    for locale in &i18n_config.locales {
         let po_locale_dir = po_dir.join(locale.clone());
         let po_path = po_locale_dir.join(crate_name).with_extension("po");
 
@@ -208,16 +209,14 @@ fn i18n_msginit(crate_name: &str, i18n_config: &Map<String, toml::Value>, pot_di
     }
 }
 
-fn i18n_msgmerge(crate_name: &str, i18n_config: &Map<String, toml::Value>, pot_dir: &Path, po_dir: &Path) {
+fn i18n_msgmerge(crate_name: &str, i18n_config: &I18nConfig, pot_dir: &Path, po_dir: &Path) {
     let pot_file_path = pot_dir.join(crate_name).with_extension("pot");
 
     if !pot_file_path.exists() {
         panic!(format!("pot file {:?} does not exist", pot_file_path));
     }
 
-    let locales = i18n_config_locales(i18n_config);
-
-    for locale in locales {
+    for locale in &i18n_config.locales {
         let po_file_path = po_dir.join(locale).join(crate_name).with_extension("po");
 
         if !po_file_path.exists() {
@@ -244,10 +243,8 @@ fn i18n_msgmerge(crate_name: &str, i18n_config: &Map<String, toml::Value>, pot_d
     }
 }
 
-fn i18n_msgfmt(crate_name: &str, i18n_config: &Map<String, toml::Value>, po_dir: &Path, mo_dir: &Path) {
-    let locales = i18n_config_locales(i18n_config);
-
-    for locale in locales {
+fn i18n_msgfmt(crate_name: &str, i18n_config: &I18nConfig, po_dir: &Path, mo_dir: &Path) {
+    for locale in &i18n_config.locales {
         let po_file_path = po_dir.join(locale.clone()).join(crate_name).with_extension("po");
 
         if !po_file_path.exists() {
@@ -278,35 +275,13 @@ fn i18n_msgfmt(crate_name: &str, i18n_config: &Map<String, toml::Value>, po_dir:
     }
 }
 
-fn build_i18n(config: toml::Value) {
-    let i18n_config = config
-        .as_table()
-        .expect("expected toml root to be a table")
-        .get("i18n")
-        .expect("expected there to be an i18n entry in the Build.toml")
-        .as_table()
-        .expect("expected the i18n entry in Build.toml to be a table with children");
-
-    let crates: Vec<String> = i18n_config
-        .get("crates")
-        .expect("expected `crates` entry under i18n in Build.toml")
-        .as_array()
-        .expect("expected `crates` in Build.toml to be an array")
-        .iter()
-        .map(|p| {
-            String::from(
-                p.as_str()
-                    .expect("expected `crates` entries in Build.toml to be an array of strings"),
-            )
-        })
-        .collect();
-
-    let do_xtr = match i18n_config.get("xtr") {
-        Some(xtr_value) => xtr_value.as_bool().expect("expected xtr in Build.toml to be a boolean"),
+fn build_i18n(i18n_config: &I18nConfig) {
+    let do_xtr = match i18n_config.xtr {
+        Some(xtr_value) => xtr_value,
         None => true,
     };
 
-    for subcrate in crates {
+    for subcrate in &i18n_config.crates {
         let crate_dir = Path::new(subcrate.as_str());
         let i18n_dir = crate_dir.join("i18n");
         let src_dir = crate_dir.join("src");
@@ -316,10 +291,10 @@ fn build_i18n(config: toml::Value) {
 
         if do_xtr {
             i18n_xtr(subcrate.as_str(), src_dir.as_path(), pot_dir.as_path());
+            i18n_msginit(subcrate.as_str(), i18n_config, pot_dir.as_path(), po_dir.as_path());
+            i18n_msgmerge(subcrate.as_str(), i18n_config, pot_dir.as_path(), po_dir.as_path());
         }
 
-        i18n_msginit(subcrate.as_str(), i18n_config, pot_dir.as_path(), po_dir.as_path());
-        i18n_msgmerge(subcrate.as_str(), i18n_config, pot_dir.as_path(), po_dir.as_path());
         i18n_msgfmt(subcrate.as_str(), i18n_config, po_dir.as_path(), mo_dir.as_path())
     }
 }

@@ -167,11 +167,11 @@ fn build_wasm_frontend() -> Result<()> {
         }
         None => {}
     }
-    build_wasm();
+    build_wasm()?;
 
     // enable panic here for debugging due to a stupid feature where
     // stdout from this module isn't even included in cargo build -vv.
-    panic!("debugging");
+    // panic!("debugging");
 }
 
 /// Ensure that this script runs every time something within the gui
@@ -520,7 +520,7 @@ fn build_i18n(i18n_config: &I18nConfig) -> Result<()> {
     Ok(())
 }
 
-fn build_wasm() {
+fn build_wasm() -> Result<()> {
     let profile: String = env::var("PROFILE").unwrap();
 
     let mut wasm_pack = Command::new("wasm-pack");
@@ -531,9 +531,6 @@ fn build_wasm() {
         wasm_pack.arg("--dev");
     }
 
-    let child = wasm_pack.spawn().expect("wasm-pack build command failed");
-    let output = child
-        .wait_with_output()
-        .expect("failed to wait for child process");
-    assert!(output.status.success());
+    run_command_and_check_success("wasm-pack", wasm_pack)?;
+    Ok(())
 }

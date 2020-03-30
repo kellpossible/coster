@@ -68,6 +68,7 @@ fn available_languages() -> Result<Vec<String>> {
         });
 
     // TODO: filter out None values
+    // TODO: only allow unique values
     // TODO: collect and return
 
     Ok(vec![])

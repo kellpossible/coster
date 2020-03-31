@@ -172,6 +172,7 @@ fn build_wasm_frontend() -> Result<()> {
     // enable panic here for debugging due to a stupid feature where
     // stdout from this module isn't even included in cargo build -vv.
     // panic!("debugging");
+    Ok(())
 }
 
 /// Ensure that this script runs every time something within the gui

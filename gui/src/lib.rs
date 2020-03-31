@@ -1,7 +1,6 @@
-use std::ffi::OsStr;
 use std::path::Path;
+use std::path;
 
-use anyhow::{anyhow, Result};
 use fluent_langneg::convert_vec_str_to_langids_lossy;
 use fluent_langneg::negotiate_languages;
 use fluent_langneg::NegotiationStrategy;
@@ -12,6 +11,7 @@ use unic_langid::LanguageIdentifier;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 use yew::{html, Component, ComponentLink, Html, ShouldRender};
+use itertools::Itertools;
 
 mod test;
 
@@ -53,26 +53,42 @@ impl Component for Model {
     }
 }
 
-fn available_languages() -> Result<Vec<String>> {
-    Translations::iter()
+fn available_languages() -> Vec<String> {
+    let mut languages: Vec<String> = Translations::iter()
         .map(|filename_cow| filename_cow.to_string())
-        .map(|filename| {
+        .filter_map(|filename| {
             let path: &Path = Path::new(&filename);
 
-            let ancestors: Vec<String> = path
-                .ancestors()
-                .map(|path| path.to_str().expect("path should be a valid utf-8 string").to_string())
+            console::log_1(&format!("Path: {:?}", path).into());
+
+            let components: Vec<path::Component> = path
+                .components()
                 .collect();
 
-            ancestors.get(0).map(|first_ancestor| first_ancestor.clone())   
-        });
+            console::log_1(&format!("components: {:?}", components).into());
 
-    // TODO: filter out None values
-    // TODO: only allow unique values
-    // TODO: collect and return
+            let component: Option<String> = match components.get(0) {
+                Some(component) => {
+                    match component {
+                        path::Component::Normal(s) => {
+                            Some(s.to_str().expect("path should be valid utf-8").to_string())
+                        },
+                        _ => None,
+                    }
+                }
+                _ => None,
+            };
 
-    Ok(vec![])
+            component
+        })
+        .unique()
+        .collect();
+
+    languages.insert(0, String::from(DEFAULT_LANGUAGE_ID));
+    return languages;
 }
+
+const DEFAULT_LANGUAGE_ID: &str = "en-GB";
 
 pub fn setup_translations() {
     console::log_1(&"Setting the translator version 3!".into());
@@ -85,8 +101,9 @@ pub fn setup_translations() {
             .as_string()
             .expect("language value should be a string.")
     }));
-    let available_languages = convert_vec_str_to_langids_lossy(&["en-GB", "ru"]);
-    let default_language: LanguageIdentifier = "en-GB".parse().expect("Parsing langid failed.");
+    
+    let available_languages: Vec<LanguageIdentifier> = convert_vec_str_to_langids_lossy(available_languages());
+    let default_language: LanguageIdentifier = DEFAULT_LANGUAGE_ID.parse().expect("Parsing langid failed.");
 
     let supported_languages = negotiate_languages(
         &requested_languages,
@@ -96,13 +113,14 @@ pub fn setup_translations() {
     );
 
     console::log_1(&format!("Requested Languages: {:?}", requested_languages).into());
+    console::log_1(&format!("Available Languages: {:?}", available_languages).into());
     console::log_1(&format!("Supported Languages: {:?}", supported_languages).into());
 
     match supported_languages.get(0) {
         Some(language_id) => {
             if language_id != &&default_language {
                 let language_id_string = language_id.to_string();
-                let f = Translations::get(format!("{}/lib.mo", language_id_string).as_ref())
+                let f = Translations::get(format!("{}/gui.mo", language_id_string).as_ref())
                     .expect("could not read the file");
                 let catalog = Catalog::parse(&*f).expect("could not parse the catalog");
                 set_translator!(catalog);

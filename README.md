@@ -16,6 +16,8 @@ The following libraries were developed to service this application's needs, but 
 
 + [Doublecount](https://github.com/kellpossible/doublecount) - A double entry accounting system/library.
 + [Commodity](https://github.com/kellpossible/commodity) - A library for representing commodities/currencies.
++ [cargo-i18n](https://github.com/kellpossible/cargo-i18n) - A tool for extracting localizations and embedding them using `i18n-embed`.
++ [i18n-embed](https://github.com/kellpossible/cargo-i18n/tree/master/i18n-embed) - A library for embedding localizations extracted using `cargo-i18n`.
 
 ## TODO
 

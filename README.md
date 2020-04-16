@@ -19,8 +19,9 @@ The following libraries were developed to service this application's needs, but 
 
 ## TODO
 
-- [x] Implement `gettext` translation capabilities using the `build.rs` script
-- [ ] Create a JSON rest API
-- [ ] Create GUI with yew
-- [ ] Support cookies to remember user on client
-- [ ] Implement database migrations with [migrant](https://crates.io/crates/migrant) or [refinery](https://github.com/rust-db/refinery).
++ [x] Implement `gettext` translation capabilities using [cargo-i18n](https://github.com/kellpossible/cargo-i18n).
++ [x] Build `gui` WASM subcrate automatically using the [build.rs](./build.rs) build script.
++ [ ] Create a JSON rest API
++ [ ] Create GUI with yew
++ [ ] Support cookies to remember user on client
++ [ ] Implement database migrations with [migrant](https://crates.io/crates/migrant) or [refinery](https://github.com/rust-db/refinery).

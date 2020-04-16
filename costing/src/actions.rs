@@ -326,7 +326,7 @@ pub mod tests {
     fn change_tab_name() {
         let mut tab = create_test_tab();
         let user0 = create_test_user(0, "User 0");
-        
+
         let action = ChangeTabName::new(user0, "New Name");
 
         assert_eq!("Test Tab", tab.name);

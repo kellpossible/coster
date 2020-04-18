@@ -20,7 +20,6 @@ mod tests {
     use chrono::NaiveDate;
     use commodity::exchange_rate::ExchangeRate;
     use commodity::{Commodity, CommodityType};
-    use doublecount::{Account, Transaction};
     use std::rc::Rc;
     use std::str::FromStr;
 
@@ -32,15 +31,13 @@ mod tests {
         let user2 = Rc::from(User::new(2, "User 2", None, aud.clone()));
         let user3 = Rc::from(User::new(3, "User 3", None, aud.clone()));
 
-        let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.id, None));
-
         let expense = Expense::new(
             1,
             "Petrol",
-            expenses_account.clone(),
+            "Test",
             NaiveDate::from_ymd(2020, 2, 27),
-            user1.clone(),
-            vec![user2.clone(), user3.clone()],
+            user1.id,
+            vec![user2.id, user3.id],
             Commodity::from_str("300.0 AUD").unwrap(),
             None,
         );
@@ -57,15 +54,15 @@ mod tests {
 
         assert_eq!(2, settlements.len());
 
-        let user2_settlement = settlements.iter().find(|s| s.sender == user2).unwrap();
-        assert!(user2_settlement.receiver == user1);
+        let user2_settlement = settlements.iter().find(|s| s.sender == user2.id).unwrap();
+        assert!(user2_settlement.receiver == user1.id);
         assert_eq!(
             Commodity::from_str("150.0 AUD").unwrap(),
             user2_settlement.amount
         );
 
-        let user3_settlement = settlements.iter().find(|s| s.sender == user3).unwrap();
-        assert!(user3_settlement.receiver == user1);
+        let user3_settlement = settlements.iter().find(|s| s.sender == user3.id).unwrap();
+        assert!(user3_settlement.receiver == user1.id);
         assert_eq!(
             Commodity::from_str("150.0 AUD").unwrap(),
             user3_settlement.amount
@@ -80,16 +77,14 @@ mod tests {
         let user2 = Rc::from(User::new(2, "User 2", None, aud.clone()));
         let user3 = Rc::from(User::new(3, "User 3", None, aud.clone()));
 
-        let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.id, None));
-
         let expenses = vec![
             Expense::new(
                 1,
                 "Cheese",
-                expenses_account.clone(),
+                "Food",
                 NaiveDate::from_ymd(2020, 2, 27),
-                user1.clone(),
-                vec![user1.clone(), user2.clone(), user3.clone()],
+                user1.id,
+                vec![user1.id, user2.id, user3.id],
                 Commodity::from_str("300.0 AUD").unwrap(),
                 None,
             ),
@@ -98,10 +93,10 @@ mod tests {
             Expense::new(
                 2,
                 "Pickles",
-                expenses_account.clone(),
+                "Food",
                 NaiveDate::from_ymd(2020, 2, 27),
-                user1.clone(),
-                vec![user2.clone(), user3.clone()],
+                user1.id,
+                vec![user2.id, user3.id],
                 Commodity::from_str("500.0 AUD").unwrap(),
                 None::<ExchangeRate>,
             ),
@@ -110,10 +105,10 @@ mod tests {
             Expense::new(
                 3,
                 "Buns",
-                expenses_account.clone(),
+                "Food",
                 NaiveDate::from_ymd(2020, 2, 27),
-                user2.clone(),
-                vec![user1.clone(), user2.clone(), user3.clone()],
+                user2.id,
+                vec![user1.id, user2.id, user3.id],
                 Commodity::from_str("100.0 AUD").unwrap(),
                 None::<ExchangeRate>,
             ),
@@ -143,15 +138,15 @@ mod tests {
 
         assert_eq!(2, settlements.len());
 
-        let user2_settlement = settlements.iter().find(|s| s.sender == user2).unwrap();
-        assert!(user2_settlement.receiver == user1);
+        let user2_settlement = settlements.iter().find(|s| s.sender == user2.id).unwrap();
+        assert!(user2_settlement.receiver == user1.id);
         assert!(user2_settlement.amount.eq_approx(
             Commodity::from_str("283.33333333333 AUD").unwrap(),
             Commodity::default_epsilon()
         ));
 
-        let user3_settlement = settlements.iter().find(|s| s.sender == user3).unwrap();
-        assert!(user3_settlement.receiver == user1);
+        let user3_settlement = settlements.iter().find(|s| s.sender == user3.id).unwrap();
+        assert!(user3_settlement.receiver == user1.id);
         assert!(user3_settlement.amount.eq_approx(
             Commodity::from_str("383.33333333333 AUD").unwrap(),
             Commodity::default_epsilon()

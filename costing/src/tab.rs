@@ -1,10 +1,10 @@
 use crate::actions::UserAction;
 use crate::error::CostingError;
-use crate::expense::Expense;
+use crate::expense::{Expense, ExpenseCategory};
 use crate::settlement::Settlement;
-use crate::user::User;
+use crate::user::{User, UserID};
 use chrono::{Local, NaiveDate};
-use commodity::{Commodity, CommodityType};
+use commodity::{Commodity, CommodityType, CommodityTypeID};
 use doublecount::{
     sum_account_states, Account, AccountID, AccountState, AccountStatus, AccountingError, Action,
     Program, ProgramState, Transaction, TransactionElement,
@@ -26,9 +26,11 @@ pub struct Tab {
     /// The working currency of this tab
     pub working_currency: Rc<CommodityType>,
     /// The users involved with this tab
-    pub users: Vec<Rc<User>>,
+    users: Vec<Rc<User>>,
+    user_accounts: HashMap<UserID, Rc<Account>>,
     /// The expenses recorded on this tab
     pub expenses: Vec<Expense>,
+    expense_category_accounts: HashMap<ExpenseCategory, Rc<Account>>,
     /// Actions performed by the users of this tab
     pub user_actions: Vec<Box<dyn UserAction>>,
 }
@@ -42,14 +44,98 @@ impl Tab {
         users: Vec<Rc<User>>,
         expenses: Vec<Expense>,
     ) -> Tab {
+        let mut user_accounts = HashMap::with_capacity(users.len());
+
+        for user in &users {
+            let account = Rc::from(Tab::new_account_for_user(&user, working_currency.id));
+
+            match user_accounts.insert(user.id, account) {
+                Some(_) => panic!("There are duplicate users with id {0}", user.id),
+                None => {}
+            }
+        }
+
+        let mut expense_category_accounts: HashMap<String, Rc<Account>> = HashMap::with_capacity(expenses.len());
+
+        for expense in &expenses {
+            if !expense_category_accounts.get(&expense.category).is_some() {
+                let account = Rc::from(Tab::new_account_for_expense_category(&expense, working_currency.id));
+                expense_category_accounts.insert(expense.category.clone(), account);
+            }
+        }
+
         Tab {
             id,
             name: String::from(name),
             working_currency,
             users,
+            user_accounts,
             expenses,
+            expense_category_accounts,
             user_actions: vec![],
         }
+    }
+
+    fn new_account_for_user(user: &Rc<User>, working_currency: CommodityTypeID) -> Account {
+        Account::new(
+            Some(format!("User-{}-{}", user.id.to_string(), user.name)),
+            working_currency,
+            Some("Users".to_string()),
+        )
+    }
+
+    fn new_account_for_expense_category(expense: &Expense, working_currency: CommodityTypeID) -> Account {
+        Account::new(
+            Some(expense.category.clone()),
+            working_currency,
+            Some("Expense".to_string())
+        )
+    }
+
+    pub fn user(&self, user_id: &UserID) -> Result<&Rc<User>, CostingError> {
+        for u in self.users.iter() {
+            if &u.id == user_id {
+                return Ok(u);
+            }
+        }
+
+        Err(CostingError::UserDoesNotExistOnTab(*user_id, self.id))
+    }
+
+    pub fn get_user_account(&self, user_id: &UserID) -> Result<&Rc<Account>, CostingError> {
+        self.user_accounts.get(user_id).ok_or_else(|| CostingError::UserAccountDoesNotExistOnTab(*user_id, self.id))
+    }
+
+    pub fn get_expense_category_account(&self, category: &ExpenseCategory) -> Result<&Rc<Account>, CostingError> {
+        self.expense_category_accounts.get(category).ok_or_else(|| CostingError::NoExpenseCategoryAccountOnTab(category.clone(), self.id))
+    }
+
+    pub fn remove_user(&mut self, user_id: &UserID) -> Result<(), CostingError> {
+        for (i, u) in self.users.iter().enumerate() {
+            if &u.id == user_id {
+                self.users.remove(i);
+                self.user_accounts.remove(user_id);
+                return Ok(());
+            }
+        }
+
+        Err(CostingError::UserDoesNotExistOnTab(*user_id, self.id))
+    }
+
+    pub fn add_user(&mut self, user: User) -> Result<(), CostingError> {
+        match self.users.iter().find(|u| u.id == user.id) {
+            Some(user) => Err(CostingError::UserAlreadyExistsOnTab(user.id, self.id)),
+            None => {
+                let u = Rc::from(user);
+                self.users.push(u.clone());
+                self.user_accounts.insert(u.id, Rc::new(Tab::new_account_for_user(&u, self.working_currency.id)));
+                Ok(())
+            }
+        }
+    }
+
+    pub fn users(&self) -> &Vec<Rc<User>> {
+        &self.users
     }
 
     /// Produce a set of transactions, that, when applied to the
@@ -70,10 +156,11 @@ impl Tab {
         let mut accounts: HashMap<AccountID, Rc<Account>> = HashMap::new();
 
         for expense in &self.expenses {
-            actual_transactions.push(Rc::from(expense.get_actual_transaction()) as Rc<dyn Action>);
-            shared_transactions.push(Rc::from(expense.get_shared_transaction()) as Rc<dyn Action>);
+            actual_transactions.push(Rc::from(expense.get_actual_transaction(self)?) as Rc<dyn Action>);
+            shared_transactions.push(Rc::from(expense.get_shared_transaction(self)?) as Rc<dyn Action>);
 
-            accounts.insert(expense.account.id.clone(), expense.account.clone());
+            let account = self.get_expense_category_account(&expense.category)?;
+            accounts.insert(account.id, account.clone());
         }
 
         let expense_accounts: Vec<Rc<Account>> = accounts.iter().map(|(_, v)| v.clone()).collect();
@@ -81,7 +168,8 @@ impl Tab {
         let actual_program = Program::new(actual_transactions.clone());
 
         for user in &self.users {
-            match accounts.insert(user.account.id.clone(), user.account.clone()) {
+            let account = self.get_user_account(&user.id)?;
+            match accounts.insert(account.id, account.clone()) {
                 Some(account) => {
                     panic!(format!(
                         "there is a duplicate account with id: {}",
@@ -152,8 +240,8 @@ impl Tab {
         negative_differences.sort_unstable_by_key(|state| Reverse(state.amount));
         positive_differences.sort_unstable_by_key(|state| state.amount);
 
-        dbg!(&negative_differences);
-        dbg!(&positive_differences);
+        // dbg!(&negative_differences);
+        // dbg!(&positive_differences);
 
         let mut balancing_transactions: Vec<Transaction> = Vec::new();
         let mut to_remove_positive: Vec<usize> = Vec::new();
@@ -269,8 +357,8 @@ impl Tab {
             sum_account_states(&actual_balanced_states, self.working_currency.id, None)?;
         assert!(actual_balanced_sum.eq_approx(zero, Commodity::default_epsilon()));
 
-        dbg!(&account_states_to);
-        dbg!(&actual_balanced_states);
+        // dbg!(&account_states_to);
+        // dbg!(&actual_balanced_states);
 
         assert_eq!(account_states_to.len(), actual_balanced_states.len());
         for (id, to_state) in account_states_to {
@@ -308,18 +396,19 @@ impl Tab {
                     .get_user_with_account(&receiver_element.account_id)
                     .unwrap();
 
-                Settlement::new(sender.clone(), receiver.clone(), amount)
+                Settlement::new(sender.id, receiver.id, amount)
             })
             .collect();
 
         Ok(settlements)
     }
 
-    fn get_user_with_account(&self, account_id: &AccountID) -> Option<Rc<User>> {
-        self.users
-            .iter()
-            .find(|u| &u.account.id == account_id)
-            .map(|u: &Rc<User>| u.clone())
+    fn get_user_with_account(&self, account_id: &AccountID) -> Result<Rc<User>, CostingError> {
+        self.user_accounts.iter().find(|(_, v)| {
+            v.id == *account_id
+        }).map(|(k,_)| {
+            self.user(k).map(|u| u.clone())
+        }).unwrap()
     }
 }
 

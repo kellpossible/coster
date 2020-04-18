@@ -1,12 +1,12 @@
 use commodity::CommodityType;
-use doublecount::Account;
 use std::rc::Rc;
+use serde::{Serialize, Deserialize};
 
 pub type UserID = i32;
 
 /// Represents a person using this system, and to be associated with
 /// [Expense](Expenses) in a [Tab](Tab).
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
     /// The id of this user
     pub id: UserID,
@@ -14,8 +14,6 @@ pub struct User {
     pub name: String,
     /// The email address for this user
     pub email: Option<String>,
-    /// The [Account](Account) associated with this user
-    pub account: Rc<Account>,
 }
 
 impl User {
@@ -24,11 +22,6 @@ impl User {
             id,
             name: String::from(name),
             email: email.map(|e| String::from(e)),
-            account: Rc::from(Account::new(
-                Some(format!("{} {}", id.to_string(), name).as_ref()),
-                currency.id,
-                None,
-            )),
         }
     }
 }

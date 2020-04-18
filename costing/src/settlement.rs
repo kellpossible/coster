@@ -1,24 +1,26 @@
-use crate::user::User;
+use crate::user::UserID;
+use crate::tab::Tab;
+use crate::error::CostingError;
 
 use chrono::NaiveDate;
 use commodity::Commodity;
 use doublecount::Transaction;
-use std::rc::Rc;
+use serde::{Serialize, Deserialize};
 
 /// Represents the settlement of a debt that one user owes another.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Settlement {
     /// The user who has a debt and needs to send the money.
-    pub sender: Rc<User>,
+    pub sender: UserID,
     /// The user who is owed money.
-    pub receiver: Rc<User>,
+    pub receiver: UserID,
     /// The amount of money the `sender` needs to send to the `receiver`.
     pub amount: Commodity,
 }
 
 impl Settlement {
     /// Create a new [Settlement](Settlement).
-    pub fn new(sender: Rc<User>, receiver: Rc<User>, amount: Commodity) -> Settlement {
+    pub fn new(sender: UserID, receiver: UserID, amount: Commodity) -> Settlement {
         Settlement {
             sender,
             receiver,
@@ -26,14 +28,14 @@ impl Settlement {
         }
     }
 
-    pub fn to_transaction(&self, date: NaiveDate) -> Transaction {
-        Transaction::new_simple(
+    pub fn to_transaction(&self, date: NaiveDate, tab: &Tab) -> Result<Transaction, CostingError> {
+        Ok(Transaction::new_simple(
             Some("Settlement"),
             date,
-            self.sender.account.id,
-            self.receiver.account.id,
+            tab.get_user_account(&self.sender)?.id,
+            tab.get_user_account(&self.receiver)?.id,
             self.amount,
             None,
-        )
+        ))
     }
 }

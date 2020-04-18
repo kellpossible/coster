@@ -3,8 +3,9 @@ use crate::expense::{Expense, ExpenseID};
 use crate::tab::Tab;
 use crate::user::{User, UserID};
 use chrono::{DateTime, Utc};
+use serde::{Serialize, Deserialize};
 use std::fmt;
-use std::{hash::Hash, rc::Rc};
+use std::{hash::Hash};
 
 /// Represents an action that a [User](crate::user::User) can perform to modify a [Tab](Tab).
 pub trait UserAction: fmt::Debug {
@@ -15,27 +16,27 @@ pub trait UserAction: fmt::Debug {
     fn perform(&self, tab: &mut Tab) -> Result<(), CostingError>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UserActionMetadata {
-    pub user: Rc<User>,
+    pub user_id: UserID,
     pub datetime: DateTime<Utc>,
 }
 
 impl UserActionMetadata {
-    pub fn new(user: Rc<User>, datetime: DateTime<Utc>) -> UserActionMetadata {
-        UserActionMetadata { user, datetime }
+    pub fn new(user_id: UserID, datetime: DateTime<Utc>) -> UserActionMetadata {
+        UserActionMetadata { user_id, datetime }
     }
 }
 
 // TODO: potentially remove this
 impl Hash for UserActionMetadata {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.user.id.hash(state);
+        self.user_id.hash(state);
         self.datetime.hash(state);
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AddExpense {
     /// Metadata about this action.
     pub metadata: UserActionMetadata,
@@ -43,9 +44,9 @@ pub struct AddExpense {
 }
 
 impl AddExpense {
-    pub fn new(action_user: Rc<User>, expense: Expense) -> AddExpense {
+    pub fn new(action_user_id: UserID, expense: Expense) -> AddExpense {
         AddExpense {
-            metadata: UserActionMetadata::new(action_user, Utc::now()),
+            metadata: UserActionMetadata::new(action_user_id, Utc::now()),
             expense,
         }
     }
@@ -66,7 +67,7 @@ impl UserAction for AddExpense {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RemoveExpense {
     /// Metadata about this action.
     pub metadata: UserActionMetadata,
@@ -74,9 +75,9 @@ pub struct RemoveExpense {
 }
 
 impl RemoveExpense {
-    pub fn new(action_user: Rc<User>, expense_to_remove_id: UserID) -> RemoveExpense {
+    pub fn new(action_user_id: UserID, expense_to_remove_id: UserID) -> RemoveExpense {
         RemoveExpense {
-            metadata: UserActionMetadata::new(action_user, Utc::now()),
+            metadata: UserActionMetadata::new(action_user_id, Utc::now()),
             expense_id: expense_to_remove_id,
         }
     }
@@ -94,14 +95,14 @@ impl UserAction for RemoveExpense {
             }
         }
 
-        return Err(CostingError::ExpenseDoesNotExistOntab(
+        return Err(CostingError::ExpenseDoesNotExistOnTab(
             self.expense_id,
             tab.id,
         ));
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ChangeTabName {
     /// Metadata about this action.
     pub metadata: UserActionMetadata,
@@ -109,9 +110,9 @@ pub struct ChangeTabName {
 }
 
 impl ChangeTabName {
-    pub fn new(action_user: Rc<User>, name: &str) -> ChangeTabName {
+    pub fn new(action_user_id: UserID, name: &str) -> ChangeTabName {
         ChangeTabName {
-            metadata: UserActionMetadata::new(action_user, Utc::now()),
+            metadata: UserActionMetadata::new(action_user_id, Utc::now()),
             name: String::from(name),
         }
     }
@@ -127,19 +128,19 @@ impl UserAction for ChangeTabName {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AddUser {
     /// Metadata about this action.
     pub metadata: UserActionMetadata,
     /// The user to add to the [Tab](Tab).
-    pub user: Rc<User>,
+    pub user_to_add: User,
 }
 
 impl AddUser {
-    pub fn new(action_user: Rc<User>, user_to_add: Rc<User>) -> AddUser {
+    pub fn new(action_user_id: UserID, user_to_add: User) -> AddUser {
         AddUser {
-            metadata: UserActionMetadata::new(action_user, Utc::now()),
-            user: user_to_add,
+            metadata: UserActionMetadata::new(action_user_id, Utc::now()),
+            user_to_add,
         }
     }
 }
@@ -149,17 +150,11 @@ impl UserAction for AddUser {
         &self.metadata
     }
     fn perform(&self, tab: &mut Tab) -> Result<(), CostingError> {
-        match tab.users.iter().find(|u| u.id == self.user.id) {
-            Some(user) => Err(CostingError::UserAlreadyExistsOnTab(user.id, tab.id)),
-            None => {
-                tab.users.push(self.user.clone());
-                Ok(())
-            }
-        }
+        tab.add_user(self.user_to_add.clone())
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RemoveUser {
     /// Metadata about this action.
     pub metadata: UserActionMetadata,
@@ -168,9 +163,9 @@ pub struct RemoveUser {
 }
 
 impl RemoveUser {
-    pub fn new(action_user: Rc<User>, user_to_remove_id: UserID) -> RemoveUser {
+    pub fn new(action_user_id: UserID, user_to_remove_id: UserID) -> RemoveUser {
         RemoveUser {
-            metadata: UserActionMetadata::new(action_user, Utc::now()),
+            metadata: UserActionMetadata::new(action_user_id, Utc::now()),
             user_id: user_to_remove_id,
         }
     }
@@ -181,26 +176,18 @@ impl UserAction for RemoveUser {
         &self.metadata
     }
     fn perform(&self, tab: &mut Tab) -> Result<(), CostingError> {
-        for (i, u) in tab.users.iter().enumerate() {
-            if u.id == self.user_id {
-                tab.users.remove(i);
-                return Ok(());
-            }
-        }
-
-        return Err(CostingError::UserDoesNotExistOnTab(self.user_id, tab.id));
+        tab.remove_user(&self.user_id)
     }
 }
 
 #[cfg(test)]
 pub mod tests {
     use super::{AddExpense, AddUser, ChangeTabName, RemoveExpense, RemoveUser, UserAction};
-    use crate::expense::{Expense, ExpenseID};
+    use crate::expense::{Expense, ExpenseID, ExpenseCategory};
     use crate::tab::Tab;
     use crate::user::{User, UserID};
     use chrono::NaiveDate;
     use commodity::{Commodity, CommodityType};
-    use doublecount::Account;
     use rust_decimal::Decimal;
     use std::rc::Rc;
 
@@ -222,21 +209,17 @@ pub mod tests {
         ))
     }
 
-    fn create_test_account(name: &str) -> Rc<Account> {
-        Rc::from(Account::new(Some(name), create_test_commodity().id, None))
-    }
-
     fn create_test_expense(
         id: ExpenseID,
-        account: Rc<Account>,
-        paid_by: Rc<User>,
-        shared_by: Vec<Rc<User>>,
+        category: ExpenseCategory,
+        paid_by: UserID,
+        shared_by: Vec<UserID>,
     ) -> Expense {
         let description = format!("Test Expense {}", id);
         Expense::new(
             id,
-            description.as_ref(),
-            account,
+            description,
+            category,
             NaiveDate::from_ymd(2020, 05, 01),
             paid_by,
             shared_by,
@@ -248,30 +231,33 @@ pub mod tests {
     #[test]
     fn add_user() {
         let mut tab = create_test_tab();
-        let action = AddUser::new(create_test_user(0, "User 0"), create_test_user(1, "User 1"));
+        let user0 = create_test_user(0, "User 0");
+        let user1 = create_test_user(1, "User 1");
+        let action = AddUser::new(user0.id, (*user1).clone());
 
-        assert_eq!(0, tab.users.len());
+        assert_eq!(0, tab.users().len());
 
         action.perform(&mut tab).unwrap();
 
-        assert_eq!(1, tab.users.len());
-        assert_eq!(1, tab.users.get(0).unwrap().id);
+        assert_eq!(1, tab.users().len());
+        assert_eq!(1, tab.users().get(0).unwrap().id);
     }
 
     #[test]
     fn remove_user() {
         let mut tab = create_test_tab();
 
+        let user0 = create_test_user(0, "User 0");
         let user1 = create_test_user(1, "User 1");
-        tab.users.push(user1.clone());
+        tab.add_user((*user1).clone()).unwrap();
 
-        let action = RemoveUser::new(create_test_user(0, "User 0"), user1.id);
+        let action = RemoveUser::new(user0.id, user1.id);
 
-        assert_eq!(1, tab.users.len());
+        assert_eq!(1, tab.users().len());
 
         action.perform(&mut tab).unwrap();
 
-        assert_eq!(0, tab.users.len());
+        assert_eq!(0, tab.users().len());
     }
 
     #[test]
@@ -281,20 +267,20 @@ pub mod tests {
         let user0 = create_test_user(0, "User 0");
         let user1 = create_test_user(1, "User 1");
 
-        tab.users.push(user0.clone());
-        tab.users.push(user1.clone());
+        tab.add_user((*user0).clone()).unwrap();
+        tab.add_user((*user1).clone()).unwrap();
 
         let expense = create_test_expense(
             0,
-            create_test_account("Test Account"),
-            user0.clone(),
-            vec![user0.clone(), user1.clone()],
+            "General".to_string(),
+            user0.id,
+            vec![user0.id, user1.id],
         );
 
-        let action = AddExpense::new(user0.clone(), expense);
+        let action = AddExpense::new(user0.id, expense);
 
         assert_eq!(0, tab.expenses.len());
-        action.perform(&mut tab);
+        action.perform(&mut tab).unwrap();
         assert_eq!(1, tab.expenses.len());
         assert_eq!(0, tab.expenses.get(0).unwrap().id);
     }
@@ -308,17 +294,17 @@ pub mod tests {
 
         let expense = create_test_expense(
             0,
-            create_test_account("Test Account"),
-            user0.clone(),
-            vec![user0.clone(), user1.clone()],
+            "Test".to_string(),
+            user0.id,
+            vec![user0.id, user1.id],
         );
 
-        let action = RemoveExpense::new(user0.clone(), expense.id);
+        let action = RemoveExpense::new(user0.id, expense.id);
 
         tab.expenses.push(expense);
 
         assert_eq!(1, tab.expenses.len());
-        action.perform(&mut tab);
+        action.perform(&mut tab).unwrap();
         assert_eq!(0, tab.expenses.len());
     }
 
@@ -327,10 +313,10 @@ pub mod tests {
         let mut tab = create_test_tab();
         let user0 = create_test_user(0, "User 0");
 
-        let action = ChangeTabName::new(user0, "New Name");
+        let action = ChangeTabName::new(user0.id, "New Name");
 
         assert_eq!("Test Tab", tab.name);
-        action.perform(&mut tab);
+        action.perform(&mut tab).unwrap();
         assert_eq!("New Name", tab.name);
     }
 }

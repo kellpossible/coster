@@ -1,4 +1,4 @@
-use crate::expense::ExpenseID;
+use crate::expense::{ExpenseID, ExpenseCategory};
 use crate::tab::TabID;
 use crate::user::UserID;
 use commodity::CommodityError;
@@ -15,8 +15,12 @@ pub enum CostingError {
     UserAlreadyExistsOnTab(UserID, TabID),
     #[error("the specified User with id {0}, does not exist on the Tab with id {1}")]
     UserDoesNotExistOnTab(UserID, TabID),
+    #[error("there is no Account associated with the User with id {0} on the Tab with id {1}")]
+    UserAccountDoesNotExistOnTab(UserID, TabID),
     #[error("the specified Expense with id {0}, already exists on the Tab with id {1}")]
     ExpenseAlreadyExistsOnTab(ExpenseID, TabID),
     #[error("the specified Expense with id {0}, does not exist on the Tab with id {1}")]
-    ExpenseDoesNotExistOntab(ExpenseID, TabID),
+    ExpenseDoesNotExistOnTab(ExpenseID, TabID),
+    #[error("the specified Expense category {0}, does not have an account on the tab with id {1}")]
+    NoExpenseCategoryAccountOnTab(ExpenseCategory, TabID),
 }

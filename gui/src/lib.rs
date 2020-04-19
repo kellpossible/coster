@@ -1,143 +1,109 @@
-use std::path::Path;
-use std::path;
+use std::rc::Rc;
 
-use fluent_langneg::convert_vec_str_to_langids_lossy;
-use fluent_langneg::negotiate_languages;
-use fluent_langneg::NegotiationStrategy;
-use gettext::Catalog;
+use i18n_embed::{
+    I18nEmbed, LanguageLoader, language_loader, WebLanguageRequester,
+    LanguageRequester, DefaultLocalizer, Localizer};
 use rust_embed::RustEmbed;
-use tr::{set_translator, tr};
-use unic_langid::LanguageIdentifier;
+use yew::{html, Component, ComponentLink, Html, ShouldRender, components::{Select, select}};
+
 use wasm_bindgen::prelude::*;
-use web_sys::console;
-use yew::{html, Component, ComponentLink, Html, ShouldRender};
-use itertools::Itertools;
+use unic_langid::LanguageIdentifier;
+use log;
+use log::debug;
+use lazy_static::lazy_static;
 
 mod test;
+mod components;
 
-#[derive(RustEmbed)]
+use components::ClickerButton;
+
+#[derive(RustEmbed, I18nEmbed)]
 #[folder = "i18n/mo"]
 struct Translations;
 
+language_loader!(WebLanguageLoader);
+
+lazy_static! {
+    static ref LANGUAGE_LOADER: WebLanguageLoader = WebLanguageLoader::new();
+}
+
+static TRANSLATIONS: Translations = Translations {};
+
+pub enum LanguageMsg {
+    Select(unic_langid::LanguageIdentifier),
+}
+
 pub struct Model {
+    language_requester: WebLanguageRequester<'static>,
+    localizer: Rc<Box<dyn Localizer<'static>>>,
     link: ComponentLink<Self>,
 }
 
-pub enum Msg {
-    Click,
-}
-
 impl Component for Model {
-    type Message = Msg;
+    type Message = LanguageMsg;
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Model { link }
+        let mut language_requester = WebLanguageRequester::new();
+        // language_requester.set_languge_override(Some("en-GB".parse().unwrap())).unwrap();
+
+        let localizer = DefaultLocalizer::new(
+            &*LANGUAGE_LOADER,
+            &TRANSLATIONS,
+        );
+
+        let localizer_rc: Rc<Box<dyn Localizer<'static>>> = Rc::new(Box::from(localizer));
+        language_requester.add_listener(&localizer_rc);
+
+        // Manually check the currently requested system language,
+        // and update the listeners. When the system language changes,
+        // this will automatically be triggered.
+        language_requester.poll().unwrap();
+
+        Model { 
+            link,
+            language_requester,
+            localizer: localizer_rc,
+        }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, msg: LanguageMsg) -> ShouldRender {
         match msg {
-            Msg::Click => {
-                console::log_1(&tr!("Hello World, this is me!").into());
+            LanguageMsg::Select(language) => {
+                self.language_requester.set_languge_override(Some(language)).unwrap();
+                self.language_requester.poll().unwrap();
+                self.change(());
             }
         }
+
         true
     }
 
     fn view(&self) -> Html {
+        let languages = self.localizer.available_languages().unwrap();
+        let default_language = self.localizer.language_loader().current_language();
+
         html! {
-            <div>
-                <button class="button" onclick=self.link.callback(|_| Msg::Click)>{ tr!("Click") }</button>
-            </div>
+            <html>
+                <body>
+                    <ClickerButton />
+                    <Select<LanguageIdentifier> selected=default_language, options=languages onchange=self.link.callback(|selection| {
+                        debug!("GUI Language Selection: {}", selection);
+                        LanguageMsg::Select(selection)
+                    }) />
+                </body>
+            </html>
         }
     }
-}
-
-fn available_languages() -> Vec<String> {
-    let mut languages: Vec<String> = Translations::iter()
-        .map(|filename_cow| filename_cow.to_string())
-        .filter_map(|filename| {
-            let path: &Path = Path::new(&filename);
-
-            console::log_1(&format!("Path: {:?}", path).into());
-
-            let components: Vec<path::Component> = path
-                .components()
-                .collect();
-
-            console::log_1(&format!("components: {:?}", components).into());
-
-            let component: Option<String> = match components.get(0) {
-                Some(component) => {
-                    match component {
-                        path::Component::Normal(s) => {
-                            Some(s.to_str().expect("path should be valid utf-8").to_string())
-                        },
-                        _ => None,
-                    }
-                }
-                _ => None,
-            };
-
-            component
-        })
-        .unique()
-        .collect();
-
-    languages.insert(0, String::from(DEFAULT_LANGUAGE_ID));
-    return languages;
-}
-
-const DEFAULT_LANGUAGE_ID: &str = "en-GB";
-
-pub fn setup_translations() {
-    console::log_1(&"Setting the translator version 3!".into());
-    let window = web_sys::window().expect("no global `window` exists");
-    let navigator = window.navigator();
-    let languages = navigator.languages();
-
-    let requested_languages = convert_vec_str_to_langids_lossy(languages.iter().map(|js_value| {
-        js_value
-            .as_string()
-            .expect("language value should be a string.")
-    }));
     
-    let available_languages: Vec<LanguageIdentifier> = convert_vec_str_to_langids_lossy(available_languages());
-    let default_language: LanguageIdentifier = DEFAULT_LANGUAGE_ID.parse().expect("Parsing langid failed.");
-
-    let supported_languages = negotiate_languages(
-        &requested_languages,
-        &available_languages,
-        Some(&default_language),
-        NegotiationStrategy::Filtering,
-    );
-
-    console::log_1(&format!("Requested Languages: {:?}", requested_languages).into());
-    console::log_1(&format!("Available Languages: {:?}", available_languages).into());
-    console::log_1(&format!("Supported Languages: {:?}", supported_languages).into());
-
-    match supported_languages.get(0) {
-        Some(language_id) => {
-            if language_id != &&default_language {
-                let language_id_string = language_id.to_string();
-                let f = Translations::get(format!("{}/gui.mo", language_id_string).as_ref())
-                    .expect("could not read the file");
-                let catalog = Catalog::parse(&*f).expect("could not parse the catalog");
-                set_translator!(catalog);
-            }
-        }
-        None => {
-            // do nothing
-        }
-    }
-
-    console::log_1(&"Completed setting translations!".into());
 }
+
 
 // Called when the wasm module is instantiated
 #[wasm_bindgen(start)]
 pub fn main() -> Result<(), JsValue> {
-    setup_translations();
+    console_log::init_with_level(log::Level::Debug).unwrap();
+
     yew::start_app::<Model>();
     Ok(())
 }

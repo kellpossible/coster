@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gui 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-16 15:12+0000\n"
+"POT-Creation-Date: 2020-04-19 11:24+0000\n"
 "PO-Revision-Date: 2020-04-16 19:12+0400\n"
 "Last-Translator: Luke Frisken <l.frisken@gmail.com>\n"
 "Language-Team: Russian <gnu@d07.ru>\n"
@@ -18,15 +18,15 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
 "%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
+#: src/components/clicker_button.rs:24
+msgid "Hello World, this is me!"
+msgstr "Привет, мир, это я!"
+
+#: src/components/clicker_button.rs:33
+msgid "Click"
+msgstr "Нажмите"
+
 #: src/test/mod.rs:4
 msgctxt "in the test module"
 msgid "Hello World, this is me!"
-msgstr ""
-
-#: src/lib.rs:41
-msgid "Hello World, this is me!"
-msgstr ""
-
-#: src/lib.rs:50
-msgid "Click"
 msgstr ""

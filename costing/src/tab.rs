@@ -27,9 +27,11 @@ pub struct Tab {
     pub working_currency: Rc<CommodityType>,
     /// The users involved with this tab
     users: Vec<Rc<User>>,
+    /// [Accounts](Account) associated with [Users](User).
     user_accounts: HashMap<UserID, Rc<Account>>,
     /// The expenses recorded on this tab
     pub expenses: Vec<Expense>,
+    /// [Accounts](Account) associated with [ExpenseCategories](ExpenseCategory).
     expense_category_accounts: HashMap<ExpenseCategory, Rc<Account>>,
     /// Actions performed by the users of this tab
     pub user_actions: Vec<Box<dyn UserAction>>,

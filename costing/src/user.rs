@@ -1,5 +1,3 @@
-use commodity::CommodityType;
-use std::rc::Rc;
 use serde::{Serialize, Deserialize};
 
 pub type UserID = i32;
@@ -17,7 +15,7 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(id: UserID, name: &str, email: Option<&str>, currency: Rc<CommodityType>) -> User {
+    pub fn new(id: UserID, name: &str, email: Option<&str>) -> User {
         User {
             id,
             name: String::from(name),

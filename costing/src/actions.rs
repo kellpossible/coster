@@ -205,7 +205,6 @@ pub mod tests {
             id,
             name,
             Some(email.as_ref()),
-            create_test_commodity(),
         ))
     }
 

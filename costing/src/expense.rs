@@ -3,7 +3,7 @@ use crate::tab::Tab;
 use crate::error::CostingError;
 use chrono::{Local, NaiveDate};
 use commodity::{exchange_rate::ExchangeRate, Commodity};
-use doublecount::{AccountID, Transaction, TransactionElement};
+use doublecount::{Transaction, TransactionElement};
 use std::convert::TryInto;
 use serde::{Serialize, Deserialize};
 
@@ -45,11 +45,8 @@ impl Expense {
     /// use chrono::NaiveDate;
     /// use std::str::FromStr;
     ///
-    /// let aud = Rc::from(CommodityType::from_currency_alpha3("AUD").unwrap());
-    /// let user1 = Rc::from(User::new(1, "User 1", None, aud.clone()));
-    /// let user2 = Rc::from(User::new(2, "User 2", None, aud.clone()));
-    ///
-    /// let expenses_account = Rc::from(Account::new(Some("Expenses"), aud.id, None));
+    /// let user1 = Rc::from(User::new(1, "User 1", None));
+    /// let user2 = Rc::from(User::new(2, "User 2", None));
     ///
     /// let expense = Expense::new(
     ///    1,
@@ -62,7 +59,6 @@ impl Expense {
     ///    None
     /// );
     ///
-    /// assert_eq!(expense.account, expenses_account);
     /// assert_eq!(NaiveDate::from_ymd(2020, 2, 27), expense.date);
     /// assert_eq!(user1.id, expense.paid_by);
     /// assert_eq!(vec![user1.id, user2.id], expense.shared_by);
@@ -103,28 +99,43 @@ impl Expense {
     /// use std::str::FromStr;
     ///
     /// let aud = Rc::from(CommodityType::from_currency_alpha3("AUD").unwrap());
-    /// let user1 = Rc::from(User::new(1, "User 1", None, aud.clone()));
-    /// let user2 = Rc::from(User::new(2, "User 2", None, aud.clone()));
-    /// let user3 = Rc::from(User::new(3, "User 3", None, aud.clone()));
+    /// let user1 = Rc::from(User::new(1, "User 1", None));
+    /// let user2 = Rc::from(User::new(2, "User 2", None));
+    /// let user3 = Rc::from(User::new(3, "User 3", None));
     ///
-    /// let category: ExpenseCategory = String::new("Test");
+    /// let category: ExpenseCategory = "Test".to_string();
     ///
     /// let expense = Expense::new(
     ///    1,
     ///    "some expense", 
-    ///    category,
+    ///    category.clone(),
     ///    NaiveDate::from_ymd(2020, 2, 27),
     ///    user1.id,
-    ///    vec!(user1.id, user2.id, user3.id),
+    ///    vec![user1.id, user2.id, user3.id],
     ///    Commodity::from_str("300.0 AUD").unwrap(),
     ///    None
     /// );
-    ///
-    /// let actual_transaction = expense.get_actual_transaction().unwrap();
+    /// 
+    /// let tab = Tab::new(
+    ///     1,
+    ///     "Test Tab",
+    ///     aud.clone(),
+    ///     vec![user1.clone(), user2.clone(), user3.clone()],
+    ///     vec![expense],
+    /// );
+    /// 
+    /// let actual_transaction = tab.expenses.get(0)
+    ///                                      .unwrap()
+    ///                                      .get_actual_transaction(&tab)
+    ///                                      .unwrap();
+    /// 
+    /// let user1_account = tab.get_user_account(&user1.id).unwrap();
     ///
     /// assert_eq!(2, actual_transaction.elements.len());
-    /// let user1_element = actual_transaction.get_element(&user1.account.id).unwrap();
+    /// let user1_element = actual_transaction.get_element(&user1_account.id).unwrap();
     /// assert_eq!(Some(Commodity::from_str("-300.0 AUD").unwrap()), user1_element.amount);
+    /// 
+    /// let expenses_account = tab.get_expense_category_account(&category).unwrap();
     /// let expense_element = actual_transaction.get_element(&expenses_account.id).unwrap();
     /// assert_eq!(None, expense_element.amount);
     /// ```
@@ -155,32 +166,48 @@ impl Expense {
     /// use std::str::FromStr;
     ///
     /// let aud = Rc::from(CommodityType::from_currency_alpha3("AUD").unwrap());
-    /// let user1 = Rc::from(User::new(1, "User 1", None, aud.clone()));
-    /// let user2 = Rc::from(User::new(2, "User 2", None, aud.clone()));
-    /// let user3 = Rc::from(User::new(3, "User 3", None, aud.clone()));
+    /// let user1 = Rc::from(User::new(1, "User 1", None));
+    /// let user2 = Rc::from(User::new(2, "User 2", None));
+    /// let user3 = Rc::from(User::new(3, "User 3", None));
     ///
-    /// let category: ExpenseCategory = String::new("Test");
+    /// let category: ExpenseCategory = "Test".to_string();
     ///
     /// let expense = Expense::new(
     ///    1,
-    ///    "some expense", expenses_account.clone(),
+    ///    "some expense",
+    ///    category.clone(),
     ///    NaiveDate::from_ymd(2020, 2, 27),
-    ///    user1.clone(),
-    ///    vec!(user2.clone(), user3.clone()),
+    ///    user1.id,
+    ///    vec![user2.id, user3.id],
     ///    Commodity::from_str("300.0 AUD").unwrap(),
     ///    None
     /// );
+    /// 
+    /// let tab = Tab::new(
+    ///     1,
+    ///     "Test Tab",
+    ///     aud.clone(),
+    ///     vec![user1.clone(), user2.clone(), user3.clone()],
+    ///     vec![expense],
+    /// );
+    /// 
+    /// let user1_account = tab.get_user_account(&user1.id).unwrap();
+    /// let user2_account = tab.get_user_account(&user2.id).unwrap();
+    /// let user3_account = tab.get_user_account(&user3.id).unwrap();
     ///
-    /// let shared_transaction = expense.get_shared_transaction().unwrap();
+    /// let shared_transaction = tab.expenses.get(0)
+    ///                                      .unwrap()
+    ///                                      .get_shared_transaction(&tab)
+    ///                                      .unwrap();
     ///
     /// assert_eq!(3, shared_transaction.elements.len());
-    /// assert!(shared_transaction.get_element(&user1.account.id).is_none());
-    ///
-    /// let user2_element = shared_transaction.get_element(&user2.account.id).unwrap();
-    /// let user3_element = shared_transaction.get_element(&user3.account.id).unwrap();
+    /// assert!(shared_transaction.get_element(&user1_account.id).is_none());
+    /// let user2_element = shared_transaction.get_element(&user2_account.id).unwrap();
+    /// let user3_element = shared_transaction.get_element(&user3_account.id).unwrap();
     /// assert_eq!(Some(Commodity::from_str("-150.0 AUD").unwrap()), user2_element.amount);
     /// assert_eq!(Some(Commodity::from_str("-150.0 AUD").unwrap()), user3_element.amount);
     ///
+    /// let expenses_account = tab.get_expense_category_account(&category).unwrap();
     /// let expense_element = shared_transaction.get_element(&expenses_account.id).unwrap();
     /// assert_eq!(None, expense_element.amount);
     /// ```

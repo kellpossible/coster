@@ -27,9 +27,9 @@ mod tests {
     fn balance_simple() {
         let aud = Rc::from(CommodityType::from_currency_alpha3("AUD").unwrap());
 
-        let user1 = Rc::from(User::new(1, "User 1", None, aud.clone()));
-        let user2 = Rc::from(User::new(2, "User 2", None, aud.clone()));
-        let user3 = Rc::from(User::new(3, "User 3", None, aud.clone()));
+        let user1 = Rc::from(User::new(1, "User 1", None));
+        let user2 = Rc::from(User::new(2, "User 2", None));
+        let user3 = Rc::from(User::new(3, "User 3", None));
 
         let expense = Expense::new(
             1,
@@ -73,9 +73,9 @@ mod tests {
     fn balance_complex() {
         let aud = Rc::from(CommodityType::from_currency_alpha3("AUD").unwrap());
 
-        let user1 = Rc::from(User::new(1, "User 1", None, aud.clone()));
-        let user2 = Rc::from(User::new(2, "User 2", None, aud.clone()));
-        let user3 = Rc::from(User::new(3, "User 3", None, aud.clone()));
+        let user1 = Rc::from(User::new(1, "User 1", None));
+        let user2 = Rc::from(User::new(2, "User 2", None));
+        let user3 = Rc::from(User::new(3, "User 3", None));
 
         let expenses = vec![
             Expense::new(

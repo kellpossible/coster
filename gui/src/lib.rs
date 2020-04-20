@@ -5,7 +5,7 @@ use i18n_embed::{
     I18nEmbed, language_loader, WebLanguageRequester,
     LanguageRequester, DefaultLocalizer, Localizer};
 use rust_embed::RustEmbed;
-use yew::{html, Component, ComponentLink, Html, ShouldRender, components::{Select, select}};
+use yew::{html, Component, ComponentLink, Html, ShouldRender};
 
 use wasm_bindgen::prelude::*;
 use unic_langid::LanguageIdentifier;
@@ -15,8 +15,10 @@ use lazy_static::lazy_static;
 
 mod test;
 mod components;
+pub mod bulma;
 
 use components::ClickerButton;
+use components::select::Select;
 
 #[derive(RustEmbed, I18nEmbed)]
 #[folder = "i18n/mo"]
@@ -40,6 +42,19 @@ pub struct Model {
     localizer: Rc<Box<dyn Localizer<'static>>>,
     rerender: AtomicBool,
     link: ComponentLink<Self>,
+}
+
+impl Model {
+    fn localized_html(&self, localized: Html) -> Html {
+        if self.rerender.load(Ordering::Relaxed) {
+            debug!("Not Rendering Clicker Button");
+            self.link.send_message(LanguageMsg::Rerender);
+            html! {}
+        } else {
+            debug!("Rendering Clicker Button");
+            localized
+        }
+    }
 }
 
 impl Component for Model {
@@ -90,33 +105,24 @@ impl Component for Model {
     fn view(&self) -> Html {
         let languages = self.localizer.available_languages().unwrap();
         let default_language = self.localizer.language_loader().current_language();
-        
-
+        let select_icon_classes = vec!["fas".to_string(), "fa-globe".to_string()];
         html! {
-            <html>
-                <body>
-                {
-                    if self.rerender.load(Ordering::Relaxed) {
-                        debug!("Not Rendering Clicker Button");
-                        self.link.send_message(LanguageMsg::Rerender);
-                        html! {}
-                    } else {
-                        debug!("Rendering Clicker Button");
-                        html! {<ClickerButton />}
-                    }
-                }
-                    
-                    <Select<LanguageIdentifier> selected=default_language, options=languages onchange=self.link.callback(|selection| {
-                        debug!("GUI Language Selection: {}", selection);
-                        LanguageMsg::Select(selection)
-                    }) />
-                </body>
-            </html>
+            <>
+            {
+                self.localized_html(
+                    html! {<ClickerButton />}
+                )
+            }
+                
+                <Select<LanguageIdentifier> icon_color=bulma::Color::Info icon_classes=select_icon_classes size=bulma::Size::Big selected=default_language, options=languages onchange=self.link.callback(|selection| {
+                    debug!("GUI Language Selection: {}", selection);
+                    LanguageMsg::Select(selection)
+                }) />
+            </>
         }
     }
     
 }
-
 
 // Called when the wasm module is instantiated
 #[wasm_bindgen(start)]

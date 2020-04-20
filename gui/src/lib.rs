@@ -1,7 +1,8 @@
 use std::rc::Rc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use i18n_embed::{
-    I18nEmbed, LanguageLoader, language_loader, WebLanguageRequester,
+    I18nEmbed, language_loader, WebLanguageRequester,
     LanguageRequester, DefaultLocalizer, Localizer};
 use rust_embed::RustEmbed;
 use yew::{html, Component, ComponentLink, Html, ShouldRender, components::{Select, select}};
@@ -31,11 +32,13 @@ static TRANSLATIONS: Translations = Translations {};
 
 pub enum LanguageMsg {
     Select(unic_langid::LanguageIdentifier),
+    Rerender,
 }
 
 pub struct Model {
     language_requester: WebLanguageRequester<'static>,
     localizer: Rc<Box<dyn Localizer<'static>>>,
+    rerender: AtomicBool,
     link: ComponentLink<Self>,
 }
 
@@ -64,6 +67,7 @@ impl Component for Model {
             link,
             language_requester,
             localizer: localizer_rc,
+            rerender: AtomicBool::new(false),
         }
     }
 
@@ -73,20 +77,35 @@ impl Component for Model {
                 self.language_requester.set_languge_override(Some(language)).unwrap();
                 self.language_requester.poll().unwrap();
                 self.change(());
+                self.rerender.store(true, Ordering::Relaxed);
+                true
+            },
+            LanguageMsg::Rerender => {
+                self.rerender.store(false, Ordering::Relaxed);
+                true
             }
         }
-
-        true
     }
 
     fn view(&self) -> Html {
         let languages = self.localizer.available_languages().unwrap();
         let default_language = self.localizer.language_loader().current_language();
+        
 
         html! {
             <html>
                 <body>
-                    <ClickerButton />
+                {
+                    if self.rerender.load(Ordering::Relaxed) {
+                        debug!("Not Rendering Clicker Button");
+                        self.link.send_message(LanguageMsg::Rerender);
+                        html! {}
+                    } else {
+                        debug!("Rendering Clicker Button");
+                        html! {<ClickerButton />}
+                    }
+                }
+                    
                     <Select<LanguageIdentifier> selected=default_language, options=languages onchange=self.link.callback(|selection| {
                         debug!("GUI Language Selection: {}", selection);
                         LanguageMsg::Select(selection)

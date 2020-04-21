@@ -1,5 +1,6 @@
-use yew::{html, Component, ComponentLink, Html, ShouldRender, Properties};
+use yew::{html, Component, ComponentLink, Html, ShouldRender, Properties, Callback};
 use tr::tr;
+use unic_langid::LanguageIdentifier;
 
 #[derive(Debug)]
 pub struct Navbar {
@@ -11,6 +12,8 @@ pub struct Navbar {
 pub struct Props {
     #[prop_or_default]
     pub brand: Option<Html>,
+    #[prop_or_default]
+    pub on_language_change: Callback<LanguageIdentifier>,
 }
 
 impl Component for Navbar {

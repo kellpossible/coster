@@ -4,10 +4,10 @@ Coster will be a web application designed to be used for the purpose of sharing 
 
 This project is inspired by [SplittyPie](https://github.com/cowbell/splittypie), but with the following differences:
 
++ Written in Rust - simpler distribution, more reliable than Javascript with a stronger type system, and also for my own learning purposes.
++ Uses [yew](https://github.com/yewstack/yew) (similar to React and Elm) for the front-end logic.
 + Currency per expense - groups can submit expenses with different currencies
-+ Written in Rust - simpler distribution, and for my own learning purposes.
 + Support for a local database using [rusqlite](https://crates.io/crates/rusqlite). Or perhaps use [kvdb-rocksdb](https://crates.io/crates/kvdb-rocksdb) on the server side, along with [kvdb-web](https://crates.io/crates/kvdb-web) on the client side because they both support the same interface which can be used directly in the `costing` library, and the [kvdb-memorydb](https://crates.io/crates/kvdb-memorydb) can be used for testing. Using `kvdb` would allow allow easily leveraging the work done to implement `serde` support for most of the types which was needed anyway for synchronisation.
-+ Uses [yew](https://github.com/yewstack/yew) for the front-end logic.
 + Explore using [web-view](https://github.com/Boscop/web-view) in the future to provide a desktop application.
 
 ## Libraries

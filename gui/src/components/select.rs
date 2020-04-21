@@ -37,11 +37,13 @@
 //! }
 //! ```
 
-use crate::bulma::{Size, Color};
+use crate::bulma::{Size, components::{icon, Icon}};
 use yew::callback::Callback;
 use yew::html::{ChangeData, Component, ComponentLink, Html, NodeRef, ShouldRender};
 use yew::macros::{html, Properties};
 use web_sys::HtmlSelectElement;
+use log::debug;
+
 
 /// `Select` component.
 #[derive(Debug)]
@@ -73,9 +75,7 @@ pub struct Props<T: Clone> {
     #[prop_or_default]
     pub div_classes: Vec<String>,
     #[prop_or_default]
-    pub icon_classes: Vec<String>,
-    #[prop_or_default]
-    pub icon_color: Option<Color>,
+    pub icon_props: Option<icon::Props>,
     #[prop_or_default]
     pub size: Size,
     /// Callback to handle changes.
@@ -158,23 +158,16 @@ where
             </div>
         };
 
-        let mut icon_span_classes = vec!["icon".to_string(), "is-left".to_string()];
-        icon_span_classes.extend(size_class_vec.clone());
-        
-        match &self.props.icon_color {
-            Some(icon_color) => icon_span_classes.push(icon_color.text_class()),
-            None => {},
-        }
+        if self.props.icon_props.is_some() {
+            let mut icon_props = self.props.icon_props.as_ref().unwrap().clone();
+            icon_props.span_class.push("is-left".to_string());
 
-        if !self.props.icon_classes.is_empty() {
             html! {
                 <div class="control has-icons-left">
                 {
                     inner
                 }
-                <span class=icon_span_classes>
-                    <i class=self.props.icon_classes.clone()></i>
-                </span>
+                <Icon with icon_props/>
                 </div>
             }
         }

@@ -51,5 +51,9 @@ impl Color {
     pub fn background_class(&self) -> String {
         format!("has-background-{0}", self.to_str())
     }
+
+    pub fn class(&self) -> String {
+        format!("is-{0}", self.to_str())
+    }
 }
 

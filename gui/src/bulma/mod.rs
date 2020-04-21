@@ -1,5 +1,5 @@
-mod size;
-mod color;
+pub mod classes;
+pub mod components;
 
-pub use size::Size;
-pub use color::Color;
+pub use classes::*;
+pub use components::*;

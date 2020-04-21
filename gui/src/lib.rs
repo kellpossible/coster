@@ -1,3 +1,5 @@
+#![recursion_limit="512"]
+
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -5,20 +7,22 @@ use i18n_embed::{
     I18nEmbed, language_loader, WebLanguageRequester,
     LanguageRequester, DefaultLocalizer, Localizer};
 use rust_embed::RustEmbed;
-use yew::{html, Component, ComponentLink, Html, ShouldRender};
+use yew::{html, Component, ComponentLink, Html, ShouldRender, Properties};
 
 use wasm_bindgen::prelude::*;
 use unic_langid::LanguageIdentifier;
 use log;
 use log::debug;
 use lazy_static::lazy_static;
+use tr::tr;
 
-mod test;
 mod components;
 pub mod bulma;
 
 use components::ClickerButton;
 use components::select::Select;
+use components::navbar::Navbar;
+use bulma::{Color};
 
 #[derive(RustEmbed, I18nEmbed)]
 #[folder = "i18n/mo"]
@@ -49,10 +53,14 @@ impl Model {
         if self.rerender.load(Ordering::Relaxed) {
             debug!("Not Rendering Clicker Button");
             self.link.send_message(LanguageMsg::Rerender);
-            html! {}
+            html! { <div></div>}
         } else {
             debug!("Rendering Clicker Button");
-            localized
+            html! {
+                <div>
+                { localized }
+                </div>
+            }
         }
     }
 }
@@ -105,19 +113,42 @@ impl Component for Model {
     fn view(&self) -> Html {
         let languages = self.localizer.available_languages().unwrap();
         let default_language = self.localizer.language_loader().current_language();
-        let select_icon_classes = vec!["fas".to_string(), "fa-globe".to_string()];
+        
+        let select_icon_props = bulma::components::icon::Props {
+            color: Some(Color::Info),
+            span_class: vec![],
+            class: vec!["fas".to_string(), "fa-globe".to_string()]
+        };
+
+        let navbar_brand = html! {
+            <a class="navbar-item" href="/">
+                { tr!("Coster") }
+            </a>
+        };
+
         html! {
             <>
             {
                 self.localized_html(
-                    html! {<ClickerButton />}
+                    html! {
+                        <>
+                        <Navbar brand=navbar_brand/>
+                        <ClickerButton />
+                        </>
+                    }
                 )
             }
                 
-                <Select<LanguageIdentifier> icon_color=bulma::Color::Info icon_classes=select_icon_classes size=bulma::Size::Big selected=default_language, options=languages onchange=self.link.callback(|selection| {
-                    debug!("GUI Language Selection: {}", selection);
-                    LanguageMsg::Select(selection)
-                }) />
+                <Select<LanguageIdentifier> 
+                    size=bulma::Size::Big 
+                    selected=default_language 
+                    options=languages 
+                    onchange=self.link.callback(|selection| {
+                        debug!("GUI Language Selection: {}", selection);
+                        LanguageMsg::Select(selection)
+                    })
+                    icon_props=select_icon_props
+                    />
             </>
         }
     }

@@ -27,6 +27,16 @@ pub struct Props {
     #[prop_or_default]
     pub on_language_change: Callback<LanguageIdentifier>,
     pub localizer: Rc<Box<dyn Localizer<'static>>>,
+    pub lang: unic_langid::LanguageIdentifier
+}
+
+impl PartialEq for Props {
+    fn eq(&self, other: &Props) -> bool {
+        self.brand == other.brand &&
+        self.on_language_change == other.on_language_change &&
+        self.lang == other.lang
+    }
+    
 }
 
 impl Component for Navbar {
@@ -140,6 +150,15 @@ impl Component for Navbar {
                     </div>
                 </div>
             </nav>
+        }
+    }
+    
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        if self.props != props {
+            self.props = props;
+            true
+        } else {
+            false
         }
     }
 }

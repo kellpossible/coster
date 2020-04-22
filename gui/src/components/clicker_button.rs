@@ -1,10 +1,16 @@
-use yew::{html, Component, ComponentLink, Html, ShouldRender};
+use yew::{html, Component, ComponentLink, Html, ShouldRender, Properties};
 use tr::tr;
 use web_sys::console;
 use log::debug;
 
 pub struct ClickerButton {
+    props: Props,
     link: ComponentLink<Self>,
+}
+
+#[derive(Clone, Properties, PartialEq)]
+pub struct Props {
+    pub lang: unic_langid::LanguageIdentifier
 }
 
 pub enum Msg {
@@ -13,10 +19,10 @@ pub enum Msg {
 
 impl Component for ClickerButton {
     type Message = Msg;
-    type Properties = ();
+    type Properties = Props;
 
-    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        ClickerButton { link }
+    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        ClickerButton { props, link }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -34,6 +40,15 @@ impl Component for ClickerButton {
             <div>
                 <button class="button" onclick=self.link.callback(|_| Msg::Click)>{ tr!("Click") }</button>
             </div>
+        }
+    }
+    
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        if self.props != props {
+            self.props = props;
+            true
+        } else {
+            false
         }
     }
 }

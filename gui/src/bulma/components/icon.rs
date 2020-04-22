@@ -49,4 +49,8 @@ impl Component for Icon {
             </span>
         }
     }
+    
+    fn change(&mut self, _props: Self::Properties) -> ShouldRender { 
+        true
+    }
 }

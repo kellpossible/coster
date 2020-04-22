@@ -115,17 +115,23 @@ impl Component for Model {
             </a>
         };
 
+        let lang = self.localizer.language_loader().current_language();
+
         debug!("Rendering Root");
 
         html! {
             <>
-                <Navbar brand=navbar_brand localizer=self.localizer.clone() on_language_change = self.link.callback(|selection| {
+                <Navbar lang=lang.clone() brand=navbar_brand localizer=self.localizer.clone() on_language_change = self.link.callback(|selection| {
                     debug!("GUI Language Selection: {}", selection);
                     LanguageMsg::Select(selection)
                 })/>
-                <ClickerButton />
+                <ClickerButton lang=lang />
             </>
         }
+    }
+
+    fn change(&mut self, _: Self::Properties) -> ShouldRender {
+        false
     }
     
 }

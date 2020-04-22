@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gui 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-22 08:22+0000\n"
+"POT-Creation-Date: 2020-04-22 16:11+0000\n"
 "PO-Revision-Date: 2020-04-16 19:12+0400\n"
 "Last-Translator: Luke Frisken <l.frisken@gmail.com>\n"
 "Language-Team: Russian <gnu@d07.ru>\n"
@@ -18,42 +18,18 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
 "%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-#: src/components/clicker_button.rs:24
-msgid "Hello World, this is me!"
-msgstr "Привет, мир, это я!"
+#: src/components/costing_tab.rs:58
+msgid "Add Expense"
+msgstr "Добавить расходы"
 
-#: src/components/clicker_button.rs:33
-msgid "Click"
-msgstr "Нажмите"
+#: src/components/navbar.rs:105
+msgid "Help"
+msgstr "Помогите"
 
-#: src/components/navbar.rs:73
-msgid "Home"
-msgstr "Домой"
-
-#: src/components/navbar.rs:77
-msgid "Documentation"
-msgstr "Документация"
-
-#: src/components/navbar.rs:82
-msgid "More"
-msgstr "Больше"
-
-#: src/components/navbar.rs:87
+#: src/components/navbar.rs:109
 msgid "About"
 msgstr "Около"
 
-#: src/components/navbar.rs:90
-msgid "Jobs"
-msgstr "работы"
-
-#: src/components/navbar.rs:93
-msgid "Contact"
-msgstr "контакт"
-
-#: src/components/navbar.rs:97
-msgid "Report an issue"
-msgstr "Сообщить о проблеме"
-
-#: src/lib.rs:113
+#: src/lib.rs:96
 msgid "Coster"
 msgstr "Coster"

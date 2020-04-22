@@ -18,14 +18,21 @@ rust_decimal = "1.4.1"
 costing = { path = "../costing" }
 yew = { git = "https://github.com/yewstack/yew.git", features = ["web_sys"] }
 wasm-bindgen = "0.2"
-web-sys = { version = "0.3", features = ["Window", "Navigator", "console"] }
+web-sys = { version = "0.3", features = ["Window", "Navigator"] }
 tr = { version = "0.1", default-features = false, features = ["gettext"] }
 rust-embed = "5.5.1"
 i18n-embed = { path = "../../cargo-i18n/i18n-embed", version = "0.4.0", features = ["web-sys-requester"] }
 unic-langid = "0.8.0"
 anyhow = "1.0"
 log = "0.4"
-console_log = "0.1"
+console_log = { version = "0.2.0", features = ["color"], optional = true }
 lazy_static = "1.4.0"
 
+[features]
+default = ["console_log"]
+
 [workspace]
+
+# [profile.release]
+# lto = true
+# opt-level = 's'

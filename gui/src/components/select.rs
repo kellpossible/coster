@@ -1,9 +1,9 @@
 //! This module contains implementation of `Select` component.
 //! You can use it instead `<select>` tag, because the component
 //! helps you to track selected value in an original type. Example:
-//! 
+//!
 //! Ripped out of Yew source code https://github.com/yewstack/yew/blob/8edf136da6ba1955c847c5860ec55623a27c08e9/src/components/select.rs
-//! License for original code: https://github.com/yewstack/yew/blob/master/LICENSE-APACHE 
+//! License for original code: https://github.com/yewstack/yew/blob/master/LICENSE-APACHE
 //! Modified to support css `bulma` classes.
 //!
 //! ```
@@ -37,13 +37,14 @@
 //! }
 //! ```
 
-use crate::bulma::{Size, components::{icon, Icon}};
+use crate::bulma::{
+    components::{icon, Icon},
+    Size,
+};
+use web_sys::HtmlSelectElement;
 use yew::callback::Callback;
 use yew::html::{ChangeData, Component, ComponentLink, Html, NodeRef, ShouldRender};
 use yew::macros::{html, Properties};
-use web_sys::HtmlSelectElement;
-use log::debug;
-
 
 /// `Select` component.
 #[derive(Debug)]
@@ -119,7 +120,7 @@ where
                     .as_ref()
                     .map(|v| v.to_string())
                     .unwrap_or_default();
-                
+
                 select.set_value(&val)
             }
         }
@@ -136,10 +137,8 @@ where
             }
         };
 
-        debug!("Rendering Select");
-
         let mut div_classes = vec!["select".to_string()];
-        
+
         let size_class_vec = match self.props.size.to_class() {
             Some(size) => vec![size],
             None => vec![],
@@ -172,8 +171,7 @@ where
                 <Icon with icon_props/>
                 </div>
             }
-        }
-        else {
+        } else {
             inner
         }
     }

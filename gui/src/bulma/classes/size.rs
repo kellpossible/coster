@@ -18,5 +18,7 @@ impl Size {
 }
 
 impl Default for Size {
-    fn default() -> Self { Size::Normal }   
+    fn default() -> Self {
+        Size::Normal
+    }
 }

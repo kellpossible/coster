@@ -1,5 +1,5 @@
-use yew::{html, Component, ComponentLink, Html, ShouldRender, Properties};
 use tr::tr;
+use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use crate::bulma::Color;
 
@@ -23,10 +23,7 @@ impl Component for Icon {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Icon { 
-            props,
-            link,
-        }
+        Icon { props, link }
     }
 
     fn update(&mut self, _: Self::Message) -> ShouldRender {
@@ -38,7 +35,7 @@ impl Component for Icon {
 
         match &self.props.color {
             Some(color) => span_class.push(color.text_class()),
-            None => {},
+            None => {}
         }
 
         span_class.extend(self.props.span_class.clone());
@@ -49,8 +46,8 @@ impl Component for Icon {
             </span>
         }
     }
-    
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender { 
+
+    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
         true
     }
 }

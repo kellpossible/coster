@@ -56,4 +56,3 @@ impl Color {
         format!("is-{0}", self.to_str())
     }
 }
-

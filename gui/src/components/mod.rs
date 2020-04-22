@@ -1,5 +1,3 @@
-mod clicker_button;
-pub mod select;
+pub mod costing_tab;
 pub mod navbar;
-
-pub use clicker_button::ClickerButton;
+pub mod select;

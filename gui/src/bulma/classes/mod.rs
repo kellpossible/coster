@@ -1,5 +1,5 @@
-pub mod size;
 pub mod color;
+pub mod size;
 
-pub use size::Size;
 pub use color::Color;
+pub use size::Size;

@@ -136,6 +136,8 @@ where
             }
         };
 
+        debug!("Rendering Select");
+
         let mut div_classes = vec!["select".to_string()];
         
         let size_class_vec = match self.props.size.to_class() {

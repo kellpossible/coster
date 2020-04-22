@@ -10,7 +10,6 @@ use rust_embed::RustEmbed;
 use yew::{html, Component, ComponentLink, Html, ShouldRender, Properties};
 
 use wasm_bindgen::prelude::*;
-use unic_langid::LanguageIdentifier;
 use log;
 use log::debug;
 use lazy_static::lazy_static;
@@ -20,9 +19,7 @@ mod components;
 pub mod bulma;
 
 use components::ClickerButton;
-use components::select::Select;
 use components::navbar::Navbar;
-use bulma::{Color};
 
 #[derive(RustEmbed, I18nEmbed)]
 #[folder = "i18n/mo"]
@@ -51,11 +48,12 @@ pub struct Model {
 impl Model {
     fn localized_html(&self, localized: Html) -> Html {
         if self.rerender.load(Ordering::Relaxed) {
-            debug!("Not Rendering Clicker Button");
             self.link.send_message(LanguageMsg::Rerender);
-            html! { <div></div>}
+            html! {
+                <div>
+                </div>
+            }
         } else {
-            debug!("Rendering Clicker Button");
             html! {
                 <div>
                 { localized }
@@ -111,44 +109,21 @@ impl Component for Model {
     }
 
     fn view(&self) -> Html {
-        let languages = self.localizer.available_languages().unwrap();
-        let default_language = self.localizer.language_loader().current_language();
-        
-        let select_icon_props = bulma::components::icon::Props {
-            color: Some(Color::Info),
-            span_class: vec![],
-            class: vec!["fas".to_string(), "fa-globe".to_string()]
-        };
-
         let navbar_brand = html! {
             <a class="navbar-item" href="/">
                 { tr!("Coster") }
             </a>
         };
 
+        debug!("Rendering Root");
+
         html! {
             <>
-            {
-                self.localized_html(
-                    html! {
-                        <>
-                        <Navbar brand=navbar_brand/>
-                        <ClickerButton />
-                        </>
-                    }
-                )
-            }
-                
-                <Select<LanguageIdentifier> 
-                    size=bulma::Size::Big 
-                    selected=default_language 
-                    options=languages 
-                    onchange=self.link.callback(|selection| {
-                        debug!("GUI Language Selection: {}", selection);
-                        LanguageMsg::Select(selection)
-                    })
-                    icon_props=select_icon_props
-                    />
+                <Navbar brand=navbar_brand localizer=self.localizer.clone() on_language_change = self.link.callback(|selection| {
+                    debug!("GUI Language Selection: {}", selection);
+                    LanguageMsg::Select(selection)
+                })/>
+                <ClickerButton />
             </>
         }
     }

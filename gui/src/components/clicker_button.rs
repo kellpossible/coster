@@ -1,6 +1,7 @@
 use yew::{html, Component, ComponentLink, Html, ShouldRender};
 use tr::tr;
 use web_sys::console;
+use log::debug;
 
 pub struct ClickerButton {
     link: ComponentLink<Self>,
@@ -28,6 +29,7 @@ impl Component for ClickerButton {
     }
 
     fn view(&self) -> Html {
+        debug!("Rendering Clicker Button");
         html! {
             <div>
                 <button class="button" onclick=self.link.callback(|_| Msg::Click)>{ tr!("Click") }</button>

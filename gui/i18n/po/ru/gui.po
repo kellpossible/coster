@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gui 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-19 11:24+0000\n"
+"POT-Creation-Date: 2020-04-22 08:22+0000\n"
 "PO-Revision-Date: 2020-04-16 19:12+0400\n"
 "Last-Translator: Luke Frisken <l.frisken@gmail.com>\n"
 "Language-Team: Russian <gnu@d07.ru>\n"
@@ -26,7 +26,34 @@ msgstr "Привет, мир, это я!"
 msgid "Click"
 msgstr "Нажмите"
 
-#: src/test/mod.rs:4
-msgctxt "in the test module"
-msgid "Hello World, this is me!"
-msgstr ""
+#: src/components/navbar.rs:73
+msgid "Home"
+msgstr "Домой"
+
+#: src/components/navbar.rs:77
+msgid "Documentation"
+msgstr "Документация"
+
+#: src/components/navbar.rs:82
+msgid "More"
+msgstr "Больше"
+
+#: src/components/navbar.rs:87
+msgid "About"
+msgstr "Около"
+
+#: src/components/navbar.rs:90
+msgid "Jobs"
+msgstr "работы"
+
+#: src/components/navbar.rs:93
+msgid "Contact"
+msgstr "контакт"
+
+#: src/components/navbar.rs:97
+msgid "Report an issue"
+msgstr "Сообщить о проблеме"
+
+#: src/lib.rs:113
+msgid "Coster"
+msgstr "Coster"

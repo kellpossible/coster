@@ -1,4 +1,4 @@
-use crate::expense::{ExpenseID, ExpenseCategory};
+use crate::expense::{ExpenseCategory, ExpenseID};
 use crate::tab::TabID;
 use crate::user::UserID;
 use commodity::CommodityError;

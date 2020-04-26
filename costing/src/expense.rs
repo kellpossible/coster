@@ -1,15 +1,14 @@
-use crate::user::{UserID};
-use crate::tab::Tab;
 use crate::error::CostingError;
+use crate::tab::Tab;
+use crate::user::UserID;
 use chrono::{Local, NaiveDate};
 use commodity::{exchange_rate::ExchangeRate, Commodity};
 use doublecount::{Transaction, TransactionElement};
+use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
-use serde::{Serialize, Deserialize};
 
 pub type ExpenseID = i32;
 pub type ExpenseCategory = String;
-
 
 /// An expense which is paid by a user on a given `date`, and which is
 /// to be shared by a list of users.
@@ -50,7 +49,7 @@ impl Expense {
     ///
     /// let expense = Expense::new(
     ///    1,
-    ///    "some expense", 
+    ///    "some expense",
     ///    "Test",
     ///    NaiveDate::from_ymd(2020, 2, 27),
     ///    user1.id,
@@ -69,7 +68,7 @@ impl Expense {
         description: S,
         category: EC,
         date: NaiveDate,
-        paid_by:UserID,
+        paid_by: UserID,
         shared_by: Vec<UserID>,
         amount: Commodity,
         exchange_rate: Option<ExchangeRate>,
@@ -107,7 +106,7 @@ impl Expense {
     ///
     /// let expense = Expense::new(
     ///    1,
-    ///    "some expense", 
+    ///    "some expense",
     ///    category.clone(),
     ///    NaiveDate::from_ymd(2020, 2, 27),
     ///    user1.id,
@@ -115,7 +114,7 @@ impl Expense {
     ///    Commodity::from_str("300.0 AUD").unwrap(),
     ///    None
     /// );
-    /// 
+    ///
     /// let tab = Tab::new(
     ///     1,
     ///     "Test Tab",
@@ -123,18 +122,18 @@ impl Expense {
     ///     vec![user1.clone(), user2.clone(), user3.clone()],
     ///     vec![expense],
     /// );
-    /// 
+    ///
     /// let actual_transaction = tab.expenses.get(0)
     ///                                      .unwrap()
     ///                                      .get_actual_transaction(&tab)
     ///                                      .unwrap();
-    /// 
+    ///
     /// let user1_account = tab.get_user_account(&user1.id).unwrap();
     ///
     /// assert_eq!(2, actual_transaction.elements.len());
     /// let user1_element = actual_transaction.get_element(&user1_account.id).unwrap();
     /// assert_eq!(Some(Commodity::from_str("-300.0 AUD").unwrap()), user1_element.amount);
-    /// 
+    ///
     /// let expenses_account = tab.get_expense_category_account(&category).unwrap();
     /// let expense_element = actual_transaction.get_element(&expenses_account.id).unwrap();
     /// assert_eq!(None, expense_element.amount);
@@ -149,7 +148,11 @@ impl Expense {
                     Some(self.amount.neg()),
                     self.exchange_rate.clone(),
                 ),
-                TransactionElement::new(tab.get_expense_category_account(&self.category)?.id, None, self.exchange_rate.clone()),
+                TransactionElement::new(
+                    tab.get_expense_category_account(&self.category)?.id,
+                    None,
+                    self.exchange_rate.clone(),
+                ),
             ],
         ))
     }
@@ -182,7 +185,7 @@ impl Expense {
     ///    Commodity::from_str("300.0 AUD").unwrap(),
     ///    None
     /// );
-    /// 
+    ///
     /// let tab = Tab::new(
     ///     1,
     ///     "Test Tab",
@@ -190,7 +193,7 @@ impl Expense {
     ///     vec![user1.clone(), user2.clone(), user3.clone()],
     ///     vec![expense],
     /// );
-    /// 
+    ///
     /// let user1_account = tab.get_user_account(&user1.id).unwrap();
     /// let user2_account = tab.get_user_account(&user2.id).unwrap();
     /// let user3_account = tab.get_user_account(&user3.id).unwrap();
@@ -221,8 +224,11 @@ impl Expense {
             .neg();
 
         for user_id in &self.shared_by {
-            let element =
-                TransactionElement::new(tab.get_user_account(user_id)?.id, Some(divided), self.exchange_rate.clone());
+            let element = TransactionElement::new(
+                tab.get_user_account(user_id)?.id,
+                Some(divided),
+                self.exchange_rate.clone(),
+            );
             elements.push(element);
         }
 

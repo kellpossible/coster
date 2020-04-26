@@ -57,11 +57,15 @@ impl Tab {
             }
         }
 
-        let mut expense_category_accounts: HashMap<String, Rc<Account>> = HashMap::with_capacity(expenses.len());
+        let mut expense_category_accounts: HashMap<String, Rc<Account>> =
+            HashMap::with_capacity(expenses.len());
 
         for expense in &expenses {
             if !expense_category_accounts.get(&expense.category).is_some() {
-                let account = Rc::from(Tab::new_account_for_expense_category(&expense, working_currency.id));
+                let account = Rc::from(Tab::new_account_for_expense_category(
+                    &expense,
+                    working_currency.id,
+                ));
                 expense_category_accounts.insert(expense.category.clone(), account);
             }
         }
@@ -86,11 +90,14 @@ impl Tab {
         )
     }
 
-    fn new_account_for_expense_category(expense: &Expense, working_currency: CommodityTypeID) -> Account {
+    fn new_account_for_expense_category(
+        expense: &Expense,
+        working_currency: CommodityTypeID,
+    ) -> Account {
         Account::new(
             Some(expense.category.clone()),
             working_currency,
-            Some("Expense".to_string())
+            Some("Expense".to_string()),
         )
     }
 
@@ -105,11 +112,18 @@ impl Tab {
     }
 
     pub fn get_user_account(&self, user_id: &UserID) -> Result<&Rc<Account>, CostingError> {
-        self.user_accounts.get(user_id).ok_or_else(|| CostingError::UserAccountDoesNotExistOnTab(*user_id, self.id))
+        self.user_accounts
+            .get(user_id)
+            .ok_or_else(|| CostingError::UserAccountDoesNotExistOnTab(*user_id, self.id))
     }
 
-    pub fn get_expense_category_account(&self, category: &ExpenseCategory) -> Result<&Rc<Account>, CostingError> {
-        self.expense_category_accounts.get(category).ok_or_else(|| CostingError::NoExpenseCategoryAccountOnTab(category.clone(), self.id))
+    pub fn get_expense_category_account(
+        &self,
+        category: &ExpenseCategory,
+    ) -> Result<&Rc<Account>, CostingError> {
+        self.expense_category_accounts
+            .get(category)
+            .ok_or_else(|| CostingError::NoExpenseCategoryAccountOnTab(category.clone(), self.id))
     }
 
     pub fn remove_user(&mut self, user_id: &UserID) -> Result<(), CostingError> {
@@ -130,7 +144,10 @@ impl Tab {
             None => {
                 let u = Rc::from(user);
                 self.users.push(u.clone());
-                self.user_accounts.insert(u.id, Rc::new(Tab::new_account_for_user(&u, self.working_currency.id)));
+                self.user_accounts.insert(
+                    u.id,
+                    Rc::new(Tab::new_account_for_user(&u, self.working_currency.id)),
+                );
                 Ok(())
             }
         }
@@ -158,8 +175,10 @@ impl Tab {
         let mut accounts: HashMap<AccountID, Rc<Account>> = HashMap::new();
 
         for expense in &self.expenses {
-            actual_transactions.push(Rc::from(expense.get_actual_transaction(self)?) as Rc<dyn Action>);
-            shared_transactions.push(Rc::from(expense.get_shared_transaction(self)?) as Rc<dyn Action>);
+            actual_transactions
+                .push(Rc::from(expense.get_actual_transaction(self)?) as Rc<dyn Action>);
+            shared_transactions
+                .push(Rc::from(expense.get_shared_transaction(self)?) as Rc<dyn Action>);
 
             let account = self.get_expense_category_account(&expense.category)?;
             accounts.insert(account.id, account.clone());
@@ -406,11 +425,11 @@ impl Tab {
     }
 
     fn get_user_with_account(&self, account_id: &AccountID) -> Result<Rc<User>, CostingError> {
-        self.user_accounts.iter().find(|(_, v)| {
-            v.id == *account_id
-        }).map(|(k,_)| {
-            self.user(k).map(|u| u.clone())
-        }).unwrap()
+        self.user_accounts
+            .iter()
+            .find(|(_, v)| v.id == *account_id)
+            .map(|(k, _)| self.user(k).map(|u| u.clone()))
+            .unwrap()
     }
 }
 

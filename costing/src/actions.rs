@@ -3,9 +3,9 @@ use crate::expense::{Expense, ExpenseID};
 use crate::tab::Tab;
 use crate::user::{User, UserID};
 use chrono::{DateTime, Utc};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::{hash::Hash};
+use std::hash::Hash;
 
 /// Represents an action that a [User](crate::user::User) can perform to modify a [Tab](Tab).
 pub trait UserAction: fmt::Debug {
@@ -183,7 +183,7 @@ impl UserAction for RemoveUser {
 #[cfg(test)]
 pub mod tests {
     use super::{AddExpense, AddUser, ChangeTabName, RemoveExpense, RemoveUser, UserAction};
-    use crate::expense::{Expense, ExpenseID, ExpenseCategory};
+    use crate::expense::{Expense, ExpenseCategory, ExpenseID};
     use crate::tab::Tab;
     use crate::user::{User, UserID};
     use chrono::NaiveDate;
@@ -201,11 +201,7 @@ pub mod tests {
 
     fn create_test_user(id: UserID, name: &str) -> Rc<User> {
         let email = format!("{}@test.com", name);
-        Rc::from(User::new(
-            id,
-            name,
-            Some(email.as_ref()),
-        ))
+        Rc::from(User::new(id, name, Some(email.as_ref())))
     }
 
     fn create_test_expense(
@@ -269,12 +265,8 @@ pub mod tests {
         tab.add_user((*user0).clone()).unwrap();
         tab.add_user((*user1).clone()).unwrap();
 
-        let expense = create_test_expense(
-            0,
-            "General".to_string(),
-            user0.id,
-            vec![user0.id, user1.id],
-        );
+        let expense =
+            create_test_expense(0, "General".to_string(), user0.id, vec![user0.id, user1.id]);
 
         let action = AddExpense::new(user0.id, expense);
 
@@ -291,12 +283,8 @@ pub mod tests {
         let user0 = create_test_user(0, "User 0");
         let user1 = create_test_user(1, "User 1");
 
-        let expense = create_test_expense(
-            0,
-            "Test".to_string(),
-            user0.id,
-            vec![user0.id, user1.id],
-        );
+        let expense =
+            create_test_expense(0, "Test".to_string(), user0.id, vec![user0.id, user1.id]);
 
         let action = RemoveExpense::new(user0.id, expense.id);
 

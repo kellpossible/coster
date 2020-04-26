@@ -1,11 +1,11 @@
-use crate::user::UserID;
-use crate::tab::Tab;
 use crate::error::CostingError;
+use crate::tab::Tab;
+use crate::user::UserID;
 
 use chrono::NaiveDate;
 use commodity::Commodity;
 use doublecount::Transaction;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Represents the settlement of a debt that one user owes another.
 #[derive(Debug, Serialize, Deserialize)]

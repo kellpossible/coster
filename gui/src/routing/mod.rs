@@ -1,6 +1,6 @@
-use yew_router::{route::Route, service::RouteService, Switch};
 use std::marker::PhantomData;
 use yew::Callback;
+use yew_router::{route::Route, service::RouteService, Switch};
 
 pub trait SwitchRoute: Switch + Clone {
     fn to_string(&self) -> String;
@@ -8,7 +8,7 @@ pub trait SwitchRoute: Switch + Clone {
     fn to_route(&self) -> Route {
         Route {
             route: self.to_string(),
-            state: ()
+            state: (),
         }
     }
 }
@@ -20,14 +20,19 @@ pub struct SwitchRouteService<SR> {
     sr: PhantomData<SR>,
 }
 
-impl <SR> PartialEq for SwitchRouteService<SR> where SR: SwitchRoute + 'static {
+impl<SR> PartialEq for SwitchRouteService<SR>
+where
+    SR: SwitchRoute + 'static,
+{
     fn eq(&self, other: &Self) -> bool {
         self.get_route_raw() == other.get_route_raw()
     }
-    
 }
 
-impl <SR> SwitchRouteService<SR> where SR: SwitchRoute + 'static {
+impl<SR> SwitchRouteService<SR>
+where
+    SR: SwitchRoute + 'static,
+{
     pub fn new() -> Self {
         Self {
             callbacks: Vec::new(),

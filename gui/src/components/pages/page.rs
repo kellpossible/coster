@@ -1,11 +1,6 @@
-use crate::components::navbar::Navbar;
+use crate::{components::navbar::Navbar, AppRouterRef, LanguageRequesterRef, LocalizerRef};
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
-use i18n_embed::{LanguageRequester, Localizer};
 use log::debug;
-use tr::tr;
 use unic_langid::LanguageIdentifier;
 use yew::{
     html, html::Renderable, Callback, Children, Component, ComponentLink, Html, Properties,
@@ -23,8 +18,9 @@ pub enum LanguageMsg {
 
 #[derive(Clone, Properties)]
 pub struct Props {
-    pub language_requester: Rc<RefCell<dyn LanguageRequester<'static>>>,
-    pub localizer: Rc<Box<dyn Localizer<'static>>>,
+    pub router: AppRouterRef,
+    pub language_requester: LanguageRequesterRef,
+    pub localizer: LocalizerRef,
     #[prop_or_default]
     pub on_language_change: Callback<LanguageIdentifier>,
     pub children: Children,
@@ -75,19 +71,14 @@ impl Component for Page {
     }
 
     fn view(&self) -> Html {
-        let navbar_brand = html! {
-            <a class="navbar-item" href="/">
-                { tr!("Coster") }
-            </a>
-        };
-
         let lang = self.props.localizer.language_loader().current_language();
 
         html! {
             <>
                 <Navbar
-                    lang=lang.clone()
-                    brand=navbar_brand localizer=self.props.localizer.clone()
+                    router = self.props.router.clone()
+                    lang = lang.clone()
+                    localizer = self.props.localizer.clone()
                     on_language_change = self.link.callback(|selection| {
                         debug!("GUI Language Selection: {}", selection);
                         LanguageMsg::Select(selection)

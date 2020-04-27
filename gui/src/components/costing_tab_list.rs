@@ -1,14 +1,14 @@
-use crate::{AppRoute, routing::SwitchRouteService};
+use crate::{AppRoute, AppRouterRef};
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
 use commodity::CommodityType;
 use costing::{Tab, TabID};
-use tr::tr;
-use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
-use yew::MouseEvent;
 use log::debug;
+use tr::tr;
+use yew::MouseEvent;
+use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 pub struct CostingTabList {
     tab: RefCell<Tab>,
@@ -17,12 +17,12 @@ pub struct CostingTabList {
 }
 
 pub enum Msg {
-    ToIndex
+    ToIndex,
 }
 
 #[derive(Clone, Properties, PartialEq)]
 pub struct Props {
-    pub router: Rc<RefCell<SwitchRouteService<AppRoute>>>,
+    pub router: AppRouterRef,
     pub lang: unic_langid::LanguageIdentifier,
 }
 
@@ -44,9 +44,12 @@ impl Component for CostingTabList {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::ToIndex => {
-                //TODO: ensure that anyone using the router is listening 
+                //TODO: ensure that anyone using the router is listening
                 //      to it for events ie: the component in lib!
-                self.props.router.borrow_mut().set_route(AppRoute::CostingTab);
+                self.props
+                    .router
+                    .borrow_mut()
+                    .set_route(AppRoute::CostingTab);
             }
         }
         true

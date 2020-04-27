@@ -1,9 +1,6 @@
 use super::select::Select;
-use crate::bulma;
+use crate::{bulma, AppRoute, AppRouterRef, LocalizerRef};
 
-use std::rc::Rc;
-
-use i18n_embed::Localizer;
 use tr::tr;
 use unic_langid::LanguageIdentifier;
 use yew::{html, Callback, Component, ComponentLink, Html, Properties, ShouldRender};
@@ -16,23 +13,23 @@ pub struct Navbar {
 
 pub enum Msg {
     ToggleBurgerMenu,
+    ToIndex,
+    ToHelp,
+    ToAbout,
 }
 
 #[derive(Clone, Properties)]
 pub struct Props {
-    #[prop_or_default]
-    pub brand: Option<Html>,
+    pub router: AppRouterRef,
     #[prop_or_default]
     pub on_language_change: Callback<LanguageIdentifier>,
-    pub localizer: Rc<Box<dyn Localizer<'static>>>,
+    pub localizer: LocalizerRef,
     pub lang: unic_langid::LanguageIdentifier,
 }
 
 impl PartialEq for Props {
     fn eq(&self, other: &Props) -> bool {
-        self.brand == other.brand
-            && self.on_language_change == other.on_language_change
-            && self.lang == other.lang
+        self.on_language_change == other.on_language_change && self.lang == other.lang
     }
 }
 
@@ -52,9 +49,18 @@ impl Component for Navbar {
         match msg {
             Msg::ToggleBurgerMenu => {
                 self.burger_menu_active = !self.burger_menu_active;
-                true
+            },
+            Msg::ToIndex => {
+                self.props.router.borrow_mut().set_route(AppRoute::Index);
+            },
+            Msg::ToAbout => {
+                self.props.router.borrow_mut().set_route(AppRoute::About);
+            },
+            Msg::ToHelp => {
+                self.props.router.borrow_mut().set_route(AppRoute::Help);
             }
         }
+        true
     }
 
     fn view(&self) -> Html {
@@ -68,6 +74,9 @@ impl Component for Navbar {
         };
 
         let onclick_burger = self.link.callback(|_| Msg::ToggleBurgerMenu);
+        let onclick_coster_index = self.link.callback(|_| Msg::ToIndex);
+        let onclick_help = self.link.callback(|_| Msg::ToHelp);
+        let onclick_about = self.link.callback(|_| Msg::ToAbout);
 
         let mut burger_classes = vec!["navbar-burger"];
         let mut menu_classes = vec!["navbar-menu"];
@@ -79,45 +88,37 @@ impl Component for Navbar {
 
         html! {
             <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
-                {
-                    if self.props.brand.is_some() {
-                        html!{
-                            <div class="navbar-brand">
-                                { self.props.brand.as_ref().unwrap().clone() }
-                                <a role="button" class=burger_classes aria-label="menu" aria-expanded="false" onclick=onclick_burger>
-                                    <span aria-hidden="true"></span>
-                                    <span aria-hidden="true"></span>
-                                    <span aria-hidden="true"></span>
-                                </a>
-                            </div>
-                        }
-                    } else {
-                        html! {}
-                    }
-                }
+                <div class="navbar-brand">
+                    <a class="navbar-item" onclick=onclick_coster_index>
+                        { tr!("Coster") }
+                    </a>
+                    <a role="button" class=burger_classes aria-label="menu" aria-expanded="false" onclick=onclick_burger>
+                        <span aria-hidden="true"></span>
+                        <span aria-hidden="true"></span>
+                        <span aria-hidden="true"></span>
+                    </a>
+                </div>
 
                 <div id="navbarBasicExample" class=menu_classes>
                     <div class="navbar-start">
-                        <a class="navbar-item">
+                        <a class="navbar-item" onclick=onclick_help>
                             { tr!("Help") }
                         </a>
 
-                        <a class="navbar-item">
+                        <a class="navbar-item" onclick=onclick_about>
                             { tr!("About") }
                         </a>
                     </div>
 
                     <div class="navbar-end">
                         <div class="navbar-item">
-                            // <div class="buttons">
-                                <Select<LanguageIdentifier>
-                                size=bulma::Size::Big
-                                selected=default_language
-                                options=languages
-                                onchange=self.props.on_language_change.clone()
-                                icon_props=select_icon_props
-                                />
-                            // </div>
+                            <Select<LanguageIdentifier>
+                            size=bulma::Size::Big
+                            selected=default_language
+                            options=languages
+                            onchange=self.props.on_language_change.clone()
+                            icon_props=select_icon_props
+                            />
                         </div>
                     </div>
                 </div>

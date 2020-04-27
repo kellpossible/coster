@@ -1,31 +1,32 @@
 #![recursion_limit = "512"]
 
+mod bulma;
+mod components;
+mod routing;
+
+use components::costing_tab::CostingTab;
+use components::costing_tab_list::CostingTabList;
+use components::pages::{centered, Page};
+use routing::{SwitchRoute, SwitchRouteService};
+
 use std::cell::RefCell;
 use std::rc::Rc;
-
 use i18n_embed::{
     language_loader, DefaultLocalizer, I18nEmbed, LanguageRequester, Localizer,
     WebLanguageRequester,
 };
 use rust_embed::RustEmbed;
 use yew::virtual_dom::VNode;
-use yew::{html, Component, ComponentLink, Html, ShouldRender};
-use yew_router::{route::Route, service::RouteService, Switch};
-
+use yew::{html, Component, ComponentLink, Html, ShouldRender, Properties};
+use yew_router::Switch;
 use lazy_static::lazy_static;
 use log;
 use log::debug;
 use wasm_bindgen::prelude::*;
-
-mod bulma;
-mod components;
-mod routing;
-
-use components::costing_tab_list::CostingTabList;
-use components::costing_tab::CostingTab;
-use components::pages::{centered, Page};
 use unic_langid::LanguageIdentifier;
-use routing::{SwitchRoute, SwitchRouteService};
+use tr::tr;
+
+
 
 #[derive(RustEmbed, I18nEmbed)]
 #[folder = "i18n/mo"]
@@ -43,15 +44,25 @@ static TRANSLATIONS: Translations = Translations {};
 pub enum AppRoute {
     #[to = "/tab"]
     CostingTab,
+    #[to = "/help"]
+    Help,
+    #[to = "/about"]
+    About,
     #[to = "/"]
     Index,
 }
+
+pub type AppRouterRef = Rc<RefCell<SwitchRouteService<AppRoute>>>;
+pub type LocalizerRef = Rc<Box<dyn Localizer<'static>>>;
+pub type LanguageRequesterRef = Rc<RefCell<dyn LanguageRequester<'static>>>;
 
 impl SwitchRoute for AppRoute {
     fn to_string(&self) -> String {
         match self {
             AppRoute::Index => "/".to_string(),
             AppRoute::CostingTab => "/tab".to_string(),
+            AppRoute::Help => "/help".to_string(),
+            AppRoute::About => "/about".to_string(),
         }
     }
 }
@@ -63,11 +74,29 @@ pub enum Msg {
 }
 
 pub struct Model {
-    language_requester: Rc<RefCell<dyn LanguageRequester<'static>>>,
-    localizer: Rc<Box<dyn Localizer<'static>>>,
-    router: Rc<RefCell<SwitchRouteService<AppRoute>>>,
+    language_requester: LanguageRequesterRef,
+    localizer: LocalizerRef,
+    router: AppRouterRef,
     route: Option<AppRoute>,
     link: ComponentLink<Self>,
+}
+
+impl Model {
+    fn page(&self, inner: Html) -> Html {
+        let language_change_callback = self
+            .link
+            .callback(|selection| Msg::LanguageChanged(selection));
+
+        html! {
+            <Page
+                router = self.router.clone()
+                localizer = self.localizer.clone()
+                language_requester = self.language_requester.clone()
+                on_language_change = language_change_callback>
+                { inner }
+            </Page>
+        }
+    }
 }
 
 impl Component for Model {
@@ -114,52 +143,42 @@ impl Component for Model {
             Msg::RouteChanged(route) => {
                 debug!("Route changed: {:?}", route);
                 self.route = route
-            },
+            }
             Msg::ChangeRoute(route) => {
                 self.router.borrow_mut().set_route(route);
             }
-            Msg::LanguageChanged(_) => {}
+            Msg::LanguageChanged(lang) => {
+                debug!("Language changed in coster::lib {:?}", lang);
+            }
         }
         true
     }
 
     fn view(&self) -> Html {
-        // costing_tab_page_html = html!{<CostingTabPage localizer=self.localizer.clone() language_requester=self.language_requester.clone()/>};
-
-        let language_change_callback = self
-            .link
-            .callback(|selection| Msg::LanguageChanged(selection));
+        debug!("Rendering coster::lib");
 
         let current_language = self.localizer.language_loader().current_language();
 
         let route_match_node = match &self.route {
             Some(AppRoute::CostingTab) => {
                 debug!(target: "gui::router", "Detected CostingTab Route: {:?}", self.route);
-                html! {
-                    <Page
-                        localizer=self.localizer.clone()
-                        language_requester=self.language_requester.clone()
-                        on_language_change = language_change_callback>
-                        { centered(html! {<CostingTab lang=current_language/>}) }
-                    </Page>
-                }
-            }
+                self.page(centered(html! {<CostingTab lang=current_language/>}))
+            },
             Some(AppRoute::Index) => {
                 if self.route.as_ref().unwrap().to_string() == "/" {
                     debug!(target: "gui::router", "Detected CostingTabListPage Route: {:?}", self.route);
-                    html! {
-                        <Page
-                            localizer=self.localizer.clone()
-                            language_requester=self.language_requester.clone()
-                            on_language_change = language_change_callback>
-                            { centered(html! {<CostingTabList router=self.router.clone() lang=current_language/>}) }
-                        </Page>
-                    }
+                    self.page(centered(html! {<CostingTabList router=self.router.clone() lang=current_language/>}))
                 } else {
                     debug!(target: "gui::router", "Detected Invalid Route: {:?}", self.route);
                     VNode::from("404")
                 }
             }
+            Some(AppRoute::Help) => {
+                self.page(html!{ <h1 class="title is-1">{ tr!("Help for Coster") }</h1> })
+            },
+            Some(AppRoute::About) => {
+                self.page(html!{ <h1 class="title is-1">{ tr!("About Coster") }</h1> })
+            },
             _ => {
                 debug!(target: "gui::router", "Detected Invalid Route: {:?}", self.route);
                 VNode::from("404")
@@ -175,7 +194,7 @@ impl Component for Model {
         }
     }
 
-    fn change(&mut self, _: Self::Properties) -> ShouldRender {
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
         false
     }
 }

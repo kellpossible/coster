@@ -1,3 +1,5 @@
+use crate::{AppRoute, routing::SwitchRouteService};
+
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -5,6 +7,8 @@ use commodity::CommodityType;
 use costing::{Tab, TabID};
 use tr::tr;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
+use yew::MouseEvent;
+use log::debug;
 
 pub struct CostingTabList {
     tab: RefCell<Tab>,
@@ -12,13 +16,18 @@ pub struct CostingTabList {
     link: ComponentLink<Self>,
 }
 
+pub enum Msg {
+    ToIndex
+}
+
 #[derive(Clone, Properties, PartialEq)]
 pub struct Props {
+    pub router: Rc<RefCell<SwitchRouteService<AppRoute>>>,
     pub lang: unic_langid::LanguageIdentifier,
 }
 
 impl Component for CostingTabList {
-    type Message = ();
+    type Message = Msg;
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
@@ -32,7 +41,14 @@ impl Component for CostingTabList {
         CostingTabList { tab, props, link }
     }
 
-    fn update(&mut self, _: Self::Message) -> ShouldRender {
+    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        match msg {
+            Msg::ToIndex => {
+                //TODO: ensure that anyone using the router is listening 
+                //      to it for events ie: the component in lib!
+                self.props.router.borrow_mut().set_route(AppRoute::CostingTab);
+            }
+        }
         true
     }
 
@@ -48,6 +64,11 @@ impl Component for CostingTabList {
     fn view(&self) -> Html {
         let tab = self.tab.borrow();
 
+        let new_tab_handler = self.link.callback(|msg: MouseEvent| {
+            debug!("Clicked New Tab Button: {:?}", msg);
+            Msg::ToIndex
+        });
+
         html! {
             <nav class="level">
                 <div class="level-left">
@@ -57,7 +78,7 @@ impl Component for CostingTabList {
                 </div>
                 <div class="level-right">
                     <div class="level-item">
-                        <button class="button is-success">{ tr!("New Tab") }</button>
+                        <button class="button is-success" onclick = new_tab_handler>{ tr!("New Tab") }</button>
                     </div>
                 </div>
             </nav>

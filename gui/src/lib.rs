@@ -17,13 +17,15 @@ use log;
 use log::debug;
 use wasm_bindgen::prelude::*;
 
-pub mod bulma;
+mod bulma;
 mod components;
+mod routing;
 
 use components::costing_tab_list::CostingTabList;
 use components::costing_tab::CostingTab;
 use components::pages::{centered, Page};
 use unic_langid::LanguageIdentifier;
+use routing::{SwitchRoute, SwitchRouteService};
 
 #[derive(RustEmbed, I18nEmbed)]
 #[folder = "i18n/mo"]
@@ -45,8 +47,17 @@ pub enum AppRoute {
     Index,
 }
 
+impl SwitchRoute for AppRoute {
+    fn to_string(&self) -> String {
+        match self {
+            AppRoute::Index => "/".to_string(),
+            AppRoute::CostingTab => "/tab".to_string(),
+        }
+    }
+}
+
 pub enum Msg {
-    RouteChanged(Route<()>),
+    RouteChanged(Option<AppRoute>),
     ChangeRoute(AppRoute),
     LanguageChanged(LanguageIdentifier),
 }
@@ -54,8 +65,8 @@ pub enum Msg {
 pub struct Model {
     language_requester: Rc<RefCell<dyn LanguageRequester<'static>>>,
     localizer: Rc<Box<dyn Localizer<'static>>>,
-    route_service: RouteService<()>,
-    route: Route<()>,
+    router: Rc<RefCell<SwitchRouteService<AppRoute>>>,
+    route: Option<AppRoute>,
     link: ComponentLink<Self>,
 }
 
@@ -81,15 +92,18 @@ impl Component for Model {
         let language_requester_rc: Rc<RefCell<dyn LanguageRequester<'static>>> =
             Rc::new(RefCell::from(language_requester));
 
-        let route_service: RouteService<()> = RouteService::new();
+        let mut route_service: SwitchRouteService<AppRoute> = SwitchRouteService::new();
+        let route_callback = link.callback(Msg::RouteChanged);
+        route_service.register_callback(route_callback);
         let route = route_service.get_route();
+        let route_service_rc = Rc::new(RefCell::from(route_service));
 
         debug!(target: "gui::router", "Initial Route: {:?}", route);
 
         Model {
             link,
             language_requester: language_requester_rc,
-            route_service,
+            router: route_service_rc,
             route,
             localizer: localizer_rc,
         }
@@ -97,18 +111,12 @@ impl Component for Model {
 
     fn update(&mut self, msg: Msg) -> ShouldRender {
         match msg {
-            Msg::RouteChanged(route) => self.route = route,
+            Msg::RouteChanged(route) => {
+                debug!("Route changed: {:?}", route);
+                self.route = route
+            },
             Msg::ChangeRoute(route) => {
-                // This might be derived in the future
-                let route_string = match route {
-                    AppRoute::Index => "/".to_string(),
-                    AppRoute::CostingTab => "/tab".to_string(),
-                };
-                self.route_service.set_route(&route_string, ());
-                self.route = Route {
-                    route: route_string,
-                    state: (),
-                };
+                self.router.borrow_mut().set_route(route);
             }
             Msg::LanguageChanged(_) => {}
         }
@@ -124,7 +132,7 @@ impl Component for Model {
 
         let current_language = self.localizer.language_loader().current_language();
 
-        let route_match_node = match AppRoute::switch(self.route.clone()) {
+        let route_match_node = match &self.route {
             Some(AppRoute::CostingTab) => {
                 debug!(target: "gui::router", "Detected CostingTab Route: {:?}", self.route);
                 html! {
@@ -137,14 +145,14 @@ impl Component for Model {
                 }
             }
             Some(AppRoute::Index) => {
-                if self.route.to_string() == "/" {
+                if self.route.as_ref().unwrap().to_string() == "/" {
                     debug!(target: "gui::router", "Detected CostingTabListPage Route: {:?}", self.route);
                     html! {
                         <Page
                             localizer=self.localizer.clone()
                             language_requester=self.language_requester.clone()
                             on_language_change = language_change_callback>
-                            { centered(html! {<CostingTabList lang=current_language/>}) }
+                            { centered(html! {<CostingTabList router=self.router.clone() lang=current_language/>}) }
                         </Page>
                     }
                 } else {

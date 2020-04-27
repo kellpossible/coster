@@ -19,7 +19,7 @@ struct Asset;
 async fn main() {
     pretty_env_logger::init();
     let localhost: [u8; 4] = [0, 0, 0, 0];
-    let port: u16 = 8080;
+    let port: u16 = 8000;
     let addr = (localhost, port);
 
     let routes = api()

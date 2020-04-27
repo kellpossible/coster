@@ -33,7 +33,10 @@ pub fn api() -> BoxedFilter<(impl Reply,)> {
     // let log = warp::log("coster::api");
     warp::path("api")
         .and(warp::path!(String))
-        .map(std::convert::identity)  // Echos the string back in the response body
+        .map(|path| {
+            debug!(target: "coster::api", "api call: {:?}", path);
+            std::convert::identity(path)
+        })  // Echos the string back in the response body
         // .with(log)
         .boxed()
 }

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gui 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-22 16:11+0000\n"
+"POT-Creation-Date: 2020-04-27 06:52+0000\n"
 "PO-Revision-Date: 2020-04-16 19:12+0400\n"
 "Last-Translator: Luke Frisken <l.frisken@gmail.com>\n"
 "Language-Team: Russian <gnu@d07.ru>\n"
@@ -18,18 +18,34 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
 "%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-#: src/components/costing_tab.rs:58
+#: src/components/costing_tab.rs:60
 msgid "Add Expense"
 msgstr "Добавить расходы"
 
-#: src/components/navbar.rs:105
+#: src/components/pages/page.rs:67
+msgid "Coster"
+msgstr "Coster"
+
+#: src/components/costing_tab_list.rs:55
+msgid "Your Tabs"
+msgstr "Ваши вкладки"
+
+#: src/components/costing_tab_list.rs:60
+msgid "New Tab"
+msgstr "Новая вкладка"
+
+#: src/components/navbar.rs:102
 msgid "Help"
 msgstr "Помогите"
 
-#: src/components/navbar.rs:109
+#: src/components/navbar.rs:106
 msgid "About"
 msgstr "Около"
 
-#: src/lib.rs:96
-msgid "Coster"
-msgstr "Coster"
+#: src/lib.rs:126
+msgid "Costing Tab Page"
+msgstr "Страница вкладки Costing"
+
+#: src/lib.rs:134
+msgid "Costing Tab List Page"
+msgstr "Страница со списком затрат"

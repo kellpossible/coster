@@ -4,7 +4,7 @@ use std::rc::Rc;
 use commodity::CommodityType;
 use costing::{Tab, TabID};
 use tr::tr;
-use yew::{html, Callback, Component, ComponentLink, Html, Properties, ShouldRender};
+use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 pub struct CostingTab {
     tab: RefCell<Tab>,

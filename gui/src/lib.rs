@@ -2,9 +2,6 @@
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::atomic::{AtomicBool, Ordering};
-
-use costing::TabID;
 
 use i18n_embed::{
     language_loader, DefaultLocalizer, I18nEmbed, LanguageRequester, Localizer,
@@ -18,15 +15,15 @@ use yew_router::{route::Route, service::RouteService, Switch};
 use lazy_static::lazy_static;
 use log;
 use log::debug;
-use tr::tr;
 use wasm_bindgen::prelude::*;
 
 pub mod bulma;
 mod components;
 
 use components::costing_tab_list::CostingTabList;
-use components::navbar::Navbar;
-use components::pages::{CostingTabListPage, CostingTabPage};
+use components::costing_tab::CostingTab;
+use components::pages::{centered, Page};
+use unic_langid::LanguageIdentifier;
 
 #[derive(RustEmbed, I18nEmbed)]
 #[folder = "i18n/mo"]
@@ -51,6 +48,7 @@ pub enum AppRoute {
 pub enum Msg {
     RouteChanged(Route<()>),
     ChangeRoute(AppRoute),
+    LanguageChanged(LanguageIdentifier),
 }
 
 pub struct Model {
@@ -112,6 +110,7 @@ impl Component for Model {
                     state: (),
                 };
             }
+            Msg::LanguageChanged(_) => {}
         }
         true
     }
@@ -119,24 +118,45 @@ impl Component for Model {
     fn view(&self) -> Html {
         // costing_tab_page_html = html!{<CostingTabPage localizer=self.localizer.clone() language_requester=self.language_requester.clone()/>};
 
+        let language_change_callback = self
+            .link
+            .callback(|selection| Msg::LanguageChanged(selection));
+
+        let current_language = self.localizer.language_loader().current_language();
+
         let route_match_node = match AppRoute::switch(self.route.clone()) {
             Some(AppRoute::CostingTab) => {
                 debug!(target: "gui::router", "Detected CostingTab Route: {:?}", self.route);
-                //TODO: implement Page content properly so CostingTabPage can work
-                html! { <h1>{"CostingTabPage"}</h1> }
-                // html! {<CostingTabPage localizer=self.localizer.clone() language_requester=self.language_requester.clone()/>}
+                html! {
+                    <Page
+                        localizer=self.localizer.clone()
+                        language_requester=self.language_requester.clone()
+                        on_language_change = language_change_callback>
+                        { centered(html! {<CostingTab lang=current_language/>}) }
+                    </Page>
+                }
             }
             Some(AppRoute::Index) => {
-                debug!(target: "gui::router", "Detected CostingTabListPage Route: {:?}", self.route);
-                html! {<CostingTabListPage localizer=self.localizer.clone() language_requester=self.language_requester.clone()/>}
+                if self.route.to_string() == "/" {
+                    debug!(target: "gui::router", "Detected CostingTabListPage Route: {:?}", self.route);
+                    html! {
+                        <Page
+                            localizer=self.localizer.clone()
+                            language_requester=self.language_requester.clone()
+                            on_language_change = language_change_callback>
+                            { centered(html! {<CostingTabList lang=current_language/>}) }
+                        </Page>
+                    }
+                } else {
+                    debug!(target: "gui::router", "Detected Invalid Route: {:?}", self.route);
+                    VNode::from("404")
+                }
             }
             _ => {
-                //TODO: currently this route isn't working
                 debug!(target: "gui::router", "Detected Invalid Route: {:?}", self.route);
                 VNode::from("404")
-            },
+            }
         };
-        
 
         html! {
             <>
@@ -144,21 +164,6 @@ impl Component for Model {
                 route_match_node
             }
             </>
-            // <Router<AppRoute, ()> render = Router::render(|switch: AppRoute| {
-            //
-            // })/>
-            // <Router>
-            //     <Route matcher=route!("/a/{}" CaseInsensitive) render=component::<AModel>() />
-            //     <Route matcher=route!("/c") render=component::<CModel>() />
-            // </Router>
-            // <Router<AppRoute, ()>
-            //     render = Router::render(|switch: AppRoute| {
-            //         match switch {
-            //             AppRoute::CostingTab=> html!{<CostingTabPage localizer=self.localizer.clone() language_requester=self.language_requester.clone()/>},
-            //             AppRoute::Index => html!{<></>},
-            //         }
-            //     })
-            // />
         }
     }
 

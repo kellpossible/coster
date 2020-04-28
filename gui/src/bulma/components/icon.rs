@@ -1,4 +1,3 @@
-use tr::tr;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use crate::bulma::Color;

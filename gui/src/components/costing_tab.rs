@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use commodity::CommodityType;
-use costing::{Tab, TabID};
+use costing::Tab;
 use tr::tr;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 

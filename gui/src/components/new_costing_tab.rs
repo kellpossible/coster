@@ -1,17 +1,13 @@
-use crate::components::select::Select;
-
-use std::cell::RefCell;
-use std::rc::Rc;
+use crate::bulma::components::Select;
 
 use commodity::CommodityType;
-use costing::{Tab};
 use tr::tr;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 pub struct NewCostingTab {
     props: Props,
     link: ComponentLink<Self>,
-    currencies: Vec<CommodityType>
+    currencies: Vec<CommodityType>,
 }
 
 #[derive(Clone, Properties, PartialEq)]
@@ -27,7 +23,11 @@ impl Component for NewCostingTab {
         let mut currencies = commodity::all_iso4217_currencies();
         currencies.sort_by(|a, b| a.id.cmp(&b.id));
 
-        NewCostingTab { props, link, currencies}
+        NewCostingTab {
+            props,
+            link,
+            currencies,
+        }
     }
 
     fn update(&mut self, _: Self::Message) -> ShouldRender {

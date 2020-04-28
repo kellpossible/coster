@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use commodity::CommodityType;
-use costing::{Tab, TabID};
+use costing::Tab;
 use log::debug;
 use tr::tr;
 use yew::MouseEvent;

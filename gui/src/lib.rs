@@ -10,24 +10,22 @@ use components::new_costing_tab::NewCostingTab;
 use components::pages::{centered, Page};
 use routing::{SwitchRoute, SwitchRouteService};
 
-use std::cell::RefCell;
-use std::{fmt::Debug, rc::Rc};
 use i18n_embed::{
     language_loader, DefaultLocalizer, I18nEmbed, LanguageRequester, Localizer,
     WebLanguageRequester,
 };
-use rust_embed::RustEmbed;
-use yew::virtual_dom::VNode;
-use yew::{html, Component, ComponentLink, Html, ShouldRender};
-use yew_router::Switch;
 use lazy_static::lazy_static;
 use log;
 use log::debug;
-use wasm_bindgen::prelude::*;
-use unic_langid::LanguageIdentifier;
+use rust_embed::RustEmbed;
+use std::cell::RefCell;
+use std::{fmt::Debug, rc::Rc};
 use tr::tr;
-
-
+use unic_langid::LanguageIdentifier;
+use wasm_bindgen::prelude::*;
+use yew::virtual_dom::VNode;
+use yew::{html, Component, ComponentLink, Html, ShouldRender};
+use yew_router::Switch;
 
 #[derive(RustEmbed, I18nEmbed)]
 #[folder = "i18n/mo"]
@@ -178,26 +176,28 @@ impl Component for Model {
             Some(AppRoute::CostingTab) => {
                 debug!(target: "gui::router", "Detected CostingTab Route: {:?}", self.route);
                 self.page(centered(html! {<CostingTab lang=current_language/>}))
-            },
+            }
             Some(AppRoute::NewCostingTab) => {
                 debug!(target: "gui::router", "Detected NewCostingTab Route: {:?}", self.route);
                 self.page(centered(html! {<NewCostingTab lang=current_language/>}))
-            },
+            }
             Some(AppRoute::Help) => {
-                self.page(html!{ <h1 class="title is-1">{ tr!("Help for Coster") }</h1> })
-            },
+                self.page(html! { <h1 class="title is-1">{ tr!("Help for Coster") }</h1> })
+            }
             Some(AppRoute::About) => {
-                self.page(html!{ <h1 class="title is-1">{ tr!("About Coster") }</h1> })
-            },
+                self.page(html! { <h1 class="title is-1">{ tr!("About Coster") }</h1> })
+            }
             Some(AppRoute::Index) => {
                 if self.route.as_ref().unwrap().to_string() == "/" {
                     debug!(target: "gui::router", "Detected CostingTabListPage Route: {:?}", self.route);
-                    self.page(centered(html! {<CostingTabList router=self.router.clone() lang=current_language/>}))
+                    self.page(centered(
+                        html! {<CostingTabList router=self.router.clone() lang=current_language/>},
+                    ))
                 } else {
                     debug!(target: "gui::router", "Detected Invalid Route: {:?}", self.route);
                     VNode::from("404")
                 }
-            },
+            }
             _ => {
                 debug!(target: "gui::router", "Detected Invalid Route: {:?}", self.route);
                 VNode::from("404")

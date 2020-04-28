@@ -1,4 +1,4 @@
-use super::select::Select;
+use crate::bulma::components::Select;
 use crate::{bulma, AppRoute, AppRouterRef, LocalizerRef};
 
 use tr::tr;
@@ -49,15 +49,15 @@ impl Component for Navbar {
         match msg {
             Msg::ToggleBurgerMenu => {
                 self.burger_menu_active = !self.burger_menu_active;
-            },
+            }
             Msg::ToIndex => {
                 self.burger_menu_active = false;
                 self.props.router.borrow_mut().set_route(AppRoute::Index);
-            },
+            }
             Msg::ToAbout => {
                 self.burger_menu_active = false;
                 self.props.router.borrow_mut().set_route(AppRoute::About);
-            },
+            }
             Msg::ToHelp => {
                 self.burger_menu_active = false;
                 self.props.router.borrow_mut().set_route(AppRoute::Help);

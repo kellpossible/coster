@@ -1,4 +1,5 @@
 #[derive(PartialEq, Clone, Debug)]
+#[allow(dead_code)]
 pub enum Color {
     White,
     Black,
@@ -20,6 +21,7 @@ pub enum Color {
     WhiteBis,
 }
 
+#[allow(dead_code)]
 impl Color {
     pub fn to_str(&self) -> &str {
         match self {

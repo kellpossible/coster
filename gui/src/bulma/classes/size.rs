@@ -1,4 +1,5 @@
 #[derive(PartialEq, Clone, Debug)]
+#[allow(dead_code)]
 pub enum Size {
     Small,
     Normal,

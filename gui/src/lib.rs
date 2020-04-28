@@ -6,18 +6,19 @@ mod routing;
 
 use components::costing_tab::CostingTab;
 use components::costing_tab_list::CostingTabList;
+use components::new_costing_tab::NewCostingTab;
 use components::pages::{centered, Page};
 use routing::{SwitchRoute, SwitchRouteService};
 
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::{fmt::Debug, rc::Rc};
 use i18n_embed::{
     language_loader, DefaultLocalizer, I18nEmbed, LanguageRequester, Localizer,
     WebLanguageRequester,
 };
 use rust_embed::RustEmbed;
 use yew::virtual_dom::VNode;
-use yew::{html, Component, ComponentLink, Html, ShouldRender, Properties};
+use yew::{html, Component, ComponentLink, Html, ShouldRender};
 use yew_router::Switch;
 use lazy_static::lazy_static;
 use log;
@@ -40,16 +41,29 @@ lazy_static! {
 
 static TRANSLATIONS: Translations = Translations {};
 
-#[derive(Switch, Debug, Clone)]
+#[derive(Switch, Clone)]
 pub enum AppRoute {
+    /// Matches the `/tab` route.
     #[to = "/tab"]
     CostingTab,
+    /// Matches the `/new` route.
+    #[to = "/new"]
+    NewCostingTab,
+    /// Matches the `/help` route.
     #[to = "/help"]
     Help,
+    /// Matches the `/about` route.
     #[to = "/about"]
     About,
+    /// Matches the `/` route.
     #[to = "/"]
-    Index,
+    Index, // Order is important here, the index needs to be last.
+}
+
+impl Debug for AppRoute {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Route (\"{}\")", self.to_string())
+    }
 }
 
 pub type AppRouterRef = Rc<RefCell<SwitchRouteService<AppRoute>>>;
@@ -59,10 +73,11 @@ pub type LanguageRequesterRef = Rc<RefCell<dyn LanguageRequester<'static>>>;
 impl SwitchRoute for AppRoute {
     fn to_string(&self) -> String {
         match self {
-            AppRoute::Index => "/".to_string(),
             AppRoute::CostingTab => "/tab".to_string(),
+            AppRoute::NewCostingTab => "/new".to_string(),
             AppRoute::Help => "/help".to_string(),
             AppRoute::About => "/about".to_string(),
+            AppRoute::Index => "/".to_string(),
         }
     }
 }
@@ -164,6 +179,16 @@ impl Component for Model {
                 debug!(target: "gui::router", "Detected CostingTab Route: {:?}", self.route);
                 self.page(centered(html! {<CostingTab lang=current_language/>}))
             },
+            Some(AppRoute::NewCostingTab) => {
+                debug!(target: "gui::router", "Detected NewCostingTab Route: {:?}", self.route);
+                self.page(centered(html! {<NewCostingTab lang=current_language/>}))
+            },
+            Some(AppRoute::Help) => {
+                self.page(html!{ <h1 class="title is-1">{ tr!("Help for Coster") }</h1> })
+            },
+            Some(AppRoute::About) => {
+                self.page(html!{ <h1 class="title is-1">{ tr!("About Coster") }</h1> })
+            },
             Some(AppRoute::Index) => {
                 if self.route.as_ref().unwrap().to_string() == "/" {
                     debug!(target: "gui::router", "Detected CostingTabListPage Route: {:?}", self.route);
@@ -172,12 +197,6 @@ impl Component for Model {
                     debug!(target: "gui::router", "Detected Invalid Route: {:?}", self.route);
                     VNode::from("404")
                 }
-            }
-            Some(AppRoute::Help) => {
-                self.page(html!{ <h1 class="title is-1">{ tr!("Help for Coster") }</h1> })
-            },
-            Some(AppRoute::About) => {
-                self.page(html!{ <h1 class="title is-1">{ tr!("About Coster") }</h1> })
             },
             _ => {
                 debug!(target: "gui::router", "Detected Invalid Route: {:?}", self.route);
@@ -194,7 +213,7 @@ impl Component for Model {
         }
     }
 
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+    fn change(&mut self, _: Self::Properties) -> ShouldRender {
         false
     }
 }

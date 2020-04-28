@@ -17,7 +17,7 @@ pub struct CostingTabList {
 }
 
 pub enum Msg {
-    ToIndex,
+    NewCostingTab,
 }
 
 #[derive(Clone, Properties, PartialEq)]
@@ -43,13 +43,13 @@ impl Component for CostingTabList {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::ToIndex => {
+            Msg::NewCostingTab => {
                 //TODO: ensure that anyone using the router is listening
                 //      to it for events ie: the component in lib!
                 self.props
                     .router
                     .borrow_mut()
-                    .set_route(AppRoute::CostingTab);
+                    .set_route(AppRoute::NewCostingTab);
             }
         }
         true
@@ -69,7 +69,7 @@ impl Component for CostingTabList {
 
         let new_tab_handler = self.link.callback(|msg: MouseEvent| {
             debug!("Clicked New Tab Button: {:?}", msg);
-            Msg::ToIndex
+            Msg::NewCostingTab
         });
 
         html! {

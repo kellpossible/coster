@@ -80,6 +80,7 @@ pub struct Props<T: Clone> {
     #[prop_or_default]
     pub size: Size,
     /// Callback to handle changes.
+    #[prop_or_default]
     pub onchange: Callback<T>,
 }
 

@@ -116,12 +116,12 @@ impl Component for Navbar {
                     <div class="navbar-end">
                         <div class="navbar-item">
                             <Select<LanguageIdentifier>
-                            size=bulma::Size::Big
-                            selected=default_language
-                            options=languages
-                            onchange=self.props.on_language_change.clone()
-                            icon_props=select_icon_props
-                            />
+                                size=bulma::Size::Big
+                                selected=default_language
+                                options=languages
+                                onchange=self.props.on_language_change.clone()
+                                icon_props=select_icon_props
+                                />
                         </div>
                     </div>
                 </div>

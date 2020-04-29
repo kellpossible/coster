@@ -1,11 +1,9 @@
 #![recursion_limit = "512"]
 
-#[macro_use]
-extern crate validator_derive;
-
 mod bulma;
 mod components;
 mod routing;
+mod validation;
 
 use components::costing_tab::CostingTab;
 use components::costing_tab_list::CostingTabList;
@@ -182,7 +180,9 @@ impl Component for Model {
             }
             Some(AppRoute::NewCostingTab) => {
                 debug!(target: "gui::router", "Detected NewCostingTab Route: {:?}", self.route);
-                self.page(centered(html! {<NewCostingTab lang=current_language router=self.router.clone()/>}))
+                self.page(centered(
+                    html! {<NewCostingTab lang=current_language router=self.router.clone()/>},
+                ))
             }
             Some(AppRoute::Help) => {
                 self.page(html! { <h1 class="title is-1">{ tr!("Help for Coster") }</h1> })

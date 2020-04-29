@@ -28,8 +28,6 @@ console_log = { version = "0.2.0", features = ["color"], optional = true }
 lazy_static = "1.4.0"
 wasm-bindgen = "0.2"
 web-sys = "0.3"
-validator = "0.10"
-validator_derive = "0.10"
 
 [features]
 default = ["console_log"]

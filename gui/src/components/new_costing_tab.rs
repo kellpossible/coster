@@ -1,30 +1,19 @@
-use crate::{AppRouterRef, bulma::components::Select, AppRoute};
-
+use crate::validation::{Validatable, Validated, ValidationError, ValidationErrors};
+use crate::{bulma::components::Select, AppRoute, AppRouterRef};
 use commodity::CommodityType;
-use tr::tr;
-use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender, ChangeData};
 use log::info;
-use validator::{Validate, ValidationErrors, ValidationError};
+use tr::tr;
+use yew::{html, ChangeData, Component, ComponentLink, Html, Properties, ShouldRender};
 
+#[derive(PartialEq, Clone)]
+enum FormFields {
+    Form,
+    Name,
+}
 
-#[derive(Debug, Validate)]
 pub struct FormData {
-    #[validate(length(min = 1, code="not-empty"))]
     name: String,
     working_currency: CommodityType,
-    validation_errors: ValidationErrors,
-}
-
-fn validation_message(error: &ValidationError) -> String {
-    match error.code.as_ref() {
-        "not-empty" => tr!("Field should not be empty"),
-        _ => error.to_string(),
-    }
-}
-
-fn validation_messages(errors: &Vec<ValidationError>) -> String {
-    let error_strings: Vec<String> = errors.iter().map(|error| validation_message(error)).collect();
-    error_strings.join(" and ")
 }
 
 impl FormData {
@@ -32,24 +21,25 @@ impl FormData {
         Self {
             name: "".to_string(),
             working_currency: CommodityType::from_currency_alpha3("AUD").unwrap(),
-            validation_errors: ValidationErrors::new(),
-        }
-    }
-
-    pub fn run_validation(&mut self) {
-        if let Err(errors) = self.validate() {
-            self.validation_errors = errors;
-        } else if !self.validation_errors.is_empty() {
-            self.validation_errors = ValidationErrors::new();
         }
     }
 }
 
 pub struct NewCostingTab {
-    form: FormData,
+    form: Validated<FormData, FormFields>,
+    validation_errors: ValidationErrors<FormFields>,
     props: Props,
     currencies: Vec<CommodityType>,
     link: ComponentLink<Self>,
+}
+
+impl NewCostingTab {
+    fn validate_form(&mut self) {
+        self.validation_errors = match self.form.validate() {
+            Ok(()) => ValidationErrors::default(),
+            Err(errors) => errors,
+        }
+    }
 }
 
 pub enum Msg {
@@ -73,8 +63,17 @@ impl Component for NewCostingTab {
         let mut currencies = commodity::all_iso4217_currencies();
         currencies.sort_by(|a, b| a.id.cmp(&b.id));
 
+        let form = Validated::new(FormData::new(), FormFields::Form).validator(|form, _| {
+            if form.name.trim().len() == 0 {
+                Err(ValidationError::new(FormFields::Name).with_message(|_| tr!("Cannot be empty")))
+            } else {
+                Ok(())
+            }
+        });
+
         NewCostingTab {
-            form: FormData::new(),
+            form,
+            validation_errors: ValidationErrors::default(),
             props,
             currencies,
             link,
@@ -84,15 +83,15 @@ impl Component for NewCostingTab {
     fn update(&mut self, msg: Msg) -> ShouldRender {
         match msg {
             Msg::ChangeName(name) => {
-                self.form.name = name;
-                self.form.run_validation();
+                self.form.value.name = name.trim().to_string();
+                self.validate_form();
             }
             Msg::ChangeWorkingCurrency(working_currency) => {
-                self.form.working_currency = working_currency;
-                self.form.run_validation();
+                self.form.value.working_currency = working_currency;
+                self.validate_form();
             }
             Msg::Create => {
-                self.form.run_validation();
+                self.validate_form();
             }
             Msg::Cancel => {
                 self.props.router.borrow_mut().set_route(AppRoute::Index);
@@ -111,23 +110,20 @@ impl Component for NewCostingTab {
     }
 
     fn view(&self) -> Html {
-
         let onchange_working_currency = self.link.callback(Msg::ChangeWorkingCurrency);
-        let onchange_name = self.link.callback(|data: ChangeData| {
-            match data {
-                ChangeData::Value(value) => Msg::ChangeName(value),
-                _ => panic!("invalid data type"),
-            }
+        let onchange_name = self.link.callback(|data: ChangeData| match data {
+            ChangeData::Value(value) => Msg::ChangeName(value),
+            _ => panic!("invalid data type"),
         });
         let onclick_cancel = self.link.callback(|_| Msg::Cancel);
         let onclick_create = self.link.callback(|_| Msg::Create);
 
         let mut name_classes = vec!["input".to_string()];
         let mut name_validation_error = html! {};
-        if let Some(errors) = self.form.validation_errors.field_errors().get("name") {
+        if let Some(errors) = self.validation_errors.get(FormFields::Name) {
             name_classes.push("is-danger".to_string());
-            let error_message = validation_messages(errors);
-            name_validation_error = html!{<p class="help is-danger">{ error_message }</p>}
+            let error_message = errors.to_string();
+            name_validation_error = html! {<p class="help is-danger">{ error_message }</p>}
         }
 
         html! {
@@ -153,7 +149,7 @@ impl Component for NewCostingTab {
                             <label class="label">{ tr!("Working Currency") }</label>
                             <div class="control">
                                 <Select<CommodityType>
-                                        selected=self.form.working_currency.clone()
+                                        selected=self.form.value.working_currency.clone()
                                         options=self.currencies.clone()
                                         onchange=onchange_working_currency
                                         />
@@ -162,12 +158,12 @@ impl Component for NewCostingTab {
 
                         <div class="field is-grouped">
                             <div class="control">
-                                <button 
-                                    class="button is-link" 
-                                    onclick=onclick_create 
-                                    disabled=!self.form.validation_errors.is_empty()>
+                                <button
+                                    class="button is-link"
+                                    onclick=onclick_create
+                                    disabled=!self.validation_errors.is_empty()>
                                     { tr!("Create") }
-                                </button> 
+                                </button>
                             </div>
                             <div class="control">
                                 <button class="button is-link is-light" onclick=onclick_cancel>{ tr!("Cancel") }</button>

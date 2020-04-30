@@ -1,6 +1,6 @@
 use crate::{
     bulma::components::{form::field::Field, Select},
-    validation::{ValidationErrors, Validatable},
+    validation::{Validatable, ValidationErrors, Validator, Validation},
 };
 
 use yew::{html, Callback, Component, ComponentLink, Html, Properties, ShouldRender};
@@ -9,14 +9,14 @@ use yewtil::NeqAssign;
 use std::fmt::Display;
 
 #[derive(Debug)]
-pub struct SelectField<F, T>
+pub struct SelectField<Value, Key = &'static str>
 where
-    F: Clone + PartialEq + Field + 'static,
-    T: Clone + PartialEq + Display + 'static,
+    Value: Clone + PartialEq + Display + 'static,
+    Key: Clone + PartialEq + Field + Display + 'static,
 {
-    pub value: Option<T>,
-    pub validation_errors: ValidationErrors<F>,
-    pub props: Props<F, T>,
+    pub value: Option<Value>,
+    pub validation_errors: ValidationErrors<Key>,
+    pub props: Props<Value, Key>,
     link: ComponentLink<Self>,
 }
 
@@ -25,26 +25,28 @@ pub enum Msg<T> {
 }
 
 #[derive(PartialEq, Clone, Properties, Debug)]
-pub struct Props<F, T>
+pub struct Props<Value, Key>
 where
-    F: Clone,
-    T: Clone,
+    Key: Clone,
+    Value: Clone,
 {
-    pub field: F,
+    pub field: Key,
     #[prop_or_default]
-    pub selected: Option<T>,
-    pub options: Vec<T>,
+    pub selected: Option<Value>,
+    pub options: Vec<Value>,
     #[prop_or_default]
-    pub onchange: Callback<T>,
+    pub validator: Validator<Option<Value>, Key>,
+    #[prop_or_default]
+    pub onchange: Callback<Value>,
 }
 
-impl<F, T> Component for SelectField<F, T>
+impl<Value, Key> Component for SelectField<Value, Key>
 where
-    T: Clone + PartialEq + ToString + Display + 'static,
-    F: Clone + PartialEq + Field + 'static,
+    Value: Clone + PartialEq + ToString + Display + 'static,
+    Key: Clone + PartialEq + Display + Field + 'static,
 {
-    type Message = Msg<T>;
-    type Properties = Props<F, T>;
+    type Message = Msg<Value>;
+    type Properties = Props<Value, Key>;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         SelectField {
@@ -55,7 +57,13 @@ where
         }
     }
 
-    fn update(&mut self, _: Self::Message) -> ShouldRender {
+    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        match msg {
+            Msg::Update(value) => {
+                self.value = Some(value);
+                self.validation_errors = self.validate_or_empty();
+            }
+        }
         true
     }
 
@@ -73,7 +81,7 @@ where
             <div class="field">
                 <label class="label">{ self.props.field.label() }</label>
                 <div class="control">
-                    <Select<T>
+                    <Select<Value>
                         selected=self.props.selected.clone()
                         options=self.props.options.clone()
                         div_classes=classes
@@ -90,12 +98,12 @@ where
     }
 }
 
-impl<F, T> Validatable<F> for SelectField<F, T>
+impl<Value, Key> Validatable<Key> for SelectField<Value, Key>
 where
-    F: Clone + PartialEq + Field,
-    T: Clone + PartialEq + Display,
+    Key: Clone + Display + PartialEq + Field,
+    Value: Clone + PartialEq + Display,
 {
-    fn validate(&self) -> Result<(), crate::validation::ValidationErrors<F>> {
-        todo!()
+    fn validate(&self) -> Result<(), ValidationErrors<Key>> {
+        self.props.validator.validate_value(&self.value, &self.props.field)
     }
 }

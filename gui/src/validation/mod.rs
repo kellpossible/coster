@@ -98,6 +98,14 @@ where
     pub fn is_empty(&self) -> bool {
         self.errors.is_empty()
     }
+
+    pub fn extend(&mut self, errors: ValidationErrors<Key>) {
+        self.errors.extend(errors.errors)
+    }
+
+    pub fn len(&self) -> usize {
+        self.errors.len()
+    }
 }
 
 impl<Key> Default for ValidationErrors<Key> {
@@ -113,12 +121,12 @@ impl<Key> Display for ValidationErrors<Key> {
     }
 }
 
-pub type ValidatorFn<Value, Key> = Box<dyn Fn(&Value, &Key) -> Result<(), ValidationError<Key>>>;
+pub type ValidatorFn<Value, Key> = dyn Fn(&Value, &Key) -> Result<(), ValidationError<Key>>;
 
 pub struct Validated<Value, Key = &'static str> {
     pub value: Value,
     pub key: Key,
-    pub validators: Vec<ValidatorFn<Value, Key>>,
+    pub validator: Validator<Value, Key>,
 }
 
 impl<Value, Key> Validated<Value, Key>
@@ -129,21 +137,23 @@ where
         Self {
             value,
             key,
-            validators: Vec::new(),
+            validator: Validator::new(),
         }
-    }
-
-    pub fn validator<F: Fn(&Value, &Key) -> Result<(), ValidationError<Key>> + 'static>(
-        mut self,
-        function: F,
-    ) -> Self {
-        self.validators.push(Box::new(function));
-        self
     }
 }
 
 pub trait Validatable<Key> {
     fn validate(&self) -> Result<(), ValidationErrors<Key>>;
+    fn validate_or_empty(&self) -> ValidationErrors<Key> {
+        match self.validate() {
+            Ok(()) => ValidationErrors::default(),
+            Err(errors) => errors,
+        }
+    }
+}
+
+pub trait Validation<Value, Key> {
+    fn validate_value(&self, value: &Value, key: &Key) -> Result<(), ValidationErrors<Key>>;
 }
 
 impl<Value, Key> Validatable<Key> for Validated<Value, Key>
@@ -151,18 +161,92 @@ where
     Key: PartialEq + Clone,
 {
     fn validate(&self) -> Result<(), ValidationErrors<Key>> {
-        let errors: Vec<ValidationError<Key>> = self
-            .validators
+        self.validator.validate_value(&self.value, &self.key)
+    }
+}
+
+impl<Value, Key> Validation<Value, Key> for dyn Fn(&Value, &Key) -> Result<(), ValidationError<Key>>
+where
+    Key: Clone + PartialEq,
+{
+    fn validate_value(&self, value: &Value, key: &Key) -> Result<(), ValidationErrors<Key>> {
+        (self)(value, key).map_err(|err| ValidationErrors::new(vec![err]))
+    }
+}
+
+#[derive(Clone)]
+pub struct Validator<Value, Key> {
+    pub validations: Vec<Rc<ValidatorFn<Value, Key>>>,
+}
+
+impl<Value, Key> PartialEq for Validator<Value, Key> {
+    fn eq(&self, other: &Self) -> bool {
+        if self.validations.len() == other.validations.len() {
+            let mut all_validations_same = true;
+
+            for (i, this_validation) in self.validations.iter().enumerate() {
+                let other_validation = other.validations.get(i).unwrap();
+
+                let this_validation_ptr = &(**this_validation) as *const ValidatorFn<Value, Key>;
+                let other_validation_ptr = &(**other_validation) as *const ValidatorFn<Value, Key>;
+                all_validations_same &= this_validation_ptr == other_validation_ptr
+            }
+        }
+        false
+    }
+}
+
+impl<Value, Key> Debug for Validator<Value, Key> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let validation_addresses: Vec<String> = self
+            .validations
             .iter()
-            .filter_map(|validator: &ValidatorFn<Value, Key>| {
-                (validator)(&self.value, &self.key).err()
-            })
+            .map(|validation| format!("ValidationFn: {:p}", *validation))
             .collect();
 
+        write!(f, "Validator{{{0}}}", validation_addresses.join(", "))
+    }
+}
+
+impl<Value, Key> Validator<Value, Key> {
+    pub fn new() -> Self {
+        Self {
+            validations: Vec::new(),
+        }
+    }
+
+    pub fn validation<F: Fn(&Value, &Key) -> Result<(), ValidationError<Key>> + 'static>(
+        mut self,
+        function: F,
+    ) -> Self {
+        self.validations.push(Rc::new(function));
+        self
+    }
+}
+
+impl<Value, Key> Validation<Value, Key> for Validator<Value, Key>
+where
+    Key: PartialEq + Clone,
+{
+    fn validate_value(&self, value: &Value, key: &Key) -> Result<(), ValidationErrors<Key>> {
+        let mut errors = ValidationErrors::default();
+
+        for validation in &self.validations {
+            if let Err(new_errors) = validation.validate_value(value, key) {
+                errors.extend(new_errors)
+            }
+        }
+
         if errors.len() > 0 {
-            Err(ValidationErrors::new(errors))
+            Err(errors)
         } else {
             Ok(())
         }
+    }
+}
+
+impl<Value, Key> Default for Validator<Value, Key> {
+    fn default() -> Self {
+        Validator::new()
     }
 }

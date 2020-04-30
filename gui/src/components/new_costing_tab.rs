@@ -1,26 +1,38 @@
 use crate::validation::{Validatable, Validated, ValidationError, ValidationErrors};
 use crate::{bulma::components::Select, AppRoute, AppRouterRef};
 use commodity::CommodityType;
-use log::info;
 use tr::tr;
 use yew::{html, ChangeData, Component, ComponentLink, Html, Properties, ShouldRender};
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Copy)]
 enum FormFields {
     Form,
     Name,
+    WorkingCurrency,
+    Participant(u32),
+}
+
+impl FormFields {
+    fn label(&self) -> String {
+        match self {
+            FormFields::Form => "Form".to_string(),
+            FormFields::Name => tr!("Tab Name"),
+            FormFields::WorkingCurrency => tr!("Working Currency"),
+            FormFields::Participant(n) => tr!("Particapant {0}", n),
+        }
+    }
 }
 
 pub struct FormData {
     name: String,
-    working_currency: CommodityType,
+    working_currency: Option<CommodityType>,
 }
 
 impl FormData {
     pub fn new() -> Self {
         Self {
             name: "".to_string(),
-            working_currency: CommodityType::from_currency_alpha3("AUD").unwrap(),
+            working_currency: None,
         }
     }
 }
@@ -38,6 +50,76 @@ impl NewCostingTab {
         self.validation_errors = match self.form.validate() {
             Ok(()) => ValidationErrors::default(),
             Err(errors) => errors,
+        }
+    }
+
+    fn select_field<T, F>(
+        &self,
+        field: FormFields,
+        selected: Option<T>,
+        options: Vec<T>,
+        onchange: F,
+    ) -> Html
+    where
+        T: ToString + PartialEq + Clone + 'static,
+        F: Fn(T) -> Msg + 'static,
+    {
+        let onchange_callback = self.link.callback(onchange);
+
+        let mut classes = vec![];
+        let validation_error = if let Some(errors) = self.validation_errors.get(&field) {
+            classes.push("is-danger".to_string());
+            let error_message = errors.to_string();
+            html! {<p class="help is-danger">{ error_message }</p>}
+        } else {
+            html! {}
+        };
+
+        html! {
+            <div class="field">
+                <label class="label">{ field.label() }</label>
+                <div class="control">
+                    <Select<T>
+                            selected=selected
+                            options=options
+                            div_classes=classes
+                            onchange=onchange_callback
+                            />
+                </div>
+                { validation_error }
+            </div>
+        }
+    }
+
+    fn input_field<F>(&self, field: FormFields, placeholder: String, onchange: F) -> Html
+    where
+        F: Fn(String) -> Msg + 'static,
+    {
+        let mut classes = vec!["input".to_string()];
+        let mut validation_error = html! {};
+        if let Some(errors) = self.validation_errors.get(&field) {
+            classes.push("is-danger".to_string());
+            let error_message = errors.to_string();
+            validation_error = html! {<p class="help is-danger">{ error_message }</p>}
+        }
+
+        let onchange_callback = self.link.callback(move |data: ChangeData| match data {
+            ChangeData::Value(value) => (onchange)(value),
+            _ => panic!("invalid data type"),
+        });
+
+        html! {
+            <div class="field">
+                <label class="label">{ field.label() }</label>
+                <div class="control">
+                    <input
+                        class=classes
+                        type="text"
+                        placeholder=placeholder
+                        onchange=onchange_callback/>
+                </div>
+                { validation_error }
+            </div>
         }
     }
 }
@@ -63,13 +145,23 @@ impl Component for NewCostingTab {
         let mut currencies = commodity::all_iso4217_currencies();
         currencies.sort_by(|a, b| a.id.cmp(&b.id));
 
-        let form = Validated::new(FormData::new(), FormFields::Form).validator(|form, _| {
-            if form.name.trim().len() == 0 {
-                Err(ValidationError::new(FormFields::Name).with_message(|_| tr!("Cannot be empty")))
-            } else {
-                Ok(())
-            }
-        });
+        let form = Validated::new(FormData::new(), FormFields::Form)
+            .validator(|form, _| {
+                if form.name.trim().len() == 0 {
+                    Err(ValidationError::new(FormFields::Name)
+                        .with_message(|_| tr!("This field cannot be empty")))
+                } else {
+                    Ok(())
+                }
+            })
+            .validator(|form: &FormData, _| {
+                if form.working_currency.is_none() {
+                    Err(ValidationError::new(FormFields::WorkingCurrency)
+                        .with_message(|_| tr!("Please select a working currency")))
+                } else {
+                    Ok(())
+                }
+            });
 
         NewCostingTab {
             form,
@@ -87,7 +179,7 @@ impl Component for NewCostingTab {
                 self.validate_form();
             }
             Msg::ChangeWorkingCurrency(working_currency) => {
-                self.form.value.working_currency = working_currency;
+                self.form.value.working_currency = Some(working_currency);
                 self.validate_form();
             }
             Msg::Create => {
@@ -110,21 +202,17 @@ impl Component for NewCostingTab {
     }
 
     fn view(&self) -> Html {
-        let onchange_working_currency = self.link.callback(Msg::ChangeWorkingCurrency);
-        let onchange_name = self.link.callback(|data: ChangeData| match data {
-            ChangeData::Value(value) => Msg::ChangeName(value),
-            _ => panic!("invalid data type"),
-        });
         let onclick_cancel = self.link.callback(|_| Msg::Cancel);
         let onclick_create = self.link.callback(|_| Msg::Create);
 
-        let mut name_classes = vec!["input".to_string()];
-        let mut name_validation_error = html! {};
-        if let Some(errors) = self.validation_errors.get(FormFields::Name) {
-            name_classes.push("is-danger".to_string());
-            let error_message = errors.to_string();
-            name_validation_error = html! {<p class="help is-danger">{ error_message }</p>}
-        }
+        let name_field =
+            self.input_field(FormFields::Name, tr!("Participant name"), Msg::ChangeName);
+        let working_currency_field = self.select_field(
+            FormFields::WorkingCurrency,
+            None,
+            self.currencies.clone(),
+            Msg::ChangeWorkingCurrency,
+        );
 
         html! {
             <>
@@ -138,23 +226,8 @@ impl Component for NewCostingTab {
 
                 <div class="card">
                     // <form>
-                        <div class="field">
-                            <label class="label">{ tr!("Name") }</label>
-                            <div class="control">
-                                <input class=name_classes type="text" placeholder=tr!("Tab Name") onchange=onchange_name/>
-                            </div>
-                            { name_validation_error }
-                        </div>
-                        <div class="field">
-                            <label class="label">{ tr!("Working Currency") }</label>
-                            <div class="control">
-                                <Select<CommodityType>
-                                        selected=self.form.value.working_currency.clone()
-                                        options=self.currencies.clone()
-                                        onchange=onchange_working_currency
-                                        />
-                            </div>
-                        </div>
+                        { name_field }
+                        { working_currency_field }
 
                         <div class="field is-grouped">
                             <div class="control">

@@ -1,6 +1,7 @@
 use std::{
     error::Error,
-    fmt::{Debug, Display}, rc::Rc,
+    fmt::{Debug, Display},
+    rc::Rc,
 };
 
 pub struct ValidationError<Key> {
@@ -9,7 +10,8 @@ pub struct ValidationError<Key> {
 }
 
 impl<Key> Clone for ValidationError<Key>
-where Key: Clone
+where
+    Key: Clone,
 {
     fn clone(&self) -> Self {
         Self {
@@ -23,7 +25,7 @@ impl<Key> ValidationError<Key> {
     pub fn new(key: Key) -> Self {
         Self {
             key,
-            message: Rc::new(|key| format!("Validation error")),
+            message: Rc::new(|_| format!("Validation error")),
         }
     }
 
@@ -78,11 +80,11 @@ where
         Self { errors }
     }
 
-    pub fn get(&self, key: Key) -> Option<ValidationErrors<Key>> {
+    pub fn get(&self, key: &Key) -> Option<ValidationErrors<Key>> {
         let errors: Vec<ValidationError<Key>> = self
             .errors
             .iter()
-            .filter(|error| error.key == key)
+            .filter(|error| &error.key == key)
             .map(|error| (*error).clone())
             .collect();
 
@@ -119,7 +121,10 @@ pub struct Validated<Value, Key = &'static str> {
     pub validators: Vec<ValidatorFn<Value, Key>>,
 }
 
-impl<Value, Key> Validated<Value, Key> {
+impl<Value, Key> Validated<Value, Key>
+where
+    Key: Clone + 'static,
+{
     pub fn new(value: Value, key: Key) -> Self {
         Self {
             value,
@@ -130,9 +135,9 @@ impl<Value, Key> Validated<Value, Key> {
 
     pub fn validator<F: Fn(&Value, &Key) -> Result<(), ValidationError<Key>> + 'static>(
         mut self,
-        f: F,
+        function: F,
     ) -> Self {
-        self.validators.push(Box::new(f));
+        self.validators.push(Box::new(function));
         self
     }
 }
@@ -149,7 +154,9 @@ where
         let errors: Vec<ValidationError<Key>> = self
             .validators
             .iter()
-            .filter_map(|validator: &ValidatorFn<Value, Key>| (validator)(&self.value, &self.key).err())
+            .filter_map(|validator: &ValidatorFn<Value, Key>| {
+                (validator)(&self.value, &self.key).err()
+            })
             .collect();
 
         if errors.len() > 0 {

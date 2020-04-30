@@ -1,6 +1,7 @@
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use crate::bulma::Color;
+use yewtil::NeqAssign;
 
 #[derive(Debug, Clone)]
 pub struct Icon {
@@ -46,7 +47,7 @@ impl Component for Icon {
         }
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        true
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        self.props.neq_assign(props)
     }
 }

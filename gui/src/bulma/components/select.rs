@@ -65,13 +65,11 @@ pub enum Msg {
 #[derive(PartialEq, Clone, Properties, Debug)]
 pub struct Props<T: Clone> {
     /// Initially selected value.
-    #[prop_or_default]
     pub selected: Option<T>,
     /// Disabled the component's selector.
     #[prop_or_default]
     pub disabled: bool,
     /// Options are available to choose.
-    #[prop_or_default]
     pub options: Vec<T>,
     #[prop_or_default]
     pub div_classes: Vec<String>,

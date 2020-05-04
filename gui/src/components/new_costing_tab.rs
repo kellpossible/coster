@@ -1,10 +1,14 @@
-use crate::validation::{Validatable, Validated, ValidationError, ValidationErrors};
+use crate::bulma::components::Icon;
+use crate::bulma::form::form::{self, Form, FormFieldLink};
+use crate::bulma::{components::SelectField, FieldKey};
+use crate::validation::{Validatable, Validated, ValidationError, ValidationErrors, Validator};
 use crate::{bulma::components::Select, AppRoute, AppRouterRef};
 use commodity::CommodityType;
+use std::fmt::Display;
 use tr::tr;
-use yew::{html, ChangeData, Component, ComponentLink, Html, Properties, ShouldRender};
+use yew::{html, ChangeData, Children, Component, ComponentLink, Html, Properties, ShouldRender};
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Hash, Eq)]
 enum FormFields {
     Form,
     Name,
@@ -12,14 +16,20 @@ enum FormFields {
     Participant(u32),
 }
 
-impl FormFields {
-    fn label(&self) -> String {
+impl FieldKey for FormFields {
+    fn field_label(&self) -> String {
         match self {
             FormFields::Form => "Form".to_string(),
             FormFields::Name => tr!("Tab Name"),
             FormFields::WorkingCurrency => tr!("Working Currency"),
             FormFields::Participant(n) => tr!("Particapant {0}", n),
         }
+    }
+}
+
+impl Display for FormFields {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.field_label())
     }
 }
 
@@ -77,7 +87,7 @@ impl NewCostingTab {
 
         html! {
             <div class="field">
-                <label class="label">{ field.label() }</label>
+                <label class="label">{ field.field_label() }</label>
                 <div class="control">
                     <Select<T>
                             selected=selected
@@ -110,7 +120,7 @@ impl NewCostingTab {
 
         html! {
             <div class="field">
-                <label class="label">{ field.label() }</label>
+                <label class="label">{ field.field_label() }</label>
                 <div class="control">
                     <input
                         class=classes
@@ -145,23 +155,27 @@ impl Component for NewCostingTab {
         let mut currencies = commodity::all_iso4217_currencies();
         currencies.sort_by(|a, b| a.id.cmp(&b.id));
 
-        let form = Validated::new(FormData::new(), FormFields::Form)
-            .validator(|form, _| {
-                if form.name.trim().len() == 0 {
-                    Err(ValidationError::new(FormFields::Name)
-                        .with_message(|_| tr!("This field cannot be empty")))
-                } else {
-                    Ok(())
-                }
-            })
-            .validator(|form: &FormData, _| {
-                if form.working_currency.is_none() {
-                    Err(ValidationError::new(FormFields::WorkingCurrency)
-                        .with_message(|_| tr!("Please select a working currency")))
-                } else {
-                    Ok(())
-                }
-            });
+        let form = Validated::new(
+            FormData::new(),
+            FormFields::Form,
+            Validator::new()
+                .validation(|form: &FormData, _| {
+                    if form.name.trim().len() == 0 {
+                        Err(ValidationError::new(FormFields::Name)
+                            .with_message(|_| tr!("This field cannot be empty")))
+                    } else {
+                        Ok(())
+                    }
+                })
+                .validation(|form: &FormData, _| {
+                    if form.working_currency.is_none() {
+                        Err(ValidationError::new(FormFields::WorkingCurrency)
+                            .with_message(|_| tr!("Please select a working currency")))
+                    } else {
+                        Ok(())
+                    }
+                }),
+        );
 
         NewCostingTab {
             form,
@@ -205,14 +219,20 @@ impl Component for NewCostingTab {
         let onclick_cancel = self.link.callback(|_| Msg::Cancel);
         let onclick_create = self.link.callback(|_| Msg::Create);
 
-        let name_field =
-            self.input_field(FormFields::Name, tr!("Participant name"), Msg::ChangeName);
-        let working_currency_field = self.select_field(
-            FormFields::WorkingCurrency,
-            None,
-            self.currencies.clone(),
-            Msg::ChangeWorkingCurrency,
-        );
+        let working_currency_validator: Validator<Option<CommodityType>, FormFields> =
+            Validator::new().validation(|working_currency: &Option<CommodityType>, _| {
+                if working_currency.is_none() {
+                    Err(ValidationError::new(FormFields::WorkingCurrency)
+                        .with_message(|_| tr!("Please select a working currency")))
+                } else {
+                    Ok(())
+                }
+            });
+
+        // let name_field =
+        //     self.input_field(FormFields::Name, tr!("Participant name"), Msg::ChangeName);
+
+        let form_field_link: FormFieldLink<FormFields> = FormFieldLink::new();
 
         html! {
             <>
@@ -226,22 +246,14 @@ impl Component for NewCostingTab {
 
                 <div class="card">
                     // <form>
-                        { name_field }
-                        { working_currency_field }
-
-                        <div class="field is-grouped">
-                            <div class="control">
-                                <button
-                                    class="button is-link"
-                                    onclick=onclick_create
-                                    disabled=!self.validation_errors.is_empty()>
-                                    { tr!("Create") }
-                                </button>
-                            </div>
-                            <div class="control">
-                                <button class="button is-link is-light" onclick=onclick_cancel>{ tr!("Cancel") }</button>
-                            </div>
-                        </div>
+                        <Form<FormFields> field_link = form_field_link.clone()>
+                            <SelectField<CommodityType, FormFields>
+                                field_key = FormFields::WorkingCurrency
+                                options = self.currencies.clone()
+                                validator = working_currency_validator
+                                form_link = form_field_link
+                                />
+                        </Form<FormFields>>
                     // </form>
                 </div>
             </>

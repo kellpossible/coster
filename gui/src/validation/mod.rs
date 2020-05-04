@@ -67,7 +67,7 @@ where
 
 impl<Key> Error for ValidationError<Key> where Key: Debug {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ValidationErrors<Key> {
     pub errors: Vec<ValidationError<Key>>,
 }
@@ -133,11 +133,11 @@ impl<Value, Key> Validated<Value, Key>
 where
     Key: Clone + 'static,
 {
-    pub fn new(value: Value, key: Key) -> Self {
+    pub fn new(value: Value, key: Key, validator: Validator<Value, Key>) -> Self {
         Self {
             value,
             key,
-            validator: Validator::new(),
+            validator,
         }
     }
 }
@@ -186,13 +186,13 @@ impl<Value, Key> PartialEq for Validator<Value, Key> {
 
             for (i, this_validation) in self.validations.iter().enumerate() {
                 let other_validation = other.validations.get(i).unwrap();
-
-                let this_validation_ptr = &(**this_validation) as *const ValidatorFn<Value, Key>;
-                let other_validation_ptr = &(**other_validation) as *const ValidatorFn<Value, Key>;
-                all_validations_same &= this_validation_ptr == other_validation_ptr
+                all_validations_same &= Rc::ptr_eq(this_validation, other_validation);
             }
+
+            all_validations_same
+        } else {
+            false
         }
-        false
     }
 }
 

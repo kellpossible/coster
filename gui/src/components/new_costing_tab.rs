@@ -5,10 +5,10 @@ use crate::bulma::{
 use crate::validation::{ValidationError, Validator};
 use crate::{AppRoute, AppRouterRef};
 use commodity::CommodityType;
+use log::info;
 use std::fmt::Display;
 use tr::tr;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
-use log::info;
 
 #[derive(PartialEq, Clone, Copy, Hash, Eq, Debug)]
 enum FormFields {
@@ -22,7 +22,7 @@ impl FieldKey for FormFields {
         match self {
             FormFields::Name => tr!("Tab Name"),
             FormFields::WorkingCurrency => tr!("Working Currency"),
-            FormFields::Participant(n) => tr!("Particapant {0}", n),
+            FormFields::Participant(n) => tr!("Participant {0}", n),
         }
     }
 }
@@ -120,10 +120,11 @@ impl Component for NewCostingTab {
             .link
             .callback(|name_value: InputValue| Msg::UpdateName(name_value.into_string()));
 
-        let name_validator: Validator<InputValue, FormFields> = 
+        let name_validator: Validator<InputValue, FormFields> =
             Validator::new().validation(|name_value: &InputValue, _| {
                 if name_value.as_string().trim().is_empty() {
-                    Err(ValidationError::new(FormFields::Name).with_message(|_| tr!("This field cannot be empty")))
+                    Err(ValidationError::new(FormFields::Name)
+                        .with_message(|_| tr!("This field cannot be empty")))
                 } else {
                     Ok(())
                 }
@@ -161,14 +162,14 @@ impl Component for NewCostingTab {
                             form_link = form_field_link.clone()
                             placeholder = tr!("Tab Name")
                             validator = name_validator
-                            onchange = onchange_name
+                            // onchange = onchange_name
                             />
                         <SelectField<CommodityType, FormFields>
                             field_key = FormFields::WorkingCurrency
                             options = self.currencies.clone()
                             validator = working_currency_validator
                             form_link = form_field_link.clone()
-                            onchange = onchange_working_currency
+                            // onchange = onchange_working_currency
                             />
                     </Form<FormFields>>
                 </div>

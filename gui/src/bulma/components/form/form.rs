@@ -3,18 +3,11 @@ use crate::{bulma::components::form::field::FieldKey, validation::ValidationErro
 use yew::html::Renderable;
 use yew::{html, Callback, Children, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use log::debug;
-
-use super::{
-    field::{FieldLink, FieldMsg},
-    SelectField,
-};
-use std::{
-    cell::{Ref, RefCell},
-    collections::HashMap,
-    rc::Rc,
-};
+use super::field::{FieldLink, FieldMsg};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use tr::tr;
+use yewtil::NeqAssign;
+use log::debug;
 
 #[derive(Debug)]
 pub struct Form<Key>
@@ -22,6 +15,8 @@ where
     Key: FieldKey + 'static,
 {
     validation_errors: HashMap<Key, ValidationErrors<Key>>,
+    /// Will be true while waiting all fields to perform their validations
+    validating: bool,
     pub props: Props<Key>,
     link: ComponentLink<Self>,
 }
@@ -37,17 +32,29 @@ where
         }
         errors
     }
+
+    pub fn all_validated(&self) -> bool {
+        let mut all_validated = true;
+        let field_keys = self.props.field_link.registered_fields();
+
+        for key in &field_keys {
+            all_validated &= self.validation_errors.contains_key(key)
+        }
+
+        all_validated
+    }
 }
 
 #[derive(Clone)]
 pub enum FormMsg<Key> {
     FieldValueUpdate(Key),
     FieldValidationUpdate(Key, ValidationErrors<Key>),
+    ValidateThenSubmit,
     Submit,
     Cancel,
 }
 
-#[derive(Clone, Properties, Debug)]
+#[derive(Clone, Properties, PartialEq, Debug)]
 pub struct Props<Key>
 where
     Key: FieldKey + 'static,
@@ -69,8 +76,10 @@ where
 
     fn create(props: Props<Key>, link: ComponentLink<Self>) -> Self {
         props.field_link.register_form(link.clone());
+        props.field_link.form_register_debug("Form::create");
         Form {
             validation_errors: HashMap::new(),
+            validating: false,
             props,
             link,
         }
@@ -78,33 +87,42 @@ where
 
     fn update(&mut self, msg: FormMsg<Key>) -> ShouldRender {
         match msg {
-            FormMsg::FieldValueUpdate(_) => {}
-            FormMsg::Submit => {
-                //TODO: there is a bug here, the code assumes the send_mesage execution
-                //      is synchronous. It's not.
-                debug!("Beginning Submitting Form");
+            FormMsg::FieldValueUpdate(_) => true,
+            FormMsg::ValidateThenSubmit => {
+                // Clear the errors to ensure that we re-validate all the fields.
+                self.validation_errors.clear();
+                self.validating = true;
+
                 self.props
                     .field_link
                     .send_all_fields_message(FieldMsg::Validate);
 
-                debug!("Validations Assumed Completed Completing Submitting Form");
-                if self.validation_errors.is_empty() {
+                false
+            }
+            FormMsg::Submit => {
+                if self.validation_errors().is_empty() {
                     self.props.onsubmit.emit(());
                 }
+                true
             }
             FormMsg::Cancel => {
                 self.props.oncancel.emit(());
+                true
             }
             FormMsg::FieldValidationUpdate(key, errors) => {
-                debug!("FieldValidationUpdate({0:?}, errors: {1})", key, errors.len());
                 self.validation_errors.insert(key, errors);
+
+                if self.validating && self.all_validated() {
+                    self.validating = false;
+                    self.link.send_message(FormMsg::Submit)
+                }
+                true
             }
         }
-        true
     }
 
     fn view(&self) -> Html {
-        let onclick_submit = self.link.callback(|_| FormMsg::Submit);
+        let onclick_submit = self.link.callback(|_| FormMsg::ValidateThenSubmit);
         let onclick_cancel = self.link.callback(|_| FormMsg::Cancel);
 
         // TODO: extract the buttons to their own components
@@ -129,7 +147,7 @@ where
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        false
+        self.props.neq_assign(props)
     }
 }
 
@@ -147,13 +165,8 @@ where
     Key: FieldKey + 'static,
 {
     fn eq(&self, other: &FormFieldLink<Key>) -> bool {
-        match *self.form_link.borrow() {
-            Some(_) => match *other.form_link.borrow() {
-                Some(_) => true,
-                None => false,
-            },
-            None => other.form_link.borrow().is_none(),
-        }
+        Rc::ptr_eq(&self.form_link, &other.form_link)
+            && Rc::ptr_eq(&self.field_links, &other.field_links)
     }
 }
 
@@ -168,8 +181,25 @@ where
         }
     }
 
+    pub fn registered_fields(&self) -> Vec<Key> {
+        self.field_links
+            .borrow()
+            .keys()
+            .map(|key| key.clone())
+            .collect()
+    }
+
     pub fn register_form(&self, link: ComponentLink<Form<Key>>) {
+        debug!("Registering ComponentLink<Form>: {:?}", link);
         *self.form_link.borrow_mut() = Some(link);
+    }
+
+    pub fn form_is_registered(&self) -> bool {
+        self.form_link.borrow().is_some()
+    }
+
+    pub fn form_register_debug(&self, scope: &'static str) {
+        debug!("{0} - Form Registered: {1} @ {2:p}", scope, self.form_is_registered(), self.form_link);
     }
 
     pub fn register_field(&self, link: Rc<dyn FieldLink<Key>>) {
@@ -199,14 +229,7 @@ where
         self.form_link
             .borrow()
             .as_ref()
-            .expect("expected form ComponentLink to be registered")
+            .expect("expected ComponentLink<Form> to be registered")
             .send_message(msg);
-    }
-
-    pub fn form_link(&self) -> Ref<ComponentLink<Form<Key>>> {
-        Ref::map(self.form_link.borrow(), |l| match l {
-            Some(l_value) => l_value,
-            None => panic!("expected form ComponentLink to be registered"),
-        })
     }
 }

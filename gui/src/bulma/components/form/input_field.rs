@@ -16,6 +16,7 @@ use std::{
     hash::Hash,
     rc::Rc,
 };
+use log::debug;
 
 #[derive(Debug, Clone)]
 pub enum InputValue {
@@ -25,15 +26,13 @@ pub enum InputValue {
 impl InputValue {
     pub fn as_string(&self) -> &String {
         match self {
-            InputValue::String(value) => &value,
-            _ => panic!("Unexpected InputValue type: {:?}", self),
+            InputValue::String(value) => &value
         }
     }
 
     pub fn into_string(self) -> String {
         match self {
-            InputValue::String(value) => value,
-            _ => panic!("Unexpected InputValue type: {:?}", self),
+            InputValue::String(value) => value
         }
     }
 }
@@ -132,6 +131,7 @@ where
     fn update(&mut self, msg: Msg) -> ShouldRender {
         match msg {
             Msg::Update(value) => {
+                self.props.form_link.form_register_debug("InputField::Update");
                 self.value = value.clone();
                 self.props.onchange.emit(value);
                 self.props
@@ -140,6 +140,7 @@ where
                 self.update(Msg::Validate);
             }
             Msg::Validate => {
+                self.props.form_link.form_register_debug("InputField::Validate");
                 self.validation_errors = self.validate_or_empty();
                 self.props
                     .form_link

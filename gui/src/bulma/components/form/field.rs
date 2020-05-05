@@ -1,4 +1,4 @@
-use crate::validation::{ValidationErrors};
+use crate::validation::ValidationErrors;
 use std::{
     fmt::{Debug, Display},
     hash::Hash,

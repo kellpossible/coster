@@ -5,6 +5,7 @@ use crate::{
 
 use yew::{html, Callback, Component, ComponentLink, Html, Properties, ShouldRender};
 use yewtil::NeqAssign;
+use log::debug;
 
 use super::{
     field::{FieldLink, FieldMsg, FormField},
@@ -13,7 +14,6 @@ use super::{
 use form::FormMsg;
 use std::{
     fmt::{Debug, Display},
-    hash::Hash,
     rc::Rc,
 };
 
@@ -117,6 +117,7 @@ where
     fn update(&mut self, msg: Msg<Value>) -> ShouldRender {
         match msg {
             Msg::Update(value) => {
+                self.props.form_link.form_register_debug("SelectField::Update");
                 self.value = Some(value.clone());
                 self.props.onchange.emit(value);
                 self.props
@@ -125,6 +126,7 @@ where
                 self.update(Msg::Validate);
             }
             Msg::Validate => {
+                self.props.form_link.form_register_debug("SelectField::Validate");
                 self.validation_errors = self.validate_or_empty();
                 self.props
                     .form_link

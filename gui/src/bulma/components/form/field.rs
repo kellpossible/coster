@@ -1,9 +1,13 @@
 use super::form::Form;
 use crate::validation::{ValidationError, ValidationErrors};
-use std::rc::Rc;
+use std::{
+    fmt::{Debug, Display},
+    hash::Hash,
+    rc::Rc,
+};
 use yew::{html::Scope, Component, ComponentLink};
 
-pub trait FieldKey {
+pub trait FieldKey: Clone + PartialEq + Display + Hash + Eq + Debug {
     fn field_label(&self) -> String;
 }
 
@@ -13,12 +17,17 @@ impl FieldKey for &str {
     }
 }
 
-pub trait FormFieldMessage {}
-pub trait FormFieldProperties {}
+pub trait FieldLink<Key: Clone>: Debug {
+    fn field_key(&self) -> &Key;
+    fn send_message(&self, msg: FieldMsg);
+}
 
-pub trait FormField<Value, Key> {
-    fn add_on_change_listener(&mut self, listener: Rc<dyn Fn(&Value)>);
-    fn value(&self) -> &Value;
+pub trait FormField<Key> {
     fn validation_errors(&self) -> &ValidationErrors<Key>;
-    fn key(&self) -> Key;
+    fn field_key(&self) -> &Key;
+}
+
+#[derive(Copy, Clone)]
+pub enum FieldMsg {
+    Validate,
 }

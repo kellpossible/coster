@@ -6,14 +6,22 @@ use crate::{
 use yew::{html, Callback, Component, ComponentLink, Html, Properties, ShouldRender};
 use yewtil::NeqAssign;
 
-use super::form::{self, FormFieldLink};
-use std::{fmt::Display, hash::Hash};
+use super::{
+    field::{FieldLink, FieldMsg, FormField},
+    form::{self, FormFieldLink},
+};
+use form::FormMsg;
+use std::{
+    fmt::{Debug, Display},
+    hash::Hash,
+    rc::Rc,
+};
 
 #[derive(Debug)]
 pub struct SelectField<Value, Key>
 where
     Value: Clone + PartialEq + Display + 'static,
-    Key: Clone + PartialEq + FieldKey + Display + Hash + Eq + 'static,
+    Key: FieldKey + 'static,
 {
     pub value: Option<Value>,
     pub validation_errors: ValidationErrors<Key>,
@@ -21,14 +29,55 @@ where
     link: ComponentLink<Self>,
 }
 
-pub enum Msg<T> {
-    Update(T),
+pub enum Msg<Value> {
+    Update(Value),
+    Validate,
+}
+
+pub struct SelectFieldLink<Value, Key>
+where
+    Value: Clone + PartialEq + Display + 'static,
+    Key: FieldKey + 'static,
+{
+    pub field_key: Key,
+    pub link: ComponentLink<SelectField<Value, Key>>,
+}
+
+impl<Value, Key> Debug for SelectFieldLink<Value, Key>
+where
+    Value: Clone + PartialEq + Display + 'static,
+    Key: FieldKey + 'static,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SelectFieldLink<{0:?}>", self.field_key())
+    }
+}
+
+impl<T> Into<Msg<T>> for FieldMsg {
+    fn into(self) -> Msg<T> {
+        match self {
+            FieldMsg::Validate => Msg::Validate,
+        }
+    }
+}
+
+impl<Value, Key> FieldLink<Key> for SelectFieldLink<Value, Key>
+where
+    Value: Clone + PartialEq + Display + 'static,
+    Key: FieldKey + 'static,
+{
+    fn field_key(&self) -> &Key {
+        &self.field_key
+    }
+    fn send_message(&self, msg: FieldMsg) {
+        self.link.send_message(msg)
+    }
 }
 
 #[derive(PartialEq, Clone, Properties, Debug)]
 pub struct Props<Value, Key>
 where
-    Key: Clone + PartialEq + Display + FieldKey + Hash + Eq + 'static,
+    Key: FieldKey + 'static,
     Value: Clone,
 {
     pub field_key: Key,
@@ -50,7 +99,13 @@ where
     type Message = Msg<Value>;
     type Properties = Props<Value, Key>;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(props: Props<Value, Key>, link: ComponentLink<Self>) -> Self {
+        let field_link = SelectFieldLink {
+            field_key: props.field_key.clone(),
+            link: link.clone(),
+        };
+        props.form_link.register_field(Rc::new(field_link));
+
         SelectField {
             value: None,
             validation_errors: ValidationErrors::default(),
@@ -59,16 +114,21 @@ where
         }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, msg: Msg<Value>) -> ShouldRender {
         match msg {
             Msg::Update(value) => {
                 self.value = Some(value.clone());
-                self.validation_errors = self.validate_or_empty();
                 self.props.onchange.emit(value);
                 self.props
                     .form_link
-                    .link()
-                    .send_message(form::Msg::FieldUpdate(
+                    .send_form_message(FormMsg::FieldValueUpdate(self.props.field_key.clone()));
+                self.update(Msg::Validate);
+            }
+            Msg::Validate => {
+                self.validation_errors = self.validate_or_empty();
+                self.props
+                    .form_link
+                    .send_form_message(FormMsg::FieldValidationUpdate(
                         self.props.field_key.clone(),
                         self.validation_errors.clone(),
                     ))
@@ -113,12 +173,25 @@ where
 
 impl<Value, Key> Validatable<Key> for SelectField<Value, Key>
 where
-    Key: Clone + Display + PartialEq + FieldKey + Hash + Eq,
+    Key: FieldKey,
     Value: Clone + PartialEq + Display,
 {
     fn validate(&self) -> Result<(), ValidationErrors<Key>> {
         self.props
             .validator
             .validate_value(&self.value, &self.props.field_key)
+    }
+}
+
+impl<Value, Key> FormField<Key> for SelectField<Value, Key>
+where
+    Key: FieldKey + 'static,
+    Value: Clone + PartialEq + Display,
+{
+    fn validation_errors(&self) -> &ValidationErrors<Key> {
+        &self.validation_errors
+    }
+    fn field_key(&self) -> &Key {
+        &self.props.field_key
     }
 }

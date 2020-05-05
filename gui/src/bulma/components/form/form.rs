@@ -175,6 +175,7 @@ where
     Key: FieldKey + 'static,
 {
     pub fn new() -> Self {
+        debug!("Creating new FormFieldLink");
         Self {
             form_link: Rc::new(RefCell::new(None)),
             field_links: Rc::new(RefCell::new(HashMap::new())),

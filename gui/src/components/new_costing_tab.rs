@@ -162,7 +162,10 @@ impl Component for NewCostingTab {
                             form_link = form_field_link.clone()
                             placeholder = tr!("Tab Name")
                             validator = name_validator
-                            // onchange = onchange_name
+                            //TODO: this is triggering some kind of rebuild where form_link isn't built... strange.
+                            // Perhaps we somehow need to trigger a refresh of form too when onchange is called for fields
+                            // Why isn't form being rebuilt when form_link is changing?
+                            onchange = onchange_name
                             />
                         <SelectField<CommodityType, FormFields>
                             field_key = FormFields::WorkingCurrency

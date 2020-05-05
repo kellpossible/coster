@@ -1,7 +1,9 @@
 use crate::{bulma::components::form::field::FieldKey, validation::ValidationErrors};
 
 use yew::html::Renderable;
-use yew::{html, Children, Component, ComponentLink, Html, Properties, ShouldRender, Callback};
+use yew::{html, Callback, Children, Component, ComponentLink, Html, Properties, ShouldRender};
+
+use log::debug;
 
 use super::{
     field::{FieldLink, FieldMsg},
@@ -76,12 +78,16 @@ where
 
     fn update(&mut self, msg: FormMsg<Key>) -> ShouldRender {
         match msg {
-            FormMsg::FieldValueUpdate(key) => {}
+            FormMsg::FieldValueUpdate(_) => {}
             FormMsg::Submit => {
+                //TODO: there is a bug here, the code assumes the send_mesage execution
+                //      is synchronous. It's not.
+                debug!("Beginning Submitting Form");
                 self.props
                     .field_link
                     .send_all_fields_message(FieldMsg::Validate);
 
+                debug!("Validations Assumed Completed Completing Submitting Form");
                 if self.validation_errors.is_empty() {
                     self.props.onsubmit.emit(());
                 }
@@ -90,6 +96,7 @@ where
                 self.props.oncancel.emit(());
             }
             FormMsg::FieldValidationUpdate(key, errors) => {
+                debug!("FieldValidationUpdate({0:?}, errors: {1})", key, errors.len());
                 self.validation_errors.insert(key, errors);
             }
         }

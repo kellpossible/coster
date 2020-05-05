@@ -1,16 +1,17 @@
-use crate::bulma::components::Icon;
-use crate::bulma::form::form::{self, Form, FormFieldLink};
-use crate::bulma::{components::SelectField, FieldKey};
-use crate::validation::{Validatable, Validated, ValidationError, ValidationErrors, Validator};
-use crate::{bulma::components::Select, AppRoute, AppRouterRef};
+use crate::bulma::{
+    components::{Form, FormFieldLink, InputField, SelectField},
+    FieldKey, InputValue,
+};
+use crate::validation::{ValidationError, Validator};
+use crate::{AppRoute, AppRouterRef};
 use commodity::CommodityType;
 use std::fmt::Display;
 use tr::tr;
-use yew::{html, ChangeData, Children, Component, ComponentLink, Html, Properties, ShouldRender};
+use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
+use log::info;
 
 #[derive(PartialEq, Clone, Copy, Hash, Eq, Debug)]
 enum FormFields {
-    Form,
     Name,
     WorkingCurrency,
     Participant(u32),
@@ -19,7 +20,6 @@ enum FormFields {
 impl FieldKey for FormFields {
     fn field_label(&self) -> String {
         match self {
-            FormFields::Form => "Form".to_string(),
             FormFields::Name => tr!("Tab Name"),
             FormFields::WorkingCurrency => tr!("Working Currency"),
             FormFields::Participant(n) => tr!("Particapant {0}", n),
@@ -33,6 +33,7 @@ impl Display for FormFields {
     }
 }
 
+#[derive(Debug)]
 pub struct FormData {
     name: String,
     working_currency: Option<CommodityType>,
@@ -49,82 +50,9 @@ impl Default for FormData {
 
 pub struct NewCostingTab {
     form_data: FormData,
-    validation_errors: ValidationErrors<FormFields>,
     props: Props,
     currencies: Vec<CommodityType>,
     link: ComponentLink<Self>,
-}
-
-impl NewCostingTab {
-    fn select_field<T, F>(
-        &self,
-        field: FormFields,
-        selected: Option<T>,
-        options: Vec<T>,
-        onchange: F,
-    ) -> Html
-    where
-        T: ToString + PartialEq + Clone + 'static,
-        F: Fn(T) -> Msg + 'static,
-    {
-        let onchange_callback = self.link.callback(onchange);
-
-        let mut classes = vec![];
-        let validation_error = if let Some(errors) = self.validation_errors.get(&field) {
-            classes.push("is-danger".to_string());
-            let error_message = errors.to_string();
-            html! {<p class="help is-danger">{ error_message }</p>}
-        } else {
-            html! {}
-        };
-
-        html! {
-            <div class="field">
-                <label class="label">{ field.field_label() }</label>
-                <div class="control">
-                    <Select<T>
-                            selected=selected
-                            options=options
-                            div_classes=classes
-                            onchange=onchange_callback
-                            />
-                </div>
-                { validation_error }
-            </div>
-        }
-    }
-
-    fn input_field<F>(&self, field: FormFields, placeholder: String, onchange: F) -> Html
-    where
-        F: Fn(String) -> Msg + 'static,
-    {
-        let mut classes = vec!["input".to_string()];
-        let mut validation_error = html! {};
-        if let Some(errors) = self.validation_errors.get(&field) {
-            classes.push("is-danger".to_string());
-            let error_message = errors.to_string();
-            validation_error = html! {<p class="help is-danger">{ error_message }</p>}
-        }
-
-        let onchange_callback = self.link.callback(move |data: ChangeData| match data {
-            ChangeData::Value(value) => (onchange)(value),
-            _ => panic!("invalid data type"),
-        });
-
-        html! {
-            <div class="field">
-                <label class="label">{ field.field_label() }</label>
-                <div class="control">
-                    <input
-                        class=classes
-                        type="text"
-                        placeholder=placeholder
-                        onchange=onchange_callback/>
-                </div>
-                { validation_error }
-            </div>
-        }
-    }
 }
 
 pub enum Msg {
@@ -150,7 +78,6 @@ impl Component for NewCostingTab {
 
         NewCostingTab {
             form_data: FormData::default(),
-            validation_errors: ValidationErrors::default(),
             props,
             currencies,
             link,
@@ -166,7 +93,8 @@ impl Component for NewCostingTab {
                 self.form_data.working_currency = Some(working_currency);
             }
             Msg::Create => {
-
+                info!("Creating Tab with data: {:?}", self.form_data);
+                self.props.router.borrow_mut().set_route(AppRoute::Index);
             }
             Msg::Cancel => {
                 self.props.router.borrow_mut().set_route(AppRoute::Index);
@@ -188,6 +116,18 @@ impl Component for NewCostingTab {
         let oncancel = self.link.callback(|_| Msg::Cancel);
         let onsubmit = self.link.callback(|_| Msg::Create);
         let onchange_working_currency = self.link.callback(Msg::UpdateWorkingCurrency);
+        let onchange_name = self
+            .link
+            .callback(|name_value: InputValue| Msg::UpdateName(name_value.into_string()));
+
+        let name_validator: Validator<InputValue, FormFields> = 
+            Validator::new().validation(|name_value: &InputValue, _| {
+                if name_value.as_string().trim().is_empty() {
+                    Err(ValidationError::new(FormFields::Name).with_message(|_| tr!("This field cannot be empty")))
+                } else {
+                    Ok(())
+                }
+            });
 
         let working_currency_validator: Validator<Option<CommodityType>, FormFields> =
             Validator::new().validation(|working_currency: &Option<CommodityType>, _| {
@@ -198,9 +138,6 @@ impl Component for NewCostingTab {
                     Ok(())
                 }
             });
-
-        // let name_field =
-        //     self.input_field(FormFields::Name, tr!("Participant name"), Msg::ChangeName);
 
         let form_field_link: FormFieldLink<FormFields> = FormFieldLink::new();
 
@@ -215,20 +152,25 @@ impl Component for NewCostingTab {
                 </nav>
 
                 <div class="card">
-                    // <form>
-                        <Form<FormFields> 
-                            field_link = form_field_link.clone()
-                            oncancel = oncancel
-                            onsubmit = onsubmit>
-                            <SelectField<CommodityType, FormFields>
-                                field_key = FormFields::WorkingCurrency
-                                options = self.currencies.clone()
-                                validator = working_currency_validator
-                                form_link = form_field_link
-                                onchange = onchange_working_currency
-                                />
-                        </Form<FormFields>>
-                    // </form>
+                    <Form<FormFields>
+                        field_link = form_field_link.clone()
+                        oncancel = oncancel
+                        onsubmit = onsubmit>
+                        <InputField<FormFields>
+                            field_key = FormFields::Name
+                            form_link = form_field_link.clone()
+                            placeholder = tr!("Tab Name")
+                            validator = name_validator
+                            onchange = onchange_name
+                            />
+                        <SelectField<CommodityType, FormFields>
+                            field_key = FormFields::WorkingCurrency
+                            options = self.currencies.clone()
+                            validator = working_currency_validator
+                            form_link = form_field_link.clone()
+                            onchange = onchange_working_currency
+                            />
+                    </Form<FormFields>>
                 </div>
             </>
         }

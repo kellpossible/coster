@@ -122,12 +122,14 @@ where
     }
 
     fn view(&self) -> Html {
+        debug!("Form::view");
         let onclick_submit = self.link.callback(|_| FormMsg::ValidateThenSubmit);
         let onclick_cancel = self.link.callback(|_| FormMsg::Cancel);
 
         // TODO: extract the buttons to their own components
         html! {
             <>
+                //TODO: there appears to be a bug where children are not being re-rendered even though their properties have changed.
                 { self.props.children.render() }
                 <div class="field is-grouped">
                     <div class="control">
@@ -146,8 +148,13 @@ where
         }
     }
 
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        self.props.neq_assign(props)
+    fn change(&mut self, props: Props<Key>) -> ShouldRender {
+        if self.props != props {
+            if !props.field_link.form_is_registered() {
+                props.field_link.register_form(self.link.clone())
+            }
+        }
+        true // always true because children properties have changed
     }
 }
 
@@ -199,11 +206,16 @@ where
         self.form_link.borrow().is_some()
     }
 
+    pub fn field_is_registered(&self, key: &Key) -> bool {
+        self.field_links.borrow().contains_key(key)
+    }
+
     pub fn form_register_debug(&self, scope: &'static str) {
         debug!("{0} - Form Registered: {1} @ {2:p}", scope, self.form_is_registered(), self.form_link);
     }
 
     pub fn register_field(&self, link: Rc<dyn FieldLink<Key>>) {
+        debug!("Registering FieldLink<Form>: {:?}", link);
         self.field_links
             .borrow_mut()
             .insert(link.field_key().clone(), link);

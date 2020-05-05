@@ -83,6 +83,8 @@ where
     pub field_key: Key,
     pub form_link: FormFieldLink<Key>,
     #[prop_or_default]
+    pub label: Option<String>,
+    #[prop_or_default]
     pub selected: Option<Value>,
     pub options: Vec<Value>,
     #[prop_or_default]
@@ -140,6 +142,8 @@ where
     }
 
     fn view(&self) -> Html {
+        debug!("SelectField::view");
+
         let mut classes = vec![];
         let validation_error =
             if let Some(errors) = self.validation_errors.get(&self.props.field_key) {
@@ -154,7 +158,15 @@ where
 
         html! {
             <div class="field">
-                <label class="label">{ self.props.field_key.field_label() }</label>
+                { 
+                    if let Some(label) = self.props.label.as_ref() {
+                        html!{
+                            <label class="label">{ label }</label>
+                        }
+                    } else {
+                        html!{}
+                    }
+                }
                 <div class="control">
                     <Select<Value>
                         selected=self.props.selected.clone()
@@ -169,7 +181,22 @@ where
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        self.props.neq_assign(props)
+        debug!("SelectField::change");
+        if self.props != props {
+            if !props.form_link.field_is_registered(&props.field_key) {
+                let field_link = SelectFieldLink {
+                    field_key: props.field_key.clone(),
+                    link: self.link.clone(),
+                };
+                props.form_link.register_field(Rc::new(field_link));
+            }
+            debug!("SelectField::change true");
+            true
+        } else {
+            debug!("SelectField::change false");
+            false
+        }
+        
     }
 }
 

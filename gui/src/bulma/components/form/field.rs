@@ -5,13 +5,11 @@ use std::{
 };
 
 pub trait FieldKey: Clone + PartialEq + Display + Hash + Eq + Debug {
-    fn field_label(&self) -> String;
+
 }
 
 impl FieldKey for &str {
-    fn field_label(&self) -> String {
-        self.to_string()
-    }
+
 }
 
 pub trait FieldLink<Key: Clone>: Debug {

@@ -98,6 +98,8 @@ where
     pub field_key: Key,
     pub form_link: FormFieldLink<Key>,
     #[prop_or_default]
+    pub label: Option<String>,
+    #[prop_or_default]
     pub validator: Validator<InputValue, Key>,
     #[prop_or_default]
     pub onchange: Callback<InputValue>,
@@ -154,6 +156,8 @@ where
     }
 
     fn view(&self) -> Html {
+        debug!("InputField::view");
+
         let mut classes = vec!["input".to_string()];
         let validation_error =
             if let Some(errors) = self.validation_errors.get(&self.props.field_key) {
@@ -171,7 +175,16 @@ where
 
         html! {
             <div class="field">
-                <label class="label">{ self.props.field_key.field_label() }</label>
+                { 
+                    if let Some(label) = self.props.label.as_ref() {
+                        html!{
+                            <label class="label">{ label }</label>
+                        }
+                    } else {
+                        html!{}
+                    }
+                }
+                
                 <div class="control">
                     <input
                         class=classes
@@ -184,8 +197,23 @@ where
         }
     }
 
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        self.props.neq_assign(props)
+    fn change(&mut self, props: Props<Key>) -> ShouldRender {
+        debug!("InputField::change");
+        
+        if self.props != props {
+            if !props.form_link.field_is_registered(&props.field_key) {
+                let field_link = InputFieldLink {
+                    field_key: props.field_key.clone(),
+                    link: self.link.clone(),
+                };
+                props.form_link.register_field(Rc::new(field_link));
+            }
+            debug!("InputField::change true");
+            true
+        } else {
+            debug!("InputField::change false");
+            false
+        }
     }
 }
 

@@ -9,6 +9,7 @@ use log::info;
 use std::fmt::Display;
 use tr::tr;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
+use log::debug;
 
 #[derive(PartialEq, Clone, Copy, Hash, Eq, Debug)]
 enum FormFields {
@@ -18,18 +19,11 @@ enum FormFields {
 }
 
 impl FieldKey for FormFields {
-    fn field_label(&self) -> String {
-        match self {
-            FormFields::Name => tr!("Tab Name"),
-            FormFields::WorkingCurrency => tr!("Working Currency"),
-            FormFields::Participant(n) => tr!("Participant {0}", n),
-        }
-    }
 }
 
 impl Display for FormFields {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.field_label())
+        write!(f, "{:?}", self)
     }
 }
 
@@ -105,6 +99,7 @@ impl Component for NewCostingTab {
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
         if self.props != props {
+            debug!("NewCostingTab::change {0} {1}", self.props.lang, props.lang);
             self.props = props;
             true
         } else {
@@ -142,6 +137,8 @@ impl Component for NewCostingTab {
 
         let form_field_link: FormFieldLink<FormFields> = FormFieldLink::new();
 
+        debug!("NewCostingTab::view");
+
         html! {
             <>
                 <nav class="level">
@@ -159,20 +156,19 @@ impl Component for NewCostingTab {
                         onsubmit = onsubmit>
                         <InputField<FormFields>
                             field_key = FormFields::Name
+                            label = tr!("Tab Name")
                             form_link = form_field_link.clone()
                             placeholder = tr!("Tab Name")
                             validator = name_validator
-                            //TODO: this is triggering some kind of rebuild where form_link isn't built... strange.
-                            // Perhaps we somehow need to trigger a refresh of form too when onchange is called for fields
-                            // Why isn't form being rebuilt when form_link is changing?
                             onchange = onchange_name
                             />
                         <SelectField<CommodityType, FormFields>
                             field_key = FormFields::WorkingCurrency
+                            label = tr!("Working Currency")
                             options = self.currencies.clone()
                             validator = working_currency_validator
                             form_link = form_field_link.clone()
-                            // onchange = onchange_working_currency
+                            onchange = onchange_working_currency
                             />
                     </Form<FormFields>>
                 </div>

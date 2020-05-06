@@ -101,7 +101,6 @@ impl Component for NewCostingTab {
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
         if self.props != props {
-            debug!("NewCostingTab::change old: {0} new: {1}", self.props.lang, props.lang);
             self.props = props;
             true
         } else {
@@ -110,7 +109,6 @@ impl Component for NewCostingTab {
     }
 
     fn view(&self) -> Html {
-        debug!("NewCostingTab::view");
         let oncancel = self.link.callback(|_| Msg::Cancel);
         let onsubmit = self.link.callback(|_| Msg::Create);
         let onchange_working_currency = self.link.callback(Msg::UpdateWorkingCurrency);
@@ -156,19 +154,19 @@ impl Component for NewCostingTab {
                         oncancel = oncancel
                         onsubmit = onsubmit>
                         <InputField<FormFields>
-                            field_key = FormFields::Name
                             label = tab_name_label.clone()
+                            field_key = FormFields::Name
                             form_link = self.form_field_link.clone()
                             placeholder = tab_name_label
                             validator = name_validator
                             onchange = onchange_name
                             />
                         <SelectField<CommodityType, FormFields>
-                            field_key = FormFields::WorkingCurrency
                             label = tr!("Working Currency")
+                            field_key = FormFields::WorkingCurrency
+                            form_link = self.form_field_link.clone()
                             options = self.currencies.clone()
                             validator = working_currency_validator
-                            form_link = self.form_field_link.clone()
                             onchange = onchange_working_currency
                             />
                     </Form<FormFields>>

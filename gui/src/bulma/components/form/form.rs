@@ -7,7 +7,6 @@ use super::field::{FieldLink, FieldMsg};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use tr::tr;
 use yewtil::NeqAssign;
-use log::debug;
 
 #[derive(Debug)]
 pub struct Form<Key>
@@ -17,7 +16,8 @@ where
     validation_errors: HashMap<Key, ValidationErrors<Key>>,
     /// Will be true while waiting all fields to perform their validations
     validating: bool,
-    pub props: Props<Key>,
+    props: Props<Key>,
+    field_link: FormFieldLink<Key>,
     link: ComponentLink<Self>,
 }
 
@@ -75,11 +75,14 @@ where
     type Properties = Props<Key>;
 
     fn create(props: Props<Key>, link: ComponentLink<Self>) -> Self {
-        props.field_link.register_form(link.clone());
+        let field_link = props.field_link.clone();
+        field_link.register_form(link.clone());
+
         Form {
             validation_errors: HashMap::new(),
             validating: false,
             props,
+            field_link,
             link,
         }
     }
@@ -121,14 +124,12 @@ where
     }
 
     fn view(&self) -> Html {
-        debug!("Form::view");
         let onclick_submit = self.link.callback(|_| FormMsg::ValidateThenSubmit);
         let onclick_cancel = self.link.callback(|_| FormMsg::Cancel);
 
         // TODO: extract the buttons to their own components
         html! {
             <>
-                //TODO: there appears to be a bug where children are not being re-rendered even though their properties have changed.
                 { self.props.children.render() }
                 <div class="field is-grouped">
                     <div class="control">
@@ -148,16 +149,18 @@ where
     }
 
     fn change(&mut self, props: Props<Key>) -> ShouldRender {
-        
         if self.props != props {
-            if !props.field_link.form_is_registered() {
-                props.field_link.register_form(self.link.clone())
+            if self.field_link != props.field_link {
+                let field_link = props.field_link.clone();
+                if !field_link.form_is_registered() {
+                    field_link.register_form(self.link.clone())
+                }
+                self.field_link = field_link;
             }
+            
             self.props = props;
-            debug!("Form::change true");
             true
         } else {
-            debug!("Form::change false");
             false
         }
         
@@ -188,7 +191,6 @@ where
     Key: FieldKey + 'static,
 {
     pub fn new() -> Self {
-        debug!("Creating new FormFieldLink");
         Self {
             form_link: Rc::new(RefCell::new(None)),
             field_links: Rc::new(RefCell::new(HashMap::new())),

@@ -14,7 +14,6 @@ use std::{
     fmt::{Debug, Display},
     rc::Rc,
 };
-use log::debug;
 
 #[derive(Debug)]
 pub struct SelectField<Value, Key>
@@ -22,9 +21,10 @@ where
     Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
 {
-    pub value: Option<Value>,
-    pub validation_errors: ValidationErrors<Key>,
-    pub props: Props<Value, Key>,
+    value: Option<Value>,
+    validation_errors: ValidationErrors<Key>,
+    props: Props<Value, Key>,
+    form_link: FormFieldLink<Key>,
     link: ComponentLink<Self>,
 }
 
@@ -101,16 +101,19 @@ where
     type Properties = Props<Value, Key>;
 
     fn create(props: Props<Value, Key>, link: ComponentLink<Self>) -> Self {
+        let form_link = props.form_link.clone();
+
         let field_link = SelectFieldLink {
             field_key: props.field_key.clone(),
             link: link.clone(),
         };
-        props.form_link.register_field(Rc::new(field_link));
+        form_link.register_field(Rc::new(field_link));
 
         SelectField {
             value: None,
             validation_errors: ValidationErrors::default(),
             props,
+            form_link,
             link,
         }
     }
@@ -139,7 +142,6 @@ where
     }
 
     fn view(&self) -> Html {
-        debug!("SelectField::view");
         let mut classes = vec![];
         let validation_error =
             if let Some(errors) = self.validation_errors.get(&self.props.field_key) {
@@ -177,20 +179,23 @@ where
     }
 
     fn change(&mut self, props: Props<Value, Key>) -> ShouldRender {
-        debug!("SelectField::change old: {:?}, new: {:?}", self.props.label, props.label);
         if self.props != props {
-            if !props.form_link.field_is_registered(&props.field_key) {
-                let field_link = SelectFieldLink {
-                    field_key: props.field_key.clone(),
-                    link: self.link.clone(),
-                };
-                props.form_link.register_field(Rc::new(field_link));
+            if self.form_link != props.form_link {
+                let form_link = props.form_link.clone();
+
+                if !form_link.field_is_registered(&props.field_key) {
+                    let field_link = SelectFieldLink {
+                        field_key: props.field_key.clone(),
+                        link: self.link.clone(),
+                    };
+                    form_link.register_field(Rc::new(field_link));
+                }
+
+                self.form_link = form_link;
             }
             self.props = props;
-            debug!("SelectField::change true");
             true
         } else {
-            debug!("SelectField::change false");
             false
         }
         

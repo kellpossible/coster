@@ -15,7 +15,6 @@ use std::{
     hash::Hash,
     rc::Rc,
 };
-use log::debug;
 
 #[derive(Debug, Clone)]
 pub enum InputValue {
@@ -41,9 +40,10 @@ pub struct InputField<Key>
 where
     Key: FieldKey + 'static,
 {
-    pub value: InputValue,
-    pub validation_errors: ValidationErrors<Key>,
-    pub props: Props<Key>,
+    value: InputValue,
+    validation_errors: ValidationErrors<Key>,
+    props: Props<Key>,
+    form_link: FormFieldLink<Key>,
     link: ComponentLink<Self>,
 }
 
@@ -114,17 +114,21 @@ where
     type Properties = Props<Key>;
 
     fn create(props: Props<Key>, link: ComponentLink<Self>) -> Self {
+
+        let form_link = props.form_link.clone();
+
         let field_link = InputFieldLink {
             field_key: props.field_key.clone(),
             link: link.clone(),
         };
 
-        props.form_link.register_field(Rc::new(field_link));
+        form_link.register_field(Rc::new(field_link));
 
         InputField {
             value: InputValue::String(String::default()),
             validation_errors: ValidationErrors::default(),
             props,
+            form_link,
             link,
         }
     }
@@ -153,7 +157,6 @@ where
     }
 
     fn view(&self) -> Html {
-        debug!("InputField::view");
         let mut classes = vec!["input".to_string()];
         let validation_error =
             if let Some(errors) = self.validation_errors.get(&self.props.field_key) {
@@ -168,8 +171,6 @@ where
             ChangeData::Value(value) => Msg::Update(InputValue::String(value)),
             _ => panic!("invalid data type"),
         });
-
-        debug!("InputField::view label: {:?}", self.props.label);
 
         html! {
             <div class="field">
@@ -196,20 +197,23 @@ where
     }
 
     fn change(&mut self, props: Props<Key>) -> ShouldRender {
-        debug!("InputField::change old: {:?}, new: {:?}", self.props.label, props.label);
         if self.props != props {
-            if !props.form_link.field_is_registered(&props.field_key) {
-                let field_link = InputFieldLink {
-                    field_key: props.field_key.clone(),
-                    link: self.link.clone(),
-                };
-                props.form_link.register_field(Rc::new(field_link));
+            if self.form_link != props.form_link {
+                let form_link = props.form_link.clone();
+
+                if !form_link.field_is_registered(&props.field_key) {
+                    let field_link = InputFieldLink {
+                        field_key: props.field_key.clone(),
+                        link: self.link.clone(),
+                    };
+                    form_link.register_field(Rc::new(field_link));
+                }
+
+                self.form_link = form_link;
             }
             self.props = props;
-            debug!("InputField::change true");
             true
         } else {
-            debug!("InputField::change false");
             false
         }
     }

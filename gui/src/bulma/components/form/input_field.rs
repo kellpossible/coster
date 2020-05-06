@@ -15,6 +15,7 @@ use std::{
     hash::Hash,
     rc::Rc,
 };
+use log::debug;
 
 #[derive(Debug, Clone)]
 pub enum InputValue {
@@ -152,6 +153,7 @@ where
     }
 
     fn view(&self) -> Html {
+        debug!("InputField::view");
         let mut classes = vec!["input".to_string()];
         let validation_error =
             if let Some(errors) = self.validation_errors.get(&self.props.field_key) {
@@ -166,6 +168,8 @@ where
             ChangeData::Value(value) => Msg::Update(InputValue::String(value)),
             _ => panic!("invalid data type"),
         });
+
+        debug!("InputField::view label: {:?}", self.props.label);
 
         html! {
             <div class="field">
@@ -192,6 +196,7 @@ where
     }
 
     fn change(&mut self, props: Props<Key>) -> ShouldRender {
+        debug!("InputField::change old: {:?}, new: {:?}", self.props.label, props.label);
         if self.props != props {
             if !props.form_link.field_is_registered(&props.field_key) {
                 let field_link = InputFieldLink {
@@ -199,10 +204,12 @@ where
                     link: self.link.clone(),
                 };
                 props.form_link.register_field(Rc::new(field_link));
-                self.props = props;
             }
+            self.props = props;
+            debug!("InputField::change true");
             true
         } else {
+            debug!("InputField::change false");
             false
         }
     }

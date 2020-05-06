@@ -148,13 +148,16 @@ where
     }
 
     fn change(&mut self, props: Props<Key>) -> ShouldRender {
+        
         if self.props != props {
             if !props.field_link.form_is_registered() {
                 props.field_link.register_form(self.link.clone())
             }
             self.props = props;
+            debug!("Form::change true");
             true
         } else {
+            debug!("Form::change false");
             false
         }
         

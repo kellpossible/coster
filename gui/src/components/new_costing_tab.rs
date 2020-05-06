@@ -47,6 +47,7 @@ pub struct NewCostingTab {
     props: Props,
     currencies: Vec<CommodityType>,
     link: ComponentLink<Self>,
+    form_field_link: FormFieldLink<FormFields>,
 }
 
 pub enum Msg {
@@ -75,6 +76,7 @@ impl Component for NewCostingTab {
             props,
             currencies,
             link,
+            form_field_link: FormFieldLink::new(),
         }
     }
 
@@ -99,7 +101,7 @@ impl Component for NewCostingTab {
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
         if self.props != props {
-            debug!("NewCostingTab::change {0} {1}", self.props.lang, props.lang);
+            debug!("NewCostingTab::change old: {0} new: {1}", self.props.lang, props.lang);
             self.props = props;
             true
         } else {
@@ -135,12 +137,8 @@ impl Component for NewCostingTab {
                     Ok(())
                 }
             });
-
-        let form_field_link: FormFieldLink<FormFields> = FormFieldLink::new();
-
         
         let tab_name_label = tr!("Tab Name");
-        let working_currency_label = tr!("Working Currency");
 
         html! {
             <>
@@ -154,23 +152,23 @@ impl Component for NewCostingTab {
 
                 <div class="card">
                     <Form<FormFields>
-                        field_link = form_field_link.clone()
+                        field_link = self.form_field_link.clone()
                         oncancel = oncancel
                         onsubmit = onsubmit>
                         <InputField<FormFields>
                             field_key = FormFields::Name
                             label = tab_name_label.clone()
-                            form_link = form_field_link.clone()
+                            form_link = self.form_field_link.clone()
                             placeholder = tab_name_label
                             validator = name_validator
                             onchange = onchange_name
                             />
                         <SelectField<CommodityType, FormFields>
                             field_key = FormFields::WorkingCurrency
-                            label = working_currency_label
+                            label = tr!("Working Currency")
                             options = self.currencies.clone()
                             validator = working_currency_validator
-                            form_link = form_field_link.clone()
+                            form_link = self.form_field_link.clone()
                             onchange = onchange_working_currency
                             />
                     </Form<FormFields>>

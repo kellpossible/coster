@@ -14,6 +14,7 @@ use std::{
     fmt::{Debug, Display},
     rc::Rc,
 };
+use log::debug;
 
 #[derive(Debug)]
 pub struct SelectField<Value, Key>
@@ -138,6 +139,7 @@ where
     }
 
     fn view(&self) -> Html {
+        debug!("SelectField::view");
         let mut classes = vec![];
         let validation_error =
             if let Some(errors) = self.validation_errors.get(&self.props.field_key) {
@@ -175,6 +177,7 @@ where
     }
 
     fn change(&mut self, props: Props<Value, Key>) -> ShouldRender {
+        debug!("SelectField::change old: {:?}, new: {:?}", self.props.label, props.label);
         if self.props != props {
             if !props.form_link.field_is_registered(&props.field_key) {
                 let field_link = SelectFieldLink {
@@ -182,10 +185,12 @@ where
                     link: self.link.clone(),
                 };
                 props.form_link.register_field(Rc::new(field_link));
-                self.props = props;
             }
+            self.props = props;
+            debug!("SelectField::change true");
             true
         } else {
+            debug!("SelectField::change false");
             false
         }
         

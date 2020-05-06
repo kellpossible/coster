@@ -19,6 +19,7 @@ costing = { path = "../costing" }
 yew = "0.15.0"
 yew-router = "0.12.1"
 yewtil = { git = "https://github.com/yewstack/yew.git", default-features = false, features = ["neq"] }
+yew-state = { path = "yew-state" }
 tr = { version = "0.1", default-features = false, features = ["gettext"] }
 rust-embed = "5.5.1"
 i18n-embed = { path = "../../cargo-i18n/i18n-embed", version = "0.4.0", features = ["web-sys-requester"] }
@@ -36,6 +37,9 @@ default = ["logging"]
 logging = ["wasm-logger"]
 
 [workspace]
+members = [
+    "yew-state"
+]
 
 # [profile.release]
 # lto = true

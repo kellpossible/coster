@@ -1,0 +1,17 @@
+[package]
+name = "yew-state"
+version = "0.1.0"
+authors = ["Luke Frisken <l.frisken@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+yew = { version = "0.15", optional = true }
+
+[features]
+default = ["yew"]
+
+[dev-dependencies]
+thiserror = "1"
+anyhow = "1"

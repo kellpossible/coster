@@ -435,6 +435,7 @@ dependencies = [
  "web-sys",
  "yew 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "yew-router",
+ "yew-state",
  "yewtil",
 ]
 
@@ -1238,6 +1239,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3c4708315d2325182b9c3d8c9805e4f5293baf6e6103f9cd4f989ddedca192a"
 dependencies = [
  "nom",
+]
+
+[[package]]
+name = "yew-state"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "thiserror",
+ "yew 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

@@ -28,6 +28,8 @@ use wasm_bindgen::prelude::*;
 use yew::virtual_dom::VNode;
 use yew::{html, Component, ComponentLink, Html, ShouldRender, services::{storage, StorageService}};
 use yew_router::Switch;
+use redux_rs::{Subscription, Store};
+use state::{State, StateStore};
 
 #[derive(RustEmbed, I18nEmbed)]
 #[folder = "i18n/mo"]
@@ -86,6 +88,7 @@ pub enum Msg {
     RouteChanged(Option<AppRoute>),
     ChangeRoute(AppRoute),
     LanguageChanged(LanguageIdentifier),
+    StateChanged,
 }
 
 pub struct Model {
@@ -94,6 +97,7 @@ pub struct Model {
     router: AppRouterRef,
     route: Option<AppRoute>,
     link: ComponentLink<Self>,
+    state_store: StateStore,
     storage: Option<StorageService>,
 }
 
@@ -120,9 +124,16 @@ impl Component for Model {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let mut language_requester: WebLanguageRequester<'static> = WebLanguageRequester::new();
+        let mut state_store = Store::new(state::reducer, state::State::default());
 
-        // language_requester.set_languge_override(Some("en-GB".parse().unwrap())).unwrap();
+        let state_change_callback = link.callback(|state: &State| Msg::StateChanged);
+
+        let state_change_listener: Subscription<State> = move |state: &State| {
+            state_change_callback.emit(state);
+        };
+        state_store.subscribe(state_change_listener);
+
+        let mut language_requester: WebLanguageRequester<'static> = WebLanguageRequester::new();
 
         let localizer = DefaultLocalizer::new(&*LANGUAGE_LOADER, &TRANSLATIONS);
 
@@ -168,6 +179,7 @@ impl Component for Model {
             router: route_service_rc,
             route,
             localizer: localizer_rc,
+            state_store: Rc::new(RefCell::new(state_store)),
             storage,
         }
     }

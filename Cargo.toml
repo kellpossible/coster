@@ -37,3 +37,7 @@ tr = { version = "0.1", default-features = false, features = ["gettext"] }
 members = [
     "costing",
 ]
+
+exclude = [
+    "gui"
+]

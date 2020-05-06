@@ -4,7 +4,6 @@ use crate::{
 };
 
 use yew::{html, Callback, ChangeData, Component, ComponentLink, Html, Properties, ShouldRender};
-use yewtil::NeqAssign;
 
 use super::{
     field::{FieldLink, FieldMsg, FormField},
@@ -16,7 +15,6 @@ use std::{
     hash::Hash,
     rc::Rc,
 };
-use log::debug;
 
 #[derive(Debug, Clone)]
 pub enum InputValue {
@@ -133,7 +131,6 @@ where
     fn update(&mut self, msg: Msg) -> ShouldRender {
         match msg {
             Msg::Update(value) => {
-                self.props.form_link.form_register_debug("InputField::Update");
                 self.value = value.clone();
                 self.props.onchange.emit(value);
                 self.props
@@ -142,7 +139,6 @@ where
                 self.update(Msg::Validate);
             }
             Msg::Validate => {
-                self.props.form_link.form_register_debug("InputField::Validate");
                 self.validation_errors = self.validate_or_empty();
                 self.props
                     .form_link
@@ -156,8 +152,6 @@ where
     }
 
     fn view(&self) -> Html {
-        debug!("InputField::view");
-
         let mut classes = vec!["input".to_string()];
         let validation_error =
             if let Some(errors) = self.validation_errors.get(&self.props.field_key) {
@@ -198,8 +192,6 @@ where
     }
 
     fn change(&mut self, props: Props<Key>) -> ShouldRender {
-        debug!("InputField::change");
-        
         if self.props != props {
             if !props.form_link.field_is_registered(&props.field_key) {
                 let field_link = InputFieldLink {
@@ -207,11 +199,10 @@ where
                     link: self.link.clone(),
                 };
                 props.form_link.register_field(Rc::new(field_link));
+                self.props = props;
             }
-            debug!("InputField::change true");
             true
         } else {
-            debug!("InputField::change false");
             false
         }
     }

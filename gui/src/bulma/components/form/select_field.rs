@@ -4,8 +4,6 @@ use crate::{
 };
 
 use yew::{html, Callback, Component, ComponentLink, Html, Properties, ShouldRender};
-use yewtil::NeqAssign;
-use log::debug;
 
 use super::{
     field::{FieldLink, FieldMsg, FormField},
@@ -20,7 +18,7 @@ use std::{
 #[derive(Debug)]
 pub struct SelectField<Value, Key>
 where
-    Value: Clone + PartialEq + Display + 'static,
+    Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
 {
     pub value: Option<Value>,
@@ -36,7 +34,7 @@ pub enum Msg<Value> {
 
 pub struct SelectFieldLink<Value, Key>
 where
-    Value: Clone + PartialEq + Display + 'static,
+    Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
 {
     pub field_key: Key,
@@ -45,7 +43,7 @@ where
 
 impl<Value, Key> Debug for SelectFieldLink<Value, Key>
 where
-    Value: Clone + PartialEq + Display + 'static,
+    Value: Clone + PartialEq + Display + Debug+ 'static,
     Key: FieldKey + 'static,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -63,7 +61,7 @@ impl<T> Into<Msg<T>> for FieldMsg {
 
 impl<Value, Key> FieldLink<Key> for SelectFieldLink<Value, Key>
 where
-    Value: Clone + PartialEq + Display + 'static,
+    Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
 {
     fn field_key(&self) -> &Key {
@@ -95,7 +93,7 @@ where
 
 impl<Value, Key> Component for SelectField<Value, Key>
 where
-    Value: Clone + PartialEq + ToString + Display + 'static,
+    Value: Clone + PartialEq + ToString + Display + Debug + 'static,
     Key: FieldKey + 'static,
 {
     type Message = Msg<Value>;
@@ -119,7 +117,6 @@ where
     fn update(&mut self, msg: Msg<Value>) -> ShouldRender {
         match msg {
             Msg::Update(value) => {
-                self.props.form_link.form_register_debug("SelectField::Update");
                 self.value = Some(value.clone());
                 self.props.onchange.emit(value);
                 self.props
@@ -128,7 +125,6 @@ where
                 self.update(Msg::Validate);
             }
             Msg::Validate => {
-                self.props.form_link.form_register_debug("SelectField::Validate");
                 self.validation_errors = self.validate_or_empty();
                 self.props
                     .form_link
@@ -142,8 +138,6 @@ where
     }
 
     fn view(&self) -> Html {
-        debug!("SelectField::view");
-
         let mut classes = vec![];
         let validation_error =
             if let Some(errors) = self.validation_errors.get(&self.props.field_key) {
@@ -180,8 +174,7 @@ where
         }
     }
 
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        debug!("SelectField::change");
+    fn change(&mut self, props: Props<Value, Key>) -> ShouldRender {
         if self.props != props {
             if !props.form_link.field_is_registered(&props.field_key) {
                 let field_link = SelectFieldLink {
@@ -189,11 +182,10 @@ where
                     link: self.link.clone(),
                 };
                 props.form_link.register_field(Rc::new(field_link));
+                self.props = props;
             }
-            debug!("SelectField::change true");
             true
         } else {
-            debug!("SelectField::change false");
             false
         }
         
@@ -203,7 +195,7 @@ where
 impl<Value, Key> Validatable<Key> for SelectField<Value, Key>
 where
     Key: FieldKey,
-    Value: Clone + PartialEq + Display,
+    Value: Clone + PartialEq + Display + Debug,
 {
     fn validate(&self) -> Result<(), ValidationErrors<Key>> {
         self.props
@@ -215,7 +207,7 @@ where
 impl<Value, Key> FormField<Key> for SelectField<Value, Key>
 where
     Key: FieldKey + 'static,
-    Value: Clone + PartialEq + Display,
+    Value: Clone + PartialEq + Display + Debug,
 {
     fn validation_errors(&self) -> &ValidationErrors<Key> {
         &self.validation_errors

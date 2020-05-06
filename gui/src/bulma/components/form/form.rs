@@ -76,7 +76,6 @@ where
 
     fn create(props: Props<Key>, link: ComponentLink<Self>) -> Self {
         props.field_link.register_form(link.clone());
-        props.field_link.form_register_debug("Form::create");
         Form {
             validation_errors: HashMap::new(),
             validating: false,
@@ -153,8 +152,12 @@ where
             if !props.field_link.form_is_registered() {
                 props.field_link.register_form(self.link.clone())
             }
+            self.props = props;
+            true
+        } else {
+            false
         }
-        true // always true because children properties have changed
+        
     }
 }
 
@@ -198,7 +201,6 @@ where
     }
 
     pub fn register_form(&self, link: ComponentLink<Form<Key>>) {
-        debug!("Registering ComponentLink<Form>: {:?}", link);
         *self.form_link.borrow_mut() = Some(link);
     }
 
@@ -210,12 +212,7 @@ where
         self.field_links.borrow().contains_key(key)
     }
 
-    pub fn form_register_debug(&self, scope: &'static str) {
-        debug!("{0} - Form Registered: {1} @ {2:p}", scope, self.form_is_registered(), self.form_link);
-    }
-
     pub fn register_field(&self, link: Rc<dyn FieldLink<Key>>) {
-        debug!("Registering FieldLink<Form>: {:?}", link);
         self.field_links
             .borrow_mut()
             .insert(link.field_key().clone(), link);

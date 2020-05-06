@@ -15,7 +15,7 @@ use log::debug;
 enum FormFields {
     Name,
     WorkingCurrency,
-    Participant(u32),
+    // Participant(u32),
 }
 
 impl FieldKey for FormFields {
@@ -108,6 +108,7 @@ impl Component for NewCostingTab {
     }
 
     fn view(&self) -> Html {
+        debug!("NewCostingTab::view");
         let oncancel = self.link.callback(|_| Msg::Cancel);
         let onsubmit = self.link.callback(|_| Msg::Create);
         let onchange_working_currency = self.link.callback(Msg::UpdateWorkingCurrency);
@@ -137,7 +138,9 @@ impl Component for NewCostingTab {
 
         let form_field_link: FormFieldLink<FormFields> = FormFieldLink::new();
 
-        debug!("NewCostingTab::view");
+        
+        let tab_name_label = tr!("Tab Name");
+        let working_currency_label = tr!("Working Currency");
 
         html! {
             <>
@@ -156,15 +159,15 @@ impl Component for NewCostingTab {
                         onsubmit = onsubmit>
                         <InputField<FormFields>
                             field_key = FormFields::Name
-                            label = tr!("Tab Name")
+                            label = tab_name_label.clone()
                             form_link = form_field_link.clone()
-                            placeholder = tr!("Tab Name")
+                            placeholder = tab_name_label
                             validator = name_validator
                             onchange = onchange_name
                             />
                         <SelectField<CommodityType, FormFields>
                             field_key = FormFields::WorkingCurrency
-                            label = tr!("Working Currency")
+                            label = working_currency_label
                             options = self.currencies.clone()
                             validator = working_currency_validator
                             form_link = form_field_link.clone()

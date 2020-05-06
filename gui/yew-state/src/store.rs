@@ -72,9 +72,9 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{Callback, Reducer, Store};
+    use anyhow;
     use std::{cell::RefCell, rc::Rc};
     use thiserror::Error;
-    use anyhow;
 
     #[derive(Debug, PartialEq)]
     struct TestState {
@@ -104,7 +104,7 @@ mod tests {
     #[derive(Error, Debug, PartialEq)]
     enum TestError {
         #[error("A test Error")]
-        Error
+        Error,
     }
 
     #[test]
@@ -137,9 +137,8 @@ mod tests {
         let initial_state = TestState { counter: 0 };
         let store = Rc::new(RefCell::new(Store::new(TestReducer {}, initial_state)));
 
-        let callback: Callback<TestState, anyhow::Error> = Rc::new(move |_: Rc<TestState>| {
-            Err(anyhow::anyhow!("Test Error"))
-        });
+        let callback: Callback<TestState, anyhow::Error> =
+            Rc::new(move |_: Rc<TestState>| Err(anyhow::anyhow!("Test Error")));
 
         store.borrow_mut().subscribe(Rc::downgrade(&callback));
 
@@ -160,9 +159,8 @@ mod tests {
         let initial_state = TestState { counter: 0 };
         let store = Rc::new(RefCell::new(Store::new(TestReducer {}, initial_state)));
 
-        let callback: Callback<TestState, TestError> = Rc::new(move |_: Rc<TestState>| {
-            Err(TestError::Error)
-        });
+        let callback: Callback<TestState, TestError> =
+            Rc::new(move |_: Rc<TestState>| Err(TestError::Error));
 
         store.borrow_mut().subscribe(Rc::downgrade(&callback));
 

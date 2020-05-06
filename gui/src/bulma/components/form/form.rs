@@ -132,8 +132,7 @@ where
 
         let submit_button_label = self.props.submit_button_label.as_ref().map_or("Submit".to_string(), |label| label.clone());
         let cancel_button_label = self.props.cancel_button_label.as_ref().map_or("Cancel".to_string(), |label| label.clone());
-        
-        // TODO: extract the buttons to their own components
+
         html! {
             <>
                 { self.props.children.render() }

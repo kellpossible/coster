@@ -10,7 +10,8 @@ use toml;
 use tr::tr;
 
 fn main() {
-    build_wasm_frontend().expect("error while building the wasm front-end");
+    //TODO: fix this disabled building of the wasm frontend
+    // build_wasm_frontend().expect("error while building the wasm front-end");
 }
 
 #[derive(Deserialize)]

@@ -67,7 +67,7 @@ where
 
 impl<Key> Error for ValidationError<Key> where Key: Debug {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ValidationErrors<Key> {
     pub errors: Vec<ValidationError<Key>>,
 }
@@ -123,25 +123,6 @@ impl<Key> Display for ValidationErrors<Key> {
 
 pub type ValidatorFn<Value, Key> = dyn Fn(&Value, &Key) -> Result<(), ValidationError<Key>>;
 
-pub struct Validated<Value, Key = &'static str> {
-    pub value: Value,
-    pub key: Key,
-    pub validator: Validator<Value, Key>,
-}
-
-impl<Value, Key> Validated<Value, Key>
-where
-    Key: Clone + 'static,
-{
-    pub fn new(value: Value, key: Key) -> Self {
-        Self {
-            value,
-            key,
-            validator: Validator::new(),
-        }
-    }
-}
-
 pub trait Validatable<Key> {
     fn validate(&self) -> Result<(), ValidationErrors<Key>>;
     fn validate_or_empty(&self) -> ValidationErrors<Key> {
@@ -154,15 +135,6 @@ pub trait Validatable<Key> {
 
 pub trait Validation<Value, Key> {
     fn validate_value(&self, value: &Value, key: &Key) -> Result<(), ValidationErrors<Key>>;
-}
-
-impl<Value, Key> Validatable<Key> for Validated<Value, Key>
-where
-    Key: PartialEq + Clone,
-{
-    fn validate(&self) -> Result<(), ValidationErrors<Key>> {
-        self.validator.validate_value(&self.value, &self.key)
-    }
 }
 
 impl<Value, Key> Validation<Value, Key> for dyn Fn(&Value, &Key) -> Result<(), ValidationError<Key>>
@@ -186,13 +158,13 @@ impl<Value, Key> PartialEq for Validator<Value, Key> {
 
             for (i, this_validation) in self.validations.iter().enumerate() {
                 let other_validation = other.validations.get(i).unwrap();
-
-                let this_validation_ptr = &(**this_validation) as *const ValidatorFn<Value, Key>;
-                let other_validation_ptr = &(**other_validation) as *const ValidatorFn<Value, Key>;
-                all_validations_same &= this_validation_ptr == other_validation_ptr
+                all_validations_same &= Rc::ptr_eq(this_validation, other_validation);
             }
+
+            all_validations_same
+        } else {
+            false
         }
-        false
     }
 }
 

@@ -90,7 +90,8 @@ impl Component for NewCostingTab {
             }
             Msg::Create => {
                 info!("Creating Tab with data: {:?}", self.form_data);
-                self.props.router.borrow_mut().set_route(AppRoute::Index);
+
+                // self.props.router.borrow_mut().set_route(AppRoute::Index);
             }
             Msg::Cancel => {
                 self.props.router.borrow_mut().set_route(AppRoute::Index);

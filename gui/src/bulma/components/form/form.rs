@@ -5,7 +5,6 @@ use yew::{html, Callback, Children, Component, ComponentLink, Html, Properties, 
 
 use super::field::{FieldLink, FieldMsg};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
-use tr::tr;
 
 #[derive(Debug)]
 pub struct Form<Key>

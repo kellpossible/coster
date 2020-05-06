@@ -4,6 +4,7 @@ mod bulma;
 mod components;
 mod routing;
 mod validation;
+mod state;
 
 use components::costing_tab::CostingTab;
 use components::costing_tab_list::CostingTabList;
@@ -17,7 +18,7 @@ use i18n_embed::{
 };
 use lazy_static::lazy_static;
 use log;
-use log::debug;
+use log::{debug, error};
 use rust_embed::RustEmbed;
 use std::cell::RefCell;
 use std::{fmt::Debug, rc::Rc};
@@ -25,7 +26,7 @@ use tr::tr;
 use unic_langid::LanguageIdentifier;
 use wasm_bindgen::prelude::*;
 use yew::virtual_dom::VNode;
-use yew::{html, Component, ComponentLink, Html, ShouldRender};
+use yew::{html, Component, ComponentLink, Html, ShouldRender, services::{storage, StorageService}};
 use yew_router::Switch;
 
 #[derive(RustEmbed, I18nEmbed)]
@@ -93,6 +94,7 @@ pub struct Model {
     router: AppRouterRef,
     route: Option<AppRoute>,
     link: ComponentLink<Self>,
+    storage: Option<StorageService>,
 }
 
 impl Model {
@@ -127,11 +129,6 @@ impl Component for Model {
         let localizer_rc: Rc<Box<dyn Localizer<'static>>> = Rc::new(Box::from(localizer));
         language_requester.add_listener(&localizer_rc);
 
-        // Manually check the currently requested system language,
-        // and update the listeners. When the system language changes,
-        // this will automatically be triggered.
-        language_requester.poll().unwrap();
-
         let language_requester_rc: Rc<RefCell<dyn LanguageRequester<'static>>> =
             Rc::new(RefCell::from(language_requester));
 
@@ -143,12 +140,35 @@ impl Component for Model {
 
         debug!(target: "gui::router", "Initial Route: {:?}", route);
 
+        let storage = StorageService::new(storage::Area::Local).ok();
+
+        if let Some(storage) = &storage {
+            let selected_language_result: Result<String, anyhow::Error> = storage.restore("user-selected-language");
+
+            match selected_language_result {
+                Ok(selected_language_id) => {
+                    let selected_language: unic_langid::LanguageIdentifier = selected_language_id.parse().unwrap();
+                    debug!("Model::update restoring user-selected-language: {}", selected_language.to_string());
+                    language_requester_rc.borrow_mut().set_languge_override(Some(selected_language)).unwrap();
+                },
+                Err(error) => {
+                    error!("{}", error);
+                }
+            }
+        }
+
+        // Manually check the currently requested system language,
+        // and update the listeners. When the system language changes,
+        // this will automatically be triggered.
+        language_requester_rc.borrow_mut().poll().unwrap();
+
         Model {
             link,
             language_requester: language_requester_rc,
             router: route_service_rc,
             route,
             localizer: localizer_rc,
+            storage,
         }
     }
 
@@ -162,6 +182,10 @@ impl Component for Model {
                 self.router.borrow_mut().set_route(route);
             }
             Msg::LanguageChanged(lang) => {
+                if let Some(storage) = &mut self.storage {
+                    debug!("Model::update storing user-selected-language: {}", lang.to_string());
+                    storage.store("user-selected-language", Ok(lang.to_string()));
+                }
                 debug!("Language changed in coster::lib {:?}", lang);
             }
         }
@@ -224,8 +248,8 @@ impl Component for Model {
 // Called when the wasm module is instantiated
 #[wasm_bindgen(start)]
 pub fn main() -> Result<(), JsValue> {
-    #[cfg(feature = "console_log")]
-    console_log::init_with_level(log::Level::Debug).unwrap();
+    #[cfg(feature = "logging")]
+    wasm_logger::init(wasm_logger::Config::default());
 
     yew::start_app::<Model>();
     Ok(())

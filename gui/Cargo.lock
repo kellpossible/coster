@@ -141,17 +141,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "console_log"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "501a375961cef1a0d44767200e66e4a559283097e91d0730b1d75dfb2f8a1494"
-dependencies = [
- "log",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
 name = "costing"
 version = "0.1.0"
 dependencies = [
@@ -430,11 +419,11 @@ dependencies = [
  "anyhow",
  "chrono",
  "commodity",
- "console_log",
  "costing",
  "i18n-embed",
  "lazy_static",
  "log",
+ "redux-rs",
  "rust-embed",
  "rust_decimal",
  "serde",
@@ -442,6 +431,7 @@ dependencies = [
  "tr",
  "unic-langid",
  "wasm-bindgen",
+ "wasm-logger",
  "web-sys",
  "yew 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "yew-router",
@@ -764,6 +754,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "redux-rs"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44c3d106b84c9044b163a3872ff390fc37d639e685dc17b2f5b078a4f55c5e06"
+
+[[package]]
 name = "rust-embed"
 version = "5.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1061,6 +1057,17 @@ name = "wasm-bindgen-shared"
 version = "0.2.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71f77b681efd0bca6f8ea356cdc2e497538b41d3e2a02afed18ce8f022231d29"
+
+[[package]]
+name = "wasm-logger"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "074649a66bb306c8f2068c9016395fa65d8e08d2affcbf95acf3c24c3ab19718"
+dependencies = [
+ "log",
+ "wasm-bindgen",
+ "web-sys",
+]
 
 [[package]]
 name = "web-sys"

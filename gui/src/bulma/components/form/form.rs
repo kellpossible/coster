@@ -142,7 +142,7 @@ where
                             class="button is-link"
                             onclick=onclick_submit
                             disabled=!self.validation_errors().is_empty()>
-                            { tr!("Create") }
+                            { submit_button_label }
                         </button>
                     </div>
                     <div class="control">

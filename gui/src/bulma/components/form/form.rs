@@ -6,7 +6,6 @@ use yew::{html, Callback, Children, Component, ComponentLink, Html, Properties, 
 use super::field::{FieldLink, FieldMsg};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use tr::tr;
-use yewtil::NeqAssign;
 
 #[derive(Debug)]
 pub struct Form<Key>
@@ -65,6 +64,10 @@ where
     pub oncancel: Callback<()>,
     #[prop_or_default]
     pub onsubmit: Callback<()>,
+    #[prop_or_default]
+    pub cancel_button_label: Option<String>,
+    #[prop_or_default]
+    pub submit_button_label: Option<String>,
 }
 
 impl<Key> Component for Form<Key>
@@ -127,6 +130,9 @@ where
         let onclick_submit = self.link.callback(|_| FormMsg::ValidateThenSubmit);
         let onclick_cancel = self.link.callback(|_| FormMsg::Cancel);
 
+        let submit_button_label = self.props.submit_button_label.as_ref().map_or("Submit".to_string(), |label| label.clone());
+        let cancel_button_label = self.props.cancel_button_label.as_ref().map_or("Cancel".to_string(), |label| label.clone());
+        
         // TODO: extract the buttons to their own components
         html! {
             <>
@@ -141,7 +147,7 @@ where
                         </button>
                     </div>
                     <div class="control">
-                        <button class="button is-link is-light" onclick=onclick_cancel>{ tr!("Cancel") }</button>
+                        <button class="button is-link is-light" onclick=onclick_cancel>{ cancel_button_label }</button>
                     </div>
                 </div>
             </>

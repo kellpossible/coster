@@ -152,7 +152,9 @@ impl Component for NewCostingTab {
                     <Form<FormFields>
                         field_link = self.form_field_link.clone()
                         oncancel = oncancel
-                        onsubmit = onsubmit>
+                        onsubmit = onsubmit
+                        submit_button_label = tr!("Create")
+                        cancel_button_label = tr!("Cancel")>
                         <InputField<FormFields>
                             label = tab_name_label.clone()
                             field_key = FormFields::Name

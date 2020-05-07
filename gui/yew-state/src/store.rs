@@ -1,25 +1,21 @@
-use crate::{reducer, CallbackResults, Listener};
-use std::{marker::PhantomData, rc::Rc};
+use crate::{middleware::ActionMiddleware, CallbackResults, Listener, Reducer};
+use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
-pub struct Store<State, Action, Reducer, Error>
-where
-    Reducer: reducer::Reducer<State, Action>,
-{
-    reducer: Reducer,
+pub struct Store<State, Action, Error> {
+    reducer: Box<dyn Reducer<State, Action>>,
     state: Rc<State>,
     listeners: Vec<Listener<State, Error>>,
+    action_middleware: Vec<Rc<RefCell<dyn ActionMiddleware<State, Action, Error>>>>,
     phantom_action: PhantomData<Action>,
 }
 
-impl<State, Action, Reducer, Error> Store<State, Action, Reducer, Error>
-where
-    Reducer: reducer::Reducer<State, Action>,
-{
-    pub fn new(reducer: Reducer, initial_state: State) -> Self {
+impl<State, Action, Error> Store<State, Action, Error> {
+    pub fn new<R: Reducer<State, Action> + 'static>(reducer: R, initial_state: State) -> Self {
         Self {
-            reducer,
+            reducer: Box::new(reducer),
             state: Rc::new(initial_state),
             listeners: vec![],
+            action_middleware: vec![],
             phantom_action: PhantomData,
         }
     }
@@ -29,8 +25,36 @@ where
     }
 
     pub fn dispatch(&mut self, action: Action) -> CallbackResults<Error> {
+        if self.action_middleware.is_empty() {
+            self.dispatch_reducer(action)
+        } else {
+            self.dispatch_middleware(0, Some(action))
+        }
+    }
+
+    fn dispatch_reducer(&mut self, action: Action) -> CallbackResults<Error> {
         self.state = Rc::new(self.reducer.reduce(&self.state, &action));
         self.notify_listeners()
+    }
+
+    fn dispatch_middleware(
+        &mut self,
+        index: usize,
+        action: Option<Action>,
+    ) -> CallbackResults<Error> {
+        if index == self.action_middleware.len() {
+            return match action {
+                Some(action) => self.dispatch_reducer(action),
+                None => Ok(()),
+            };
+        }
+
+        let next = self.action_middleware[index]
+            .clone()
+            .borrow_mut()
+            .invoke(self, action);
+
+        return self.dispatch_middleware(index + 1, next);
     }
 
     fn notify_listeners(&mut self) -> CallbackResults<Error> {
@@ -67,11 +91,19 @@ where
     pub fn subscribe(&mut self, listener: Listener<State, Error>) {
         self.listeners.push(listener);
     }
+
+    pub fn add_action_middleware<M: ActionMiddleware<State, Action, Error> + 'static>(
+        &mut self,
+        middleware: M,
+    ) {
+        self.action_middleware
+            .push(Rc::new(RefCell::new(middleware)));
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{Callback, Reducer, Store};
+    use crate::{ActionMiddleware, Callback, Reducer, Store};
     use anyhow;
     use std::{cell::RefCell, rc::Rc};
     use thiserror::Error;
@@ -107,10 +139,22 @@ mod tests {
         Error,
     }
 
+    struct TestMiddleware;
+
+    impl<Error> ActionMiddleware<TestState, TestAction, Error> for TestMiddleware {
+        fn invoke(
+            &mut self,
+            _: &mut Store<TestState, TestAction, Error>,
+            action: Option<TestAction>,
+        ) -> Option<TestAction> {
+            action.map(|_| TestAction::Decrement)
+        }
+    }
+
     #[test]
     fn test_notify() {
         let initial_state = TestState { counter: 0 };
-        let store = Rc::new(RefCell::new(Store::new(TestReducer {}, initial_state)));
+        let store = Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
 
         let callback_test = Rc::new(RefCell::new(0));
         let callback_test_copy = callback_test.clone();
@@ -135,7 +179,7 @@ mod tests {
     #[test]
     fn test_anyhow_error() {
         let initial_state = TestState { counter: 0 };
-        let store = Rc::new(RefCell::new(Store::new(TestReducer {}, initial_state)));
+        let store = Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
 
         let callback: Callback<TestState, anyhow::Error> =
             Rc::new(move |_: Rc<TestState>| Err(anyhow::anyhow!("Test Error")));
@@ -157,7 +201,7 @@ mod tests {
     #[test]
     fn test_custom_error() {
         let initial_state = TestState { counter: 0 };
-        let store = Rc::new(RefCell::new(Store::new(TestReducer {}, initial_state)));
+        let store = Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
 
         let callback: Callback<TestState, TestError> =
             Rc::new(move |_: Rc<TestState>| Err(TestError::Error));
@@ -174,5 +218,24 @@ mod tests {
                 panic!("no error");
             }
         };
+    }
+
+    #[test]
+    fn test_middleware() {
+        let initial_state = TestState { counter: 0 };
+        let store = Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
+
+        let callback_test = Rc::new(RefCell::new(0));
+        let callback_test_copy = callback_test.clone();
+        let callback: Callback<TestState, ()> = Rc::new(move |state: Rc<TestState>| {
+            *callback_test_copy.borrow_mut() = state.counter;
+            Ok(())
+        });
+
+        store.borrow_mut().subscribe(Rc::downgrade(&callback));
+        store.borrow_mut().add_action_middleware(TestMiddleware);
+
+        store.borrow_mut().dispatch(TestAction::Increment).unwrap();
+        assert_eq!(-1, *callback_test.borrow());
     }
 }

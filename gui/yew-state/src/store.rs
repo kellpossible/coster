@@ -7,6 +7,7 @@ pub struct Store<State, Action, Error> {
     listeners: Vec<Listener<State, Error>>,
     action_middleware: Vec<Rc<RefCell<dyn ActionMiddleware<State, Action, Error>>>>,
     phantom_action: PhantomData<Action>,
+    prev_middleware: i32,
 }
 
 impl<State, Action, Error> Store<State, Action, Error> {
@@ -17,6 +18,7 @@ impl<State, Action, Error> Store<State, Action, Error> {
             listeners: vec![],
             action_middleware: vec![],
             phantom_action: PhantomData,
+            prev_middleware: -1,
         }
     }
 
@@ -28,7 +30,7 @@ impl<State, Action, Error> Store<State, Action, Error> {
         if self.action_middleware.is_empty() {
             self.dispatch_reducer(action)
         } else {
-            self.dispatch_middleware(0, Some(action))
+            self.dispatch_middleware(action)
         }
     }
 
@@ -36,25 +38,30 @@ impl<State, Action, Error> Store<State, Action, Error> {
         self.state = Rc::new(self.reducer.reduce(&self.state, &action));
         self.notify_listeners()
     }
+    fn dispatch_middleware(&mut self, action: Action) -> CallbackResults<Error> {
+        self.prev_middleware = -1;
+        self.dispatch_middleware_next(Some(action))
+    }
 
-    fn dispatch_middleware(
-        &mut self,
-        index: usize,
-        action: Option<Action>,
-    ) -> CallbackResults<Error> {
-        if index == self.action_middleware.len() {
+    fn dispatch_middleware_next(&mut self, action: Option<Action>) -> CallbackResults<Error> {
+        let current_middleware = self.prev_middleware + 1;
+        if current_middleware as usize == self.action_middleware.len() {
             return match action {
                 Some(action) => self.dispatch_reducer(action),
                 None => Ok(()),
             };
         }
 
-        let next = self.action_middleware[index]
+        // assign before invoking the middleware which will rely
+        // on this value for the next() function.
+        self.prev_middleware = current_middleware;
+
+        let result = self.action_middleware[current_middleware as usize]
             .clone()
             .borrow_mut()
-            .invoke(self, action);
+            .invoke(self, action, Self::dispatch_middleware_next);
 
-        return self.dispatch_middleware(index + 1, next);
+        result
     }
 
     fn notify_listeners(&mut self) -> CallbackResults<Error> {
@@ -113,9 +120,11 @@ mod tests {
         counter: i32,
     }
 
+    #[derive(Copy, Clone)]
     enum TestAction {
         Increment,
         Decrement,
+        Decrement2,
     }
 
     struct TestReducer;
@@ -129,6 +138,9 @@ mod tests {
                 TestAction::Decrement => TestState {
                     counter: state.counter - 1,
                 },
+                TestAction::Decrement2 => TestState {
+                    counter: state.counter - 2,
+                },
             }
         }
     }
@@ -139,15 +151,18 @@ mod tests {
         Error,
     }
 
-    struct TestMiddleware;
+    struct TestMiddleware {
+        new_action: TestAction,
+    }
 
     impl<Error> ActionMiddleware<TestState, TestAction, Error> for TestMiddleware {
         fn invoke(
             &mut self,
-            _: &mut Store<TestState, TestAction, Error>,
+            store: &mut Store<TestState, TestAction, Error>,
             action: Option<TestAction>,
-        ) -> Option<TestAction> {
-            action.map(|_| TestAction::Decrement)
+            next: crate::middleware::NextFn<TestState, TestAction, Error>,
+        ) -> crate::CallbackResults<Error> {
+            next(store, action.map(|_| self.new_action))
         }
     }
 
@@ -232,10 +247,43 @@ mod tests {
             Ok(())
         });
 
-        store.borrow_mut().subscribe(Rc::downgrade(&callback));
-        store.borrow_mut().add_action_middleware(TestMiddleware);
+        let mut store_mut = store.borrow_mut();
 
-        store.borrow_mut().dispatch(TestAction::Increment).unwrap();
+        store_mut.subscribe(Rc::downgrade(&callback));
+        store_mut.add_action_middleware(TestMiddleware {
+            new_action: TestAction::Decrement,
+        });
+        store_mut.add_action_middleware(TestMiddleware {
+            new_action: TestAction::Decrement2,
+        });
+
+        store_mut.dispatch(TestAction::Increment).unwrap();
+        assert_eq!(-2, *callback_test.borrow());
+    }
+
+    #[test]
+    fn test_middleware_reverse_order() {
+        let initial_state = TestState { counter: 0 };
+        let store = Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
+
+        let callback_test = Rc::new(RefCell::new(0));
+        let callback_test_copy = callback_test.clone();
+        let callback: Callback<TestState, ()> = Rc::new(move |state: Rc<TestState>| {
+            *callback_test_copy.borrow_mut() = state.counter;
+            Ok(())
+        });
+
+        let mut store_mut = store.borrow_mut();
+
+        store_mut.subscribe(Rc::downgrade(&callback));
+        store_mut.add_action_middleware(TestMiddleware {
+            new_action: TestAction::Decrement2,
+        });
+        store_mut.add_action_middleware(TestMiddleware {
+            new_action: TestAction::Decrement,
+        });
+
+        store_mut.dispatch(TestAction::Increment).unwrap();
         assert_eq!(-1, *callback_test.borrow());
     }
 }

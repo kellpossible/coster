@@ -1,7 +1,7 @@
 mod middleware;
 mod store;
 
-pub use middleware::ActionMiddleware;
+pub use middleware::*;
 pub use store::Store;
 
 use std::rc::{Rc, Weak};
@@ -20,4 +20,3 @@ impl<State, Action> Reducer<State, Action> for dyn Fn(&State, &Action) -> State 
         self(state, action)
     }
 }
-

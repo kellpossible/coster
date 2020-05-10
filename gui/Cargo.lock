@@ -1000,6 +1000,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f56e97dbea16d5f56549d6c8ea7f36efb6be98507308650c1a5970574b3941b9"
 dependencies = [
  "cfg-if",
+ "serde",
+ "serde_json",
  "wasm-bindgen-macro",
 ]
 
@@ -1246,7 +1248,11 @@ name = "yew-state"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "log",
+ "serde",
  "thiserror",
+ "wasm-bindgen",
+ "web-sys",
  "yew 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

@@ -8,9 +8,16 @@ edition = "2018"
 
 [dependencies]
 yew = { version = "0.15", optional = true }
+wasm-bindgen = { version = "0.2", optional = true }
+web-sys = { version = "0.3", optional = true }
+serde = { version = "1", optional = true }
+log = "0.4"
 
 [features]
-default = ["yew"]
+default = ["yew-compat", "web"]
+web = ["web-sys", "wasm-bindgen", "web-json-log"]
+yew-compat = ["yew"]
+web-json-log = ["serde", "wasm-bindgen/serde-serialize"]
 
 [dev-dependencies]
 thiserror = "1"

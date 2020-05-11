@@ -14,7 +14,7 @@ commodity = { version = "0.3", features = ["serde-support"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_derive = "1.0"
-rust_decimal = "1.4.1"
+rust_decimal = "1.5.0"
 costing = { path = "../costing" }
 yew = "0.15.0"
 yew-router = "0.12.1"

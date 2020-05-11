@@ -6,8 +6,8 @@ use crate::user::{User, UserID};
 use chrono::{Local, NaiveDate};
 use commodity::{Commodity, CommodityType, CommodityTypeID};
 use doublecount::{
-    sum_account_states, Account, AccountID, AccountState, AccountStatus, AccountingError, Action,
-    Program, ProgramState, Transaction, TransactionElement,
+    sum_account_states, Account, AccountID, AccountState, AccountStatus, AccountingError,
+    Program, ProgramState, Transaction, TransactionElement, ActionTypeValue,
 };
 use std::cmp::Reverse;
 use std::collections::HashMap;
@@ -83,7 +83,7 @@ impl Tab {
     }
 
     fn new_account_for_user(user: &Rc<User>, working_currency: CommodityTypeID) -> Account {
-        Account::new(
+        Account::new_with_id(
             Some(format!("User-{}-{}", user.id.to_string(), user.name)),
             working_currency,
             Some("Users".to_string()),
@@ -94,7 +94,7 @@ impl Tab {
         expense: &Expense,
         working_currency: CommodityTypeID,
     ) -> Account {
-        Account::new(
+        Account::new_with_id(
             Some(expense.category.clone()),
             working_currency,
             Some("Expense".to_string()),
@@ -169,16 +169,16 @@ impl Tab {
     pub fn balance_transactions(&self) -> Result<Vec<Settlement>, CostingError> {
         let zero = Commodity::zero(self.working_currency.id);
 
-        let mut actual_transactions: Vec<Rc<dyn Action>> = Vec::with_capacity(self.expenses.len());
-        let mut shared_transactions: Vec<Rc<dyn Action>> = Vec::with_capacity(self.expenses.len());
+        let mut actual_transactions: Vec<Rc<ActionTypeValue>> = Vec::with_capacity(self.expenses.len());
+        let mut shared_transactions: Vec<Rc<ActionTypeValue>> = Vec::with_capacity(self.expenses.len());
 
         let mut accounts: HashMap<AccountID, Rc<Account>> = HashMap::new();
 
         for expense in &self.expenses {
             actual_transactions
-                .push(Rc::from(expense.get_actual_transaction(self)?) as Rc<dyn Action>);
+                .push(Rc::new(expense.get_actual_transaction(self)?.into()));
             shared_transactions
-                .push(Rc::from(expense.get_shared_transaction(self)?) as Rc<dyn Action>);
+                .push(Rc::new(expense.get_shared_transaction(self)?.into()));
 
             let account = self.get_expense_category_account(&expense.category)?;
             accounts.insert(account.id, account.clone());
@@ -362,7 +362,7 @@ impl Tab {
         let mut actual_with_balancing_transactions = actual_transactions.clone();
         balancing_transactions
             .iter()
-            .for_each(|bt| actual_with_balancing_transactions.push(Rc::from(bt.clone())));
+            .for_each(|bt| actual_with_balancing_transactions.push(Rc::new(bt.clone().into())));
 
         // run a program which includes the actual transactions, plus
         // the proposed balancing transactions, in order to test that

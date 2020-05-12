@@ -1,7 +1,8 @@
 use super::{ActionMiddleware, NextFn};
-use crate::CallbackResults;
+use crate::{EventsFrom, CallbackResults};
 use serde::Serialize;
 use wasm_bindgen::JsValue;
+use std::hash::Hash;
 
 pub enum LogLevel {
     Trace,
@@ -16,25 +17,26 @@ pub struct WebLogger {
     log_level: LogLevel,
 }
 
-impl<State, Action, Error> ActionMiddleware<State, Action, Error> for WebLogger
+impl<State, Action, Error, Event> ActionMiddleware<State, Action, Error, Event> for WebLogger
 where
     State: Serialize,
     Action: Serialize,
+    Event: EventsFrom<State, Action> + Hash + Eq,
 {
     fn invoke(
         &mut self,
-        store: &mut crate::Store<State, Action, Error>,
+        store: &mut crate::Store<State, Action, Error, Event>,
         action: Option<Action>,
-        next: NextFn<State, Action, Error>,
+        next: NextFn<State, Action, Error, Event>,
     ) -> CallbackResults<Error> {
-        let prev_state_js = JsValue::from_serde(store.state());
+        let prev_state_js = JsValue::from_serde(&(**store.state()));
 
         // TODO: what will happen when action is None?
         let action_js = JsValue::from_serde(&action);
 
         let result = next(store, action);
 
-        let next_state_js = JsValue::from_serde(store.state());
+        let next_state_js = JsValue::from_serde(&(**store.state()));
 
         result
     }

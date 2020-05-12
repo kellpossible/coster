@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 use unic_langid::LanguageIdentifier;
 use yew_state::{Reducer, Store};
 
-pub type StateStore = Rc<RefCell<Store<CosterState, CosterAction, anyhow::Error>>>;
+pub type StateStore = Rc<RefCell<Store<CosterState, CosterAction, anyhow::Error, ()>>>;
 
 pub struct CosterState {
     current_language: LanguageIdentifier,
@@ -26,7 +26,7 @@ impl Reducer<CosterState, CosterAction> for CosterReducer {
     fn reduce(&self, state: &CosterState, action: &CosterAction) -> CosterState {
         match action {
             CosterAction::ChangeLanguage(language) => CosterState {
-                current_language: *language,
+                current_language: language.clone(),
                 ..*state
             },
         }

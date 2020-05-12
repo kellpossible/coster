@@ -1,8 +1,8 @@
 use crate::{
     middleware::{ActionMiddleware, NextFn},
-    CallbackResults, Store,
+    CallbackResults, Store, EventsFrom,
 };
-use std::fmt::{Debug, Display};
+use std::{hash::Hash, fmt::{Debug, Display}};
 
 pub enum LogLevel {
     Trace,
@@ -45,17 +45,18 @@ impl SimpleLogger {
     }
 }
 
-impl<State, Action, Error> ActionMiddleware<State, Action, Error> for SimpleLogger
+impl<State, Action, Error, Event> ActionMiddleware<State, Action, Error, Event> for SimpleLogger
 where
+    Event: EventsFrom<State, Action> + Hash + Eq,
     State: Debug,
     Action: Debug,
     Error: Display,
 {
     fn invoke(
         &mut self,
-        store: &mut Store<State, Action, Error>,
+        store: &mut Store<State, Action, Error, Event>,
         action: Option<Action>,
-        next: NextFn<State, Action, Error>,
+        next: NextFn<State, Action, Error, Event>,
     ) -> CallbackResults<Error> {
         let was_action = match &action {
             Some(action) => {

@@ -1,13 +1,13 @@
 use crate::{CallbackResults, Store};
 
-pub type NextFn<State, Action, Error> =
-    fn(&mut Store<State, Action, Error>, Option<Action>) -> CallbackResults<Error>;
+pub type NextFn<State, Action, Error, Event> =
+    fn(&mut Store<State, Action, Error, Event>, Option<Action>) -> CallbackResults<Error>;
 
-pub trait ActionMiddleware<State, Action, Error> {
+pub trait ActionMiddleware<State, Action, Error, Event> {
     fn invoke(
         &mut self,
-        store: &mut Store<State, Action, Error>,
+        store: &mut Store<State, Action, Error, Event>,
         action: Option<Action>,
-        next: NextFn<State, Action, Error>,
+        next: NextFn<State, Action, Error, Event>,
     ) -> CallbackResults<Error>;
 }

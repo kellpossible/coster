@@ -47,7 +47,7 @@ where
     Error: Clone,
 {
     pub map_state_to_props: MapStateToProps<C, State>,
-    pub store: Rc<RefCell<Store<State, Action, Error>>>,
+    pub store: Rc<RefCell<Store<State, Action, Error, ()>>>,
     pub children: ChildrenWithProps<C>,
 }
 
@@ -78,7 +78,9 @@ where
 {
     fn eq(&self, other: &Props<C, State, Action, Error>) -> bool {
         // TODO: this should also include the children, but it's not currently possible due to https://github.com/yewstack/yew/issues/1216
-        Rc::ptr_eq(&self.store, &other.store) && self.map_state_to_props == other.map_state_to_props
+        Rc::ptr_eq(&self.store, &other.store)
+            && self.map_state_to_props == other.map_state_to_props
+            && false //false for children not implemented.
     }
 }
 
@@ -189,15 +191,16 @@ where
     fn change(&mut self, props: Props<C, State, Action, Error>) -> yew::ShouldRender {
         if self.props != props {
             // TODO: not currently possible due to https://github.com/yewstack/yew/issues/1216
+            // workaround is to assume false.
             // if self.props.children != props.children {
-                match Self::update_children_props(
-                    &props.children,
-                    props.store.borrow().state(),
-                    &props.map_state_to_props,
-                ) {
-                    None => self.children = props.children.clone(),
-                    Some(children) => self.children = children,
-                };
+            match Self::update_children_props(
+                &props.children,
+                props.store.borrow().state(),
+                &props.map_state_to_props,
+            ) {
+                None => self.children = props.children.clone(),
+                Some(children) => self.children = children,
+            };
             // }
 
             self.props = props;

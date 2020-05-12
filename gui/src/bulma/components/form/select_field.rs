@@ -44,7 +44,7 @@ where
 
 impl<Value, Key> Debug for SelectFieldLink<Value, Key>
 where
-    Value: Clone + PartialEq + Display + Debug+ 'static,
+    Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -156,7 +156,7 @@ where
 
         html! {
             <div class="field">
-                { 
+                {
                     if let Some(label) = self.props.label.as_ref() {
                         html!{
                             <label class="label">{ label }</label>
@@ -198,7 +198,6 @@ where
         } else {
             false
         }
-        
     }
 }
 

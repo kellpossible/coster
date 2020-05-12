@@ -3,8 +3,8 @@
 mod bulma;
 mod components;
 mod routing;
-mod validation;
 mod state;
+mod validation;
 
 use components::costing_tab::CostingTab;
 use components::costing_tab_list::CostingTabList;
@@ -20,16 +20,20 @@ use lazy_static::lazy_static;
 use log;
 use log::{debug, error};
 use rust_embed::RustEmbed;
+use state::{CosterReducer, CosterState, StateStore};
 use std::cell::RefCell;
 use std::{fmt::Debug, rc::Rc};
 use tr::tr;
 use unic_langid::LanguageIdentifier;
 use wasm_bindgen::prelude::*;
 use yew::virtual_dom::VNode;
-use yew::{html, Component, ComponentLink, Html, ShouldRender, services::{storage, StorageService}};
+use yew::{
+    html,
+    services::{storage, StorageService},
+    Component, ComponentLink, Html, ShouldRender,
+};
 use yew_router::Switch;
-use redux_rs::{Subscription, Store};
-use state::{CosterState, StateStore};
+use yew_state::Store;
 
 #[derive(RustEmbed, I18nEmbed)]
 #[folder = "i18n/mo"]
@@ -88,7 +92,7 @@ pub enum Msg {
     RouteChanged(Option<AppRoute>),
     ChangeRoute(AppRoute),
     LanguageChanged(LanguageIdentifier),
-    StateChanged,
+    StateChanged(Rc<CosterState>),
 }
 
 pub struct Model {
@@ -99,6 +103,7 @@ pub struct Model {
     link: ComponentLink<Self>,
     state_store: StateStore,
     storage: Option<StorageService>,
+    state_callback: yew_state::Callback<CosterState, anyhow::Error>,
 }
 
 impl Model {
@@ -124,14 +129,10 @@ impl Component for Model {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let mut state_store = Store::new(state::reducer, state::CosterState::default());
-
-        let state_change_callback = link.callback(|state: &CosterState| Msg::StateChanged);
-
-        let state_change_listener: Subscription<CosterState> = move |state: &CosterState| {
-            state_change_callback.emit(state);
-        };
-        state_store.subscribe(state_change_listener);
+        let state_store: StateStore = Rc::new(RefCell::new(Store::new(
+            CosterReducer,
+            CosterState::default(),
+        )));
 
         let mut language_requester: WebLanguageRequester<'static> = WebLanguageRequester::new();
 
@@ -154,14 +155,22 @@ impl Component for Model {
         let storage = StorageService::new(storage::Area::Local).ok();
 
         if let Some(storage) = &storage {
-            let selected_language_result: Result<String, anyhow::Error> = storage.restore("user-selected-language");
+            let selected_language_result: Result<String, anyhow::Error> =
+                storage.restore("user-selected-language");
 
             match selected_language_result {
                 Ok(selected_language_id) => {
-                    let selected_language: unic_langid::LanguageIdentifier = selected_language_id.parse().unwrap();
-                    debug!("Model::update restoring user-selected-language: {}", selected_language.to_string());
-                    language_requester_rc.borrow_mut().set_languge_override(Some(selected_language)).unwrap();
-                },
+                    let selected_language: unic_langid::LanguageIdentifier =
+                        selected_language_id.parse().unwrap();
+                    debug!(
+                        "Model::update restoring user-selected-language: {}",
+                        selected_language.to_string()
+                    );
+                    language_requester_rc
+                        .borrow_mut()
+                        .set_languge_override(Some(selected_language))
+                        .unwrap();
+                }
                 Err(error) => {
                     error!("{}", error);
                 }
@@ -173,14 +182,19 @@ impl Component for Model {
         // this will automatically be triggered.
         language_requester_rc.borrow_mut().poll().unwrap();
 
+        let state_callback: yew_state::Callback<CosterState, anyhow::Error> =
+            link.callback(Msg::StateChanged).into();
+        state_store.borrow_mut().subscribe(&state_callback);
+
         Model {
             link,
             language_requester: language_requester_rc,
             router: route_service_rc,
             route,
             localizer: localizer_rc,
-            state_store: Rc::new(RefCell::new(state_store)),
+            state_store,
             storage,
+            state_callback,
         }
     }
 
@@ -188,20 +202,26 @@ impl Component for Model {
         match msg {
             Msg::RouteChanged(route) => {
                 debug!("Route changed: {:?}", route);
-                self.route = route
+                self.route = route;
+                true
             }
             Msg::ChangeRoute(route) => {
                 self.router.borrow_mut().set_route(route);
+                true
             }
             Msg::LanguageChanged(lang) => {
                 if let Some(storage) = &mut self.storage {
-                    debug!("Model::update storing user-selected-language: {}", lang.to_string());
+                    debug!(
+                        "Model::update storing user-selected-language: {}",
+                        lang.to_string()
+                    );
                     storage.store("user-selected-language", Ok(lang.to_string()));
                 }
                 debug!("Language changed in coster::lib {:?}", lang);
+                true
             }
+            Msg::StateChanged(state) => false,
         }
-        true
     }
 
     fn view(&self) -> Html {

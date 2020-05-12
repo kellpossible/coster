@@ -1,4 +1,7 @@
-use crate::{ActionMiddleware, CallbackResults, NextFn, Store};
+use crate::{
+    middleware::{ActionMiddleware, NextFn},
+    CallbackResults, Store,
+};
 use std::fmt::{Debug, Display};
 
 pub enum LogLevel {

@@ -4,13 +4,9 @@ use std::{
     hash::Hash,
 };
 
-pub trait FieldKey: Clone + PartialEq + Display + Hash + Eq + Debug {
+pub trait FieldKey: Clone + PartialEq + Display + Hash + Eq + Debug {}
 
-}
-
-impl FieldKey for &str {
-
-}
+impl FieldKey for &str {}
 
 pub trait FieldLink<Key: Clone>: Debug {
     fn field_key(&self) -> &Key;

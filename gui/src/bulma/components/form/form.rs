@@ -129,8 +129,16 @@ where
         let onclick_submit = self.link.callback(|_| FormMsg::ValidateThenSubmit);
         let onclick_cancel = self.link.callback(|_| FormMsg::Cancel);
 
-        let submit_button_label = self.props.submit_button_label.as_ref().map_or("Submit".to_string(), |label| label.clone());
-        let cancel_button_label = self.props.cancel_button_label.as_ref().map_or("Cancel".to_string(), |label| label.clone());
+        let submit_button_label = self
+            .props
+            .submit_button_label
+            .as_ref()
+            .map_or("Submit".to_string(), |label| label.clone());
+        let cancel_button_label = self
+            .props
+            .cancel_button_label
+            .as_ref()
+            .map_or("Cancel".to_string(), |label| label.clone());
 
         html! {
             <>
@@ -161,13 +169,12 @@ where
                 }
                 self.field_link = field_link;
             }
-            
+
             self.props = props;
             true
         } else {
             false
         }
-        
     }
 }
 

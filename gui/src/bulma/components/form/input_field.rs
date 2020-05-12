@@ -24,13 +24,13 @@ pub enum InputValue {
 impl InputValue {
     pub fn as_string(&self) -> &String {
         match self {
-            InputValue::String(value) => &value
+            InputValue::String(value) => &value,
         }
     }
 
     pub fn into_string(self) -> String {
         match self {
-            InputValue::String(value) => value
+            InputValue::String(value) => value,
         }
     }
 }
@@ -114,7 +114,6 @@ where
     type Properties = Props<Key>;
 
     fn create(props: Props<Key>, link: ComponentLink<Self>) -> Self {
-
         let form_link = props.form_link.clone();
 
         let field_link = InputFieldLink {
@@ -174,7 +173,7 @@ where
 
         html! {
             <div class="field">
-                { 
+                {
                     if let Some(label) = self.props.label.as_ref() {
                         html!{
                             <label class="label">{ label }</label>
@@ -183,7 +182,7 @@ where
                         html!{}
                     }
                 }
-                
+
                 <div class="control">
                     <input
                         class=classes

@@ -5,11 +5,11 @@ use crate::bulma::{
 use crate::validation::{ValidationError, Validator};
 use crate::{AppRoute, AppRouterRef};
 use commodity::CommodityType;
+use log::debug;
 use log::info;
 use std::fmt::Display;
 use tr::tr;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
-use log::debug;
 
 #[derive(PartialEq, Clone, Copy, Hash, Eq, Debug)]
 enum FormFields {
@@ -18,8 +18,7 @@ enum FormFields {
     // Participant(u32),
 }
 
-impl FieldKey for FormFields {
-}
+impl FieldKey for FormFields {}
 
 impl Display for FormFields {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -136,7 +135,7 @@ impl Component for NewCostingTab {
                     Ok(())
                 }
             });
-        
+
         let tab_name_label = tr!("Tab Name");
 
         html! {

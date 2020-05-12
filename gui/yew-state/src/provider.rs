@@ -88,27 +88,29 @@ enum Msg<State> {
     StateUpdate(Rc<State>),
 }
 
-struct Provider<C, State, Action, Error>
+struct Provider<C, State, Action, Error, Event>
 where
     C: Component + Clone,
     C::Properties: PartialEq,
     State: Clone + 'static,
     Action: Clone + 'static,
     Error: Clone + 'static,
+    Event: Clone + 'static,
 {
     props: Props<C, State, Action, Error>,
     children: ChildrenWithProps<C>,
-    _link: ComponentLink<Provider<C, State, Action, Error>>,
-    _callback: crate::Callback<State, Error>,
+    _link: ComponentLink<Provider<C, State, Action, Error, Event>>,
+    _callback: crate::EventCallback<State, Error, Event>,
 }
 
-impl<C, State, Action, Error> Provider<C, State, Action, Error>
+impl<C, State, Action, Error, Event> Provider<C, State, Action, Error, Event>
 where
     C: Component + Clone,
     C::Properties: PartialEq,
     State: Clone + 'static,
     Action: Clone + 'static,
     Error: Clone + 'static,
+    Event: Clone + 'static,
 {
     fn update_children_props(
         children: &ChildrenWithProps<C>,
@@ -138,19 +140,20 @@ where
     }
 }
 
-impl<C, State, Action, Error> Component for Provider<C, State, Action, Error>
+impl<C, State, Action, Error, Event> Component for Provider<C, State, Action, Error, Event>
 where
     C: Component + Clone,
     C::Properties: PartialEq,
     State: Clone + 'static,
     Action: Clone + 'static,
     Error: Clone + 'static,
+    Event: Clone + 'static,
 {
     type Message = Msg<State>;
     type Properties = Props<C, State, Action, Error>;
 
     fn create(props: Props<C, State, Action, Error>, link: yew::ComponentLink<Self>) -> Self {
-        let callback = link.callback(Msg::StateUpdate).into();
+        let callback = link.callback(|(state, _)| Msg::StateUpdate(state)).into();
 
         let children = match Self::update_children_props(
             &props.children,

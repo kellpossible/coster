@@ -16,21 +16,20 @@ serde = { version = "1.0", features = ["derive"] }
 serde_derive = "1.0"
 rust_decimal = "1.5.0"
 costing = { path = "../costing" }
-yew = "0.15.0"
-yew-router = "0.12.1"
+yew = { git = "https://github.com/yewstack/yew.git" }
+yew-router = { git = "https://github.com/yewstack/yew.git" }
 yewtil = { git = "https://github.com/yewstack/yew.git", default-features = false, features = ["neq"] }
 yew-state = { path = "yew-state" }
 tr = { version = "0.1", default-features = false, features = ["gettext"] }
 rust-embed = "5.5.1"
 i18n-embed = { path = "../../cargo-i18n/i18n-embed", version = "0.4.0", features = ["web-sys-requester"] }
-unic-langid = "0.8.0"
+unic-langid = "0.9.0"
 anyhow = "1.0"
 log = "0.4"
 wasm-logger = { version = "0.2.0", optional = true }
 lazy_static = "1.4.0"
 wasm-bindgen = "0.2"
 web-sys = "0.3"
-redux-rs = "0.1"
 
 [features]
 default = ["logging"]

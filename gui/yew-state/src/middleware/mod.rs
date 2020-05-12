@@ -1,5 +1,7 @@
 mod action_middleware;
-mod web_logger;
+pub mod simple_logger;
+pub mod web_logger;
 
 pub use action_middleware::{ActionMiddleware, NextFn};
-pub use web_logger::{LogLevel, WebLogger};
+pub use simple_logger::SimpleLogger;
+pub use web_logger::WebLogger;

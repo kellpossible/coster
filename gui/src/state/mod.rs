@@ -1,30 +1,39 @@
 use unic_langid::LanguageIdentifier;
 use std::{rc::Rc, cell::RefCell};
-use redux_rs::Store;
+use yew_state::{Reducer, Store};
 
-pub type StateStore = Rc<RefCell<Store<State, Action>>>;
+pub type StateStore = Rc<RefCell<Store<CosterState, CosterAction, anyhow::Error>>>;
 
-pub struct State {
-    current_language: LanguageIdentifier
+pub struct CustomData(i32);
+
+pub struct CosterState {
+    current_language: LanguageIdentifier,
 }
 
-impl Default for State {
+impl Default for CosterState {
     fn default() -> Self {
         Self {
-            current_language: "en".parse().unwrap()
+            current_language: "en".parse().unwrap(),
         }
     }
 }
 
-pub enum Action {
+pub enum CosterAction {
     ChangeLanguage(LanguageIdentifier)
 }
 
-pub fn reducer(state: &State, action: &Action) -> State {
-    match action {
-        Action::ChangeLanguage(language_identifier) => {
-            State {
-                current_language: language_identifier.clone()
+pub struct CosterReducer {
+
+}
+
+impl Reducer<CosterState, CosterAction> for CosterReducer {
+    fn reduce(&self, state: &CosterState, action: &CosterAction) -> CosterState {
+        match action {
+            CosterAction::ChangeLanguage(language) => {
+                CosterState {
+                    current_language: *language,
+                    ..*state
+                }
             }
         }
     }

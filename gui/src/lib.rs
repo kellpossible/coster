@@ -29,7 +29,7 @@ use yew::virtual_dom::VNode;
 use yew::{html, Component, ComponentLink, Html, ShouldRender, services::{storage, StorageService}};
 use yew_router::Switch;
 use redux_rs::{Subscription, Store};
-use state::{State, StateStore};
+use state::{CosterState, StateStore};
 
 #[derive(RustEmbed, I18nEmbed)]
 #[folder = "i18n/mo"]
@@ -124,11 +124,11 @@ impl Component for Model {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let mut state_store = Store::new(state::reducer, state::State::default());
+        let mut state_store = Store::new(state::reducer, state::CosterState::default());
 
-        let state_change_callback = link.callback(|state: &State| Msg::StateChanged);
+        let state_change_callback = link.callback(|state: &CosterState| Msg::StateChanged);
 
-        let state_change_listener: Subscription<State> = move |state: &State| {
+        let state_change_listener: Subscription<CosterState> = move |state: &CosterState| {
             state_change_callback.emit(state);
         };
         state_store.subscribe(state_change_listener);

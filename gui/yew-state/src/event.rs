@@ -1,14 +1,14 @@
-use std::rc::Rc;
-
-pub trait EventsFrom<State, Action>
-where
-    Self: Sized,
-{
-    fn events_from(state: &Rc<State>, action: &Action) -> Vec<Self>;
+pub trait StoreEvent {
+    fn none() -> Self;
+    fn is_none(&self) -> bool;
 }
 
-impl<State, Action> EventsFrom<State, Action> for () {
-    fn events_from(state: &Rc<State>, action: &Action) -> Vec<Self> {
-        Vec::new()
+impl StoreEvent for () {
+    fn none() -> Self {
+        ()
+    }
+
+    fn is_none(&self) -> bool {
+        true
     }
 }

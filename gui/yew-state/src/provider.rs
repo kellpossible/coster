@@ -100,7 +100,7 @@ where
     props: Props<C, State, Action, Error>,
     children: ChildrenWithProps<C>,
     _link: ComponentLink<Provider<C, State, Action, Error, Event>>,
-    _callback: crate::EventCallback<State, Error, Event>,
+    _callback: crate::Callback<State, Error, Event>,
 }
 
 impl<C, State, Action, Error, Event> Provider<C, State, Action, Error, Event>

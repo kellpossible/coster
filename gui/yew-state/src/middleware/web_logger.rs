@@ -1,5 +1,5 @@
-use super::{ActionMiddleware, NextFn};
-use crate::{EventsFrom, CallbackResults};
+use super::{ActionMiddleware, ReduceFn};
+use crate::{CallbackResults, StoreEvent};
 use serde::Serialize;
 use wasm_bindgen::JsValue;
 use std::hash::Hash;
@@ -21,13 +21,13 @@ impl<State, Action, Error, Event> ActionMiddleware<State, Action, Error, Event> 
 where
     State: Serialize,
     Action: Serialize,
-    Event: EventsFrom<State, Action> + Hash + Eq,
+    Event: StoreEvent + Clone + Hash + Eq,
 {
     fn invoke(
         &mut self,
         store: &mut crate::Store<State, Action, Error, Event>,
         action: Option<Action>,
-        next: NextFn<State, Action, Error, Event>,
+        next: ReduceFn<State, Action, Error, Event>,
     ) -> CallbackResults<Error> {
         let prev_state_js = JsValue::from_serde(&(**store.state()));
 

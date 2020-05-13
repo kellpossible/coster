@@ -1,6 +1,6 @@
 use crate::{
-    middleware::{ActionMiddleware, NextFn},
-    CallbackResults, Store, EventsFrom,
+    middleware::{ActionMiddleware, ReduceFn},
+    CallbackResults, Store, StoreEvent,
 };
 use std::{hash::Hash, fmt::{Debug, Display}};
 
@@ -47,7 +47,7 @@ impl SimpleLogger {
 
 impl<State, Action, Error, Event> ActionMiddleware<State, Action, Error, Event> for SimpleLogger
 where
-    Event: EventsFrom<State, Action> + Hash + Eq,
+    Event: StoreEvent + Clone + Hash + Eq,
     State: Debug,
     Action: Debug,
     Error: Display,
@@ -56,7 +56,7 @@ where
         &mut self,
         store: &mut Store<State, Action, Error, Event>,
         action: Option<Action>,
-        next: NextFn<State, Action, Error, Event>,
+        next: ReduceFn<State, Action, Error, Event>,
     ) -> CallbackResults<Error> {
         let was_action = match &action {
             Some(action) => {

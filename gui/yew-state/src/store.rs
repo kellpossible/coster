@@ -1,19 +1,19 @@
 use crate::{
-    middleware::ActionMiddleware, AsEventListener, CallbackResults, EventsFrom, EventListener, Reducer, Listener,
+    middleware::ActionMiddleware, AsListener, Listener, Reducer, StoreEvent,
 };
 use std::{cell::RefCell, marker::PhantomData, rc::Rc, hash::Hash, collections::HashSet};
 
+pub type DispatchResult<Error> = Result<(), Vec<Error>>;
+
 struct ListenerEventPair<State, Error, Event> {
-    pub listener: EventListener<State, Error, Event>,
+    pub listener: Listener<State, Error, Event>,
     pub events: HashSet<Event>,
 }
 
 pub struct Store<State, Action, Error, Event> {
-    reducer: Box<dyn Reducer<State, Action>>,
+    reducer: Box<dyn Reducer<State, Action, Event>>,
     state: Rc<State>,
-    //TODO: perhaps listeners should be collapsed into an enum like yew::Callback?
-    listeners: Vec<Listener<State, Error, Event>>,
-    event_listeners: Vec<ListenerEventPair<State, Error, Event>>,
+    listeners: Vec<ListenerEventPair<State, Error, Event>>,
     action_middleware: Vec<Rc<RefCell<dyn ActionMiddleware<State, Action, Error, Event>>>>,
     prev_middleware: i32,
     phantom_action: PhantomData<Action>,
@@ -22,14 +22,13 @@ pub struct Store<State, Action, Error, Event> {
 
 impl<State, Action, Error, Event> Store<State, Action, Error, Event>
 where
-    Event: EventsFrom<State, Action> + Clone + Hash + Eq
+    Event: StoreEvent + Clone + Hash + Eq
 {
-    pub fn new<R: Reducer<State, Action> + 'static>(reducer: R, initial_state: State) -> Self {
+    pub fn new<R: Reducer<State, Action, Event> + 'static>(reducer: R, initial_state: State) -> Self {
         Self {
             reducer: Box::new(reducer),
             state: Rc::new(initial_state),
             listeners: Vec::new(),
-            event_listeners: Vec::new(),
             action_middleware: Vec::new(),
             prev_middleware: -1,
             phantom_action: PhantomData,
@@ -41,24 +40,27 @@ where
         &self.state
     }
 
-    pub fn dispatch(&mut self, action: Action) -> CallbackResults<Error> {
-        if self.action_middleware.is_empty() {
+    pub fn dispatch(&mut self, action: Action) -> DispatchResult<Error> {
+        let events = if self.action_middleware.is_empty() {
             self.dispatch_reducer(action)
         } else {
             self.dispatch_middleware(action)
-        }
+        };
+        self.notify_listeners(events)
     }
 
-    fn dispatch_reducer(&mut self, action: Action) -> CallbackResults<Error> {
-        self.state = Rc::new(self.reducer.reduce(&self.state, &action));
-        self.notify_listeners(action)
+    fn dispatch_reducer(&mut self, action: Action) -> Vec<Event> {
+        let (state, events) = self.reducer.reduce(&self.state, &action);
+        self.state = Rc::new(state);
+        events
     }
-    fn dispatch_middleware(&mut self, action: Action) -> CallbackResults<Error> {
+
+    fn dispatch_middleware(&mut self, action: Action) -> Result<Vec<Event>, Error> {
         self.prev_middleware = -1;
         self.dispatch_middleware_next(Some(action))
     }
 
-    fn dispatch_middleware_next(&mut self, action: Option<Action>) -> CallbackResults<Error> {
+    fn dispatch_middleware_next(&mut self, action: Option<Action>) -> Result<Vec<Event>, Error> {
         let current_middleware = self.prev_middleware + 1;
         if current_middleware as usize == self.action_middleware.len() {
             return match action {
@@ -79,19 +81,25 @@ where
         result
     }
 
-    fn notify_listeners(&mut self, action: Action) -> CallbackResults<Error> {
-        let events = Event::events_from(&self.state, &action);
+    fn notify_listeners(&mut self, events: Vec<Event>) -> CallbackResults<Error> {
         let mut errors = Vec::new();
         let mut listeners_to_remove: Vec<usize> = Vec::new();
-        for (i, pair) in self.event_listeners.iter().enumerate() {
+        for (i, pair) in self.listeners.iter().enumerate() {
             let retain = match pair.listener.as_callback() {
                 Some(callback) => {
-                    //  call the listener for every matching listener event
-                    for event in &events {
-                        if pair.events.contains(event) {
-                            match callback.emit(self.state.clone(), *event) {
-                                Ok(()) => {}
-                                Err(error) => errors.push(error),
+                    if pair.events.is_empty() {
+                        match callback.emit(self.state.clone(), Event::none()) {
+                            Ok(()) => {}
+                            Err(error) => errors.push(error),
+                        }
+                    } else {
+                        //  call the listener for every matching listener event
+                        for event in &events {
+                            if pair.events.contains(event) {
+                                match callback.emit(self.state.clone(), event.clone()) {
+                                    Ok(()) => {}
+                                    Err(error) => errors.push(error),
+                                }
                             }
                         }
                     }
@@ -107,7 +115,7 @@ where
         }
 
         for index in listeners_to_remove {
-            self.event_listeners.swap_remove(index);
+            self.listeners.swap_remove(index);
         }
 
         if errors.len() > 0 {
@@ -118,7 +126,10 @@ where
     }
 
     pub fn subscribe<L: AsListener<State, Error, Event>>(&mut self, listener: L) {
-        self.listeners.push(listener);
+        self.listeners.push(ListenerEventPair {
+            listener: listener.as_listener(),
+            events: HashSet::new(),
+        });
     }
 
     pub fn add_action_middleware<M: ActionMiddleware<State, Action, Error, Event> + 'static>(
@@ -131,31 +142,33 @@ where
 }
 
 pub trait EventSubscription<State, Error, Event> {
-    fn subscribe_event<L: AsEventListener<State, Error, Event>>(&mut self, listener: L, event: Event);
-    fn subscribe_events<L: AsEventListener<State, Error, Event>, E: Into<HashSet<Event>>>(&mut self, listener: L, events: E);
+    fn subscribe_event<L: AsListener<State, Error, Event>>(&mut self, listener: L, event: Event);
+    fn subscribe_events<L: AsListener<State, Error, Event>, E: Into<HashSet<Event>>>(&mut self, listener: L, events: E);
 }
 
 impl <State, Action, Error, Event> EventSubscription<State, Error, Event> for Store<State, Action, Error, Event> 
 where Event: Hash + Eq
 {
-    fn subscribe_event<L: AsEventListener<State, Error, Event>>(&mut self, listener: L, event: Event) {
+    fn subscribe_event<L: AsListener<State, Error, Event>>(&mut self, listener: L, event: Event) {
         let mut events = HashSet::with_capacity(1);
         events.insert(event);
 
-        self.event_listeners.push(ListenerEventPair {
+        self.listeners.push(ListenerEventPair {
             listener: listener.as_listener(),
             events
         });
     }
-    fn subscribe_events<L: AsEventListener<State, Error, Event>, E: Into<HashSet<Event>>>(&mut self, listener: L, events: E) {
-        //TODO: implement this
-        todo!()
+    fn subscribe_events<L: AsListener<State, Error, Event>, E: Into<HashSet<Event>>>(&mut self, listener: L, events: E) {
+        self.listeners.push(ListenerEventPair {
+            listener: listener.as_listener(),
+            events: events.into(),
+        });
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{middleware::ActionMiddleware, EventCallback, Reducer, Store, EventsFrom, EventSubscription};
+    use crate::{middleware::ActionMiddleware, Callback, Reducer, Store, EventSubscription, StoreEvent};
     use anyhow;
     use std::{cell::RefCell, rc::Rc};
     use thiserror::Error;
@@ -174,9 +187,10 @@ mod tests {
 
     struct TestReducer;
 
-    impl Reducer<TestState, TestAction> for TestReducer {
-        fn reduce(&self, state: &TestState, action: &TestAction) -> TestState {
-            match action {
+    impl Reducer<TestState, TestAction, TestEvent> for TestReducer {
+        fn reduce(&self, state: &TestState, action: &TestAction) -> (TestState, Vec<TestEvent>) {
+            let mut events = Vec::new();
+            let new_state = match action {
                 TestAction::Increment => TestState {
                     counter: state.counter + 1,
                 },
@@ -186,7 +200,13 @@ mod tests {
                 TestAction::Decrement2 => TestState {
                     counter: state.counter - 2,
                 },
+            };
+
+            if new_state.counter != state.counter && new_state.counter == 0 {
+                events.push(TestEvent::IsZero);
             }
+
+            (new_state, events)
         }
     }
 
@@ -200,40 +220,38 @@ mod tests {
         new_action: TestAction,
     }
 
-    #[derive(Debug, PartialEq, Eq, Hash)]
+    impl ActionMiddleware<TestState, TestAction, (), TestEvent> for TestMiddleware {
+        fn invoke(
+            &mut self,
+            store: &mut Store<TestState, TestAction, (), TestEvent>,
+            action: Option<TestAction>,
+            reduce: crate::middleware::ReduceFn<TestState, TestAction, (), TestEvent>,
+        ) -> crate::CallbackResults<()> {
+            reduce(store, action.map(|_| self.new_action))
+        }
+    }
+
+    #[derive(Debug, PartialEq, Eq, Hash, Clone)]
     enum TestEvent {
         Change(i32),
         IsZero,
+        None
     }
 
-    impl EventsFrom<TestState, TestAction> for TestEvent {
-        fn events_from(state: &Rc<TestState>, action: &TestAction) -> Vec<Self> {
-            let mut events = Vec::new();
+    impl StoreEvent for TestEvent {
+        fn none() -> Self {
+            Self::None
+        }
 
-            match action {
-                TestAction::Increment => events.push(TestEvent::Change(1)),
-                TestAction::Decrement => events.push(TestEvent::Change(-1)),
-                TestAction::Decrement2 => events.push(TestEvent::Change(1)),
+        fn is_none(&self) -> bool {
+            match self {
+                TestEvent::None => true,
+                _ => false,
             }
-
-            if state.counter == 0 {
-                events.push(TestEvent::IsZero);
-            }
-
-            events
         }
     }
 
-    impl ActionMiddleware<TestState, TestAction, (), ()> for TestMiddleware {
-        fn invoke(
-            &mut self,
-            store: &mut Store<TestState, TestAction, (), ()>,
-            action: Option<TestAction>,
-            next: crate::middleware::NextFn<TestState, TestAction, (), ()>,
-        ) -> crate::CallbackResults<()> {
-            next(store, action.map(|_| self.new_action))
-        }
-    }
+    
 
     #[test]
     fn test_notify() {
@@ -242,7 +260,7 @@ mod tests {
 
         let callback_test = Rc::new(RefCell::new(0));
         let callback_test_copy = callback_test.clone();
-        let callback: EventCallback<TestState, (), ()> = EventCallback::new(move |state: Rc<TestState>, _| {
+        let callback: Callback<TestState, (), TestEvent> = Callback::new(move |state: Rc<TestState>, _| {
             *callback_test_copy.borrow_mut() = state.counter;
             Ok(())
         });
@@ -265,8 +283,8 @@ mod tests {
         let initial_state = TestState { counter: 0 };
         let store: Rc<RefCell<Store<TestState, TestAction, anyhow::Error, TestEvent>>> = Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
 
-        let callback: EventCallback<TestState, anyhow::Error> =
-            EventCallback::new(move |_: Rc<TestState>| Err(anyhow::anyhow!("Test Error")));
+        let callback: Callback<TestState, anyhow::Error, TestEvent> =
+            Callback::new(move |_: Rc<TestState>, _| Err(anyhow::anyhow!("Test Error")));
 
         store.borrow_mut().subscribe(&callback);
 
@@ -287,8 +305,8 @@ mod tests {
         let initial_state = TestState { counter: 0 };
         let store: Rc<RefCell<Store<TestState, TestAction, TestError, TestEvent>>> = Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
 
-        let callback: EventCallback<TestState, TestError> =
-            EventCallback::new(move |_: Rc<TestState>| Err(TestError::Error));
+        let callback: Callback<TestState, TestError, TestEvent> =
+            Callback::new(move |_: Rc<TestState>, _| Err(TestError::Error));
 
         store.borrow_mut().subscribe(&callback);
 
@@ -311,7 +329,7 @@ mod tests {
 
         let callback_test = Rc::new(RefCell::new(0));
         let callback_test_copy = callback_test.clone();
-        let callback: EventCallback<TestState, ()> = EventCallback::new(move |state: Rc<TestState>| {
+        let callback: Callback<TestState, (), TestEvent> = Callback::new(move |state: Rc<TestState>, _| {
             *callback_test_copy.borrow_mut() = state.counter;
             Ok(())
         });
@@ -337,7 +355,7 @@ mod tests {
 
         let callback_test = Rc::new(RefCell::new(0));
         let callback_test_copy = callback_test.clone();
-        let callback: EventCallback<TestState, ()> = EventCallback::new(move |state: Rc<TestState>| {
+        let callback: Callback<TestState, (), TestEvent> = Callback::new(move |state: Rc<TestState>, _| {
             *callback_test_copy.borrow_mut() = state.counter;
             Ok(())
         });
@@ -357,20 +375,21 @@ mod tests {
     }
 
     #[test]
-    fn test_events() {
+    fn test_subscribe_event() {
         let initial_state = TestState { counter: -2 };
         let store: Rc<RefCell<Store<TestState, TestAction, (), TestEvent>>> = Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
 
         let callback_test: Rc<RefCell<Option<TestEvent>>> = Rc::new(RefCell::new(None));
         let callback_test_copy = callback_test.clone();
         
-        let callback_zero: EventCallback<TestState, ()> = EventCallback::new(move |state: Rc<TestState>| {
+        let callback_zero_subscription: Callback<TestState, (), TestEvent> = Callback::new(move |_: Rc<TestState>, event| {
+            assert_eq!(TestEvent::IsZero, event);
             *callback_test_copy.borrow_mut() = Some(TestEvent::IsZero);
             Ok(())
         });
 
         let mut store_mut = store.borrow_mut();
-        store_mut.subscribe_event(&callback_zero, TestEvent::IsZero);
+        store_mut.subscribe_event(&callback_zero_subscription, TestEvent::IsZero);
         store_mut.dispatch(TestAction::Increment).unwrap();
         assert_eq!(None, *callback_test.borrow());
         store_mut.dispatch(TestAction::Increment).unwrap();

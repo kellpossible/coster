@@ -22,13 +22,19 @@ pub enum CosterAction {
 
 pub struct CosterReducer;
 
-impl Reducer<CosterState, CosterAction> for CosterReducer {
-    fn reduce(&self, state: &CosterState, action: &CosterAction) -> CosterState {
-        match action {
+pub enum StoreEvent {
+
+}
+
+impl Reducer<CosterState, CosterAction, StoreEvent> for CosterReducer {
+    fn reduce(&self, state: &CosterState, action: &CosterAction) -> (CosterState, Vec<StoreEvent>) {
+        let state = match action {
             CosterAction::ChangeLanguage(language) => CosterState {
                 current_language: language.clone(),
                 ..*state
-            },
-        }
+            }
+        };
+
+        (state, Vec::new())
     }
 }

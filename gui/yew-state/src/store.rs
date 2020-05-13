@@ -1,5 +1,5 @@
 use crate::{
-    middleware::ActionMiddleware, AsListener, Listener, Reducer, StoreEvent,
+    middleware::Middleware, AsListener, Listener, Reducer, StoreEvent,
 };
 use std::{cell::RefCell, marker::PhantomData, rc::Rc, hash::Hash, collections::HashSet};
 
@@ -14,7 +14,7 @@ pub struct Store<State, Action, Error, Event> {
     reducer: Box<dyn Reducer<State, Action, Event>>,
     state: Rc<State>,
     listeners: Vec<ListenerEventPair<State, Error, Event>>,
-    action_middleware: Vec<Rc<RefCell<dyn ActionMiddleware<State, Action, Error, Event>>>>,
+    action_middleware: Vec<Rc<RefCell<dyn Middleware<State, Action, Error, Event>>>>,
     prev_middleware: i32,
     phantom_action: PhantomData<Action>,
     phantom_event: PhantomData<Event>,
@@ -44,8 +44,9 @@ where
         let events = if self.action_middleware.is_empty() {
             self.dispatch_reducer(action)
         } else {
-            self.dispatch_middleware(action)
+            self.dispatch_middleware_reduce(action)
         };
+        // TODO: if there was no action (after the middleware), then don't notify.
         self.notify_listeners(events)
     }
 
@@ -55,12 +56,12 @@ where
         events
     }
 
-    fn dispatch_middleware(&mut self, action: Action) -> Result<Vec<Event>, Error> {
+    fn dispatch_middleware_reduce(&mut self, action: Action) -> Result<Vec<Event>, Error> {
         self.prev_middleware = -1;
-        self.dispatch_middleware_next(Some(action))
+        self.dispatch_middleware_reduce_next(Some(action))
     }
 
-    fn dispatch_middleware_next(&mut self, action: Option<Action>) -> Result<Vec<Event>, Error> {
+    fn dispatch_middleware_reduce_next(&mut self, action: Option<Action>) -> Result<Vec<Event>, Error> {
         let current_middleware = self.prev_middleware + 1;
         if current_middleware as usize == self.action_middleware.len() {
             return match action {
@@ -76,7 +77,7 @@ where
         let result = self.action_middleware[current_middleware as usize]
             .clone()
             .borrow_mut()
-            .invoke(self, action, Self::dispatch_middleware_next);
+            .invoke(self, action, Self::dispatch_middleware_reduce_next);
 
         result
     }
@@ -132,7 +133,7 @@ where
         });
     }
 
-    pub fn add_action_middleware<M: ActionMiddleware<State, Action, Error, Event> + 'static>(
+    pub fn add_action_middleware<M: Middleware<State, Action, Error, Event> + 'static>(
         &mut self,
         middleware: M,
     ) {
@@ -168,7 +169,7 @@ where Event: Hash + Eq
 
 #[cfg(test)]
 mod tests {
-    use crate::{middleware::ActionMiddleware, Callback, Reducer, Store, EventSubscription, StoreEvent};
+    use crate::{middleware::Middleware, Callback, Reducer, Store, EventSubscription, StoreEvent};
     use anyhow;
     use std::{cell::RefCell, rc::Rc};
     use thiserror::Error;
@@ -220,8 +221,8 @@ mod tests {
         new_action: TestAction,
     }
 
-    impl ActionMiddleware<TestState, TestAction, (), TestEvent> for TestMiddleware {
-        fn invoke(
+    impl Middleware<TestState, TestAction, (), TestEvent> for TestMiddleware {
+        fn on_reduce(
             &mut self,
             store: &mut Store<TestState, TestAction, (), TestEvent>,
             action: Option<TestAction>,

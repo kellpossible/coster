@@ -1,5 +1,5 @@
 use crate::{
-    middleware::Middleware, AsListener, Listener, Reducer, StoreEvent,
+    middleware::Middleware, AsListener, Listener, Reducer, StoreEvent, ReducerResult, CallbackResults,
 };
 use std::{cell::RefCell, marker::PhantomData, rc::Rc, hash::Hash, collections::HashSet};
 
@@ -41,11 +41,12 @@ where
     }
 
     pub fn dispatch(&mut self, action: Action) -> DispatchResult<Error> {
-        let events = if self.action_middleware.is_empty() {
+        let events= if self.action_middleware.is_empty() {
             self.dispatch_reducer(action)
         } else {
             self.dispatch_middleware_reduce(action)
         };
+
         // TODO: if there was no action (after the middleware), then don't notify.
         self.notify_listeners(events)
     }
@@ -56,17 +57,17 @@ where
         events
     }
 
-    fn dispatch_middleware_reduce(&mut self, action: Action) -> Result<Vec<Event>, Error> {
+    fn dispatch_middleware_reduce(&mut self, action: Action) -> Vec<Event> {
         self.prev_middleware = -1;
         self.dispatch_middleware_reduce_next(Some(action))
     }
 
-    fn dispatch_middleware_reduce_next(&mut self, action: Option<Action>) -> Result<Vec<Event>, Error> {
+    fn dispatch_middleware_reduce_next(&mut self, action: Option<Action>) -> Vec<Event> {
         let current_middleware = self.prev_middleware + 1;
         if current_middleware as usize == self.action_middleware.len() {
             return match action {
                 Some(action) => self.dispatch_reducer(action),
-                None => Ok(()),
+                None => Vec::new(),
             };
         }
 
@@ -77,7 +78,7 @@ where
         let result = self.action_middleware[current_middleware as usize]
             .clone()
             .borrow_mut()
-            .invoke(self, action, Self::dispatch_middleware_reduce_next);
+            .on_reduce(self, action, Self::dispatch_middleware_reduce_next);
 
         result
     }
@@ -133,6 +134,23 @@ where
         });
     }
 
+    pub fn subscribe_event<L: AsListener<State, Error, Event>>(&mut self, listener: L, event: Event) {
+        let mut events = HashSet::with_capacity(1);
+        events.insert(event);
+
+        self.listeners.push(ListenerEventPair {
+            listener: listener.as_listener(),
+            events
+        });
+    }
+    
+    pub fn subscribe_events<L: AsListener<State, Error, Event>, E: Into<HashSet<Event>>>(&mut self, listener: L, events: E) {
+        self.listeners.push(ListenerEventPair {
+            listener: listener.as_listener(),
+            events: events.into(),
+        });
+    }
+
     pub fn add_action_middleware<M: Middleware<State, Action, Error, Event> + 'static>(
         &mut self,
         middleware: M,
@@ -142,34 +160,10 @@ where
     }
 }
 
-pub trait EventSubscription<State, Error, Event> {
-    fn subscribe_event<L: AsListener<State, Error, Event>>(&mut self, listener: L, event: Event);
-    fn subscribe_events<L: AsListener<State, Error, Event>, E: Into<HashSet<Event>>>(&mut self, listener: L, events: E);
-}
-
-impl <State, Action, Error, Event> EventSubscription<State, Error, Event> for Store<State, Action, Error, Event> 
-where Event: Hash + Eq
-{
-    fn subscribe_event<L: AsListener<State, Error, Event>>(&mut self, listener: L, event: Event) {
-        let mut events = HashSet::with_capacity(1);
-        events.insert(event);
-
-        self.listeners.push(ListenerEventPair {
-            listener: listener.as_listener(),
-            events
-        });
-    }
-    fn subscribe_events<L: AsListener<State, Error, Event>, E: Into<HashSet<Event>>>(&mut self, listener: L, events: E) {
-        self.listeners.push(ListenerEventPair {
-            listener: listener.as_listener(),
-            events: events.into(),
-        });
-    }
-}
 
 #[cfg(test)]
 mod tests {
-    use crate::{middleware::Middleware, Callback, Reducer, Store, EventSubscription, StoreEvent};
+    use crate::{middleware::Middleware, Callback, Reducer, Store, StoreEvent};
     use anyhow;
     use std::{cell::RefCell, rc::Rc};
     use thiserror::Error;
@@ -227,7 +221,7 @@ mod tests {
             store: &mut Store<TestState, TestAction, (), TestEvent>,
             action: Option<TestAction>,
             reduce: crate::middleware::ReduceFn<TestState, TestAction, (), TestEvent>,
-        ) -> crate::CallbackResults<()> {
+        ) -> Vec<TestEvent> {
             reduce(store, action.map(|_| self.new_action))
         }
     }

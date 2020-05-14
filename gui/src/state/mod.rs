@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 use unic_langid::LanguageIdentifier;
-use yew_state::{Reducer, Store};
+use yew_state::{Reducer, Store, StoreEvent};
 
-pub type StateStore = Rc<RefCell<Store<CosterState, CosterAction, anyhow::Error, ()>>>;
+pub type StateStore = Rc<RefCell<Store<CosterState, CosterAction, anyhow::Error, StateStoreEvent>>>;
 
 pub struct CosterState {
     current_language: LanguageIdentifier,
@@ -22,12 +22,24 @@ pub enum CosterAction {
 
 pub struct CosterReducer;
 
-pub enum StoreEvent {
-
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+pub enum StateStoreEvent {
+    None,
 }
 
-impl Reducer<CosterState, CosterAction, StoreEvent> for CosterReducer {
-    fn reduce(&self, state: &CosterState, action: &CosterAction) -> (CosterState, Vec<StoreEvent>) {
+impl StoreEvent for StateStoreEvent {
+    fn none() -> Self {
+        StateStoreEvent::None
+    }
+    fn is_none(&self) -> bool {
+        self == &Self::none()
+    }
+}
+
+impl Reducer<CosterState, CosterAction, StateStoreEvent> for CosterReducer {
+    fn reduce(&self, state: &CosterState, action: &CosterAction) -> (CosterState, Vec<StateStoreEvent>) {
+        let mut events = Vec::new();
+        
         let state = match action {
             CosterAction::ChangeLanguage(language) => CosterState {
                 current_language: language.clone(),
@@ -35,6 +47,6 @@ impl Reducer<CosterState, CosterAction, StoreEvent> for CosterReducer {
             }
         };
 
-        (state, Vec::new())
+        (state, events)
     }
 }

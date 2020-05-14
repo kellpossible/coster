@@ -20,7 +20,7 @@ use lazy_static::lazy_static;
 use log;
 use log::{debug, error};
 use rust_embed::RustEmbed;
-use state::{CosterReducer, CosterState, StateStore};
+use state::{CosterReducer, CosterState, StateStore, StateStoreEvent};
 use std::cell::RefCell;
 use std::{fmt::Debug, rc::Rc};
 use tr::tr;
@@ -92,7 +92,7 @@ pub enum Msg {
     RouteChanged(Option<AppRoute>),
     ChangeRoute(AppRoute),
     LanguageChanged(LanguageIdentifier),
-    StateChanged(Rc<CosterState>),
+    StateChanged(Rc<CosterState>, StateStoreEvent),
 }
 
 pub struct Model {
@@ -103,7 +103,7 @@ pub struct Model {
     link: ComponentLink<Self>,
     state_store: StateStore,
     storage: Option<StorageService>,
-    state_callback: yew_state::Callback<CosterState, anyhow::Error>,
+    state_callback: yew_state::Callback<CosterState, anyhow::Error, StateStoreEvent>,
 }
 
 impl Model {
@@ -182,8 +182,8 @@ impl Component for Model {
         // this will automatically be triggered.
         language_requester_rc.borrow_mut().poll().unwrap();
 
-        let state_callback: yew_state::Callback<CosterState, anyhow::Error> =
-            link.callback(Msg::StateChanged).into();
+        let state_callback: yew_state::Callback<CosterState, anyhow::Error, StateStoreEvent> =
+            link.callback(|(state, event)| Msg::StateChanged(state, event)).into();
         state_store.borrow_mut().subscribe(&state_callback);
 
         Model {
@@ -220,7 +220,7 @@ impl Component for Model {
                 debug!("Language changed in coster::lib {:?}", lang);
                 true
             }
-            Msg::StateChanged(state) => false,
+            Msg::StateChanged(state, event) => false,
         }
     }
 

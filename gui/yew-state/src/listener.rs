@@ -53,31 +53,18 @@ impl<State, Error, Event> AsListener<State, Error, Event> for Listener<State, Er
     }
 }
 
-impl<State, Error, Event> From<yew::Callback<Rc<State>>> for Callback<State, Error, Event>
+impl<State, Error, Event> From<yew::Callback<Event>> for Callback<State, Error, Event>
 where
     State: 'static,
     Event: 'static,
 {
-    fn from(yew_callback: yew::Callback<Rc<State>>) -> Self {
-        Callback(Rc::new(move |state, _| {
-            yew_callback.emit(state.clone());
+    fn from(yew_callback: yew::Callback<Event>) -> Self {
+        Callback(Rc::new(move |_, event| {
+            yew_callback.emit(event);
             Ok(())
         }))
     }
 }
-
-// impl<State, Error, Event> From<yew::Callback<Event>> for Callback<State, Error, Event>
-// where
-//     State: 'static,
-//     Event: 'static,
-// {
-//     fn from(yew_callback: yew::Callback<Event>) -> Self {
-//         Callback(Rc::new(move |_, event| {
-//             yew_callback.emit(event);
-//             Ok(())
-//         }))
-//     }
-// }
 
 impl<State, Error, Event> From<yew::Callback<(Rc<State>, Event)>> for Callback<State, Error, Event>
 where

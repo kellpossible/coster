@@ -1,13 +1,13 @@
 pub mod simple_logger;
 pub mod web_logger;
 
-use crate::{Store, ReducerResult, CallbackResults};
+use crate::{Store, CallbackResults};
 
 pub type ReduceFn<State, Action, Error, Event> =
-    fn(&mut Store<State, Action, Error, Event>, Option<Action>) -> ReducerResult<State, Event>;
+    fn(&mut Store<State, Action, Error, Event>, Option<Action>) -> Vec<Event>;
 
 pub type NotifyFn<State, Action, Error, Event> =
-    fn(&mut Store<State, Action, Error, Event>, ReducerResult<State, Event>) -> CallbackResults<Error>;
+    fn(&mut Store<State, Action, Error, Event>, Vec<Event>) -> CallbackResults<Error>;
 
 pub trait Middleware<State, Action, Error, Event> {
     fn on_reduce(
@@ -15,7 +15,7 @@ pub trait Middleware<State, Action, Error, Event> {
         store: &mut Store<State, Action, Error, Event>,
         action: Option<Action>,
         reduce: ReduceFn<State, Action, Error, Event>,
-    ) -> ReducerResult<State, Event> {
+    ) -> Vec<Event> {
         reduce(store, action)
     }
 
@@ -23,9 +23,9 @@ pub trait Middleware<State, Action, Error, Event> {
         &mut self,
         store: &mut Store<State, Action, Error, Event>,
         action: Action,
-        reducer_result: ReducerResult<State, Event>,
+        events: Vec<Event>,
         notify: NotifyFn<State, Action, Error, Event>,
     ) -> CallbackResults<Error> {
-        notify(store, reducer_result)
+        notify(store, events)
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
-    middleware::{ActionMiddleware, ReduceFn},
-    CallbackResults, Store, StoreEvent,
+    middleware::{Middleware, ReduceFn},
+    CallbackResults, Store, StoreEvent, ReducerResult,
 };
 use std::{hash::Hash, fmt::{Debug, Display}};
 
@@ -45,19 +45,19 @@ impl SimpleLogger {
     }
 }
 
-impl<State, Action, Error, Event> ActionMiddleware<State, Action, Error, Event> for SimpleLogger
+impl<State, Action, Error, Event> Middleware<State, Action, Error, Event> for SimpleLogger
 where
     Event: StoreEvent + Clone + Hash + Eq,
     State: Debug,
     Action: Debug,
     Error: Display,
 {
-    fn invoke(
+    fn on_reduce(
         &mut self,
         store: &mut Store<State, Action, Error, Event>,
         action: Option<Action>,
-        next: ReduceFn<State, Action, Error, Event>,
-    ) -> CallbackResults<Error> {
+        reduce: ReduceFn<State, Action, Error, Event>,
+    ) -> Vec<Event> {
         let was_action = match &action {
             Some(action) => {
                 self.log_level
@@ -71,12 +71,24 @@ where
             }
         };
 
-        let result = next(store, action);
+        let events = reduce(store, action);
 
         if was_action {
             self.log_level
                 .log(format!("next state: {:?}", store.state()));
         }
+
+        events
+    }
+
+    fn on_notify(
+        &mut self,
+        store: &mut Store<State, Action, Error, Event>,
+        action: Action,
+        events: Vec<Event>,
+        notify: super::NotifyFn<State, Action, Error, Event>,
+    ) -> CallbackResults<Error> {
+        let result = notify(store, events);
 
         if let Err(errors) = &result {
             let mut message = format!("{} listener errors:\n", errors.len());

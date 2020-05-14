@@ -3,11 +3,11 @@ use crate::bulma::{
     FieldKey, InputValue,
 };
 use crate::validation::{ValidationError, Validator};
-use crate::{AppRoute, AppRouterRef};
+use crate::{AppRoute, AppRouterRef, state::StateStore};
 use commodity::CommodityType;
 use log::debug;
 use log::info;
-use std::fmt::Display;
+use std::{rc::Rc, fmt::Display};
 use tr::tr;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
@@ -56,10 +56,16 @@ pub enum Msg {
     Cancel,
 }
 
-#[derive(Clone, Properties, PartialEq)]
+#[derive(Clone, Properties)]
 pub struct Props {
-    pub lang: unic_langid::LanguageIdentifier,
+    pub state_store: StateStore,
     pub router: AppRouterRef,
+}
+
+impl PartialEq for Props {
+    fn eq(&self, other: &Self) -> bool {
+        StateStore::ptr_eq(&self.state_store, &other.state_store) && self.router == other.router
+    }
 }
 
 impl Component for NewCostingTab {
@@ -176,5 +182,4 @@ impl Component for NewCostingTab {
             </>
         }
     }
-    fn destroy(&mut self) {}
 }

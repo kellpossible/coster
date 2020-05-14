@@ -1,4 +1,4 @@
-use crate::{AppRoute, AppRouterRef};
+use crate::{AppRoute, AppRouterRef, state::StateStore};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -20,10 +20,16 @@ pub enum Msg {
     NewCostingTab,
 }
 
-#[derive(Clone, Properties, PartialEq)]
+#[derive(Clone, Properties)]
 pub struct Props {
     pub router: AppRouterRef,
-    pub lang: unic_langid::LanguageIdentifier,
+    pub state_store: StateStore,
+}
+
+impl PartialEq for Props {
+    fn eq(&self, other: &Self) -> bool {
+        StateStore::ptr_eq(&self.state_store, &other.state_store) && self.router == other.router
+    }
 }
 
 impl Component for CostingTabList {

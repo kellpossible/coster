@@ -5,6 +5,7 @@ use commodity::CommodityType;
 use costing::Tab;
 use tr::tr;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
+use crate::state::StateStore;
 
 pub struct CostingTab {
     tab: RefCell<Tab>,
@@ -12,9 +13,15 @@ pub struct CostingTab {
     link: ComponentLink<Self>,
 }
 
-#[derive(Clone, Properties, PartialEq)]
+#[derive(Clone, Properties)]
 pub struct Props {
-    pub lang: unic_langid::LanguageIdentifier,
+    pub state_store: StateStore,
+}
+
+impl PartialEq for Props {
+    fn eq(&self, other: &Self) -> bool {
+        StateStore::ptr_eq(&self.state_store, &other.state_store)
+    }
 }
 
 impl Component for CostingTab {

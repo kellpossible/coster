@@ -103,7 +103,7 @@ pub struct Model {
     link: ComponentLink<Self>,
     state_store: StateStore,
     storage: Option<StorageService>,
-    state_callback: yew_state::Callback<CosterState, anyhow::Error, StateStoreEvent>,
+    _state_callback: yew_state::Callback<CosterState, anyhow::Error, StateStoreEvent>,
 }
 
 impl Model {
@@ -195,7 +195,7 @@ impl Component for Model {
             localizer: localizer_rc,
             state_store,
             storage,
-            state_callback,
+            _state_callback: state_callback,
         }
     }
 
@@ -233,12 +233,12 @@ impl Component for Model {
         let route_match_node = match &self.route {
             Some(AppRoute::CostingTab) => {
                 debug!(target: "gui::router", "Detected CostingTab Route: {:?}", self.route);
-                self.page(centered(html! {<CostingTab lang=current_language/>}))
+                self.page(centered(html! {<CostingTab state_store=self.state_store.clone()/>}))
             }
             Some(AppRoute::NewCostingTab) => {
                 debug!(target: "gui::router", "Detected NewCostingTab Route: {:?}", self.route);
                 self.page(centered(
-                    html! {<NewCostingTab lang=current_language router=self.router.clone()/>},
+                    html! {<NewCostingTab state_store=self.state_store.clone() router=self.router.clone()/>},
                 ))
             }
             Some(AppRoute::Help) => {
@@ -251,7 +251,7 @@ impl Component for Model {
                 if self.route.as_ref().unwrap().to_string() == "/" {
                     debug!(target: "gui::router", "Detected CostingTabListPage Route: {:?}", self.route);
                     self.page(centered(
-                        html! {<CostingTabList router=self.router.clone() lang=current_language/>},
+                        html! {<CostingTabList router=self.router.clone() state_store=self.state_store.clone()/>},
                     ))
                 } else {
                     debug!(target: "gui::router", "Detected Invalid Route: {:?}", self.route);

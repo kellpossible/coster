@@ -1,8 +1,11 @@
 use crate::{
     middleware::{Middleware, ReduceFn},
-    CallbackResults, Store, StoreEvent, ReducerResult,
+    CallbackResults, ReducerResult, Store, StoreEvent,
 };
-use std::{hash::Hash, fmt::{Debug, Display}};
+use std::{
+    fmt::{Debug, Display},
+    hash::Hash,
+};
 
 pub enum LogLevel {
     Trace,

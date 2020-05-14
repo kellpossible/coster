@@ -182,8 +182,9 @@ impl Component for Model {
         // this will automatically be triggered.
         language_requester_rc.borrow_mut().poll().unwrap();
 
-        let state_callback: yew_state::Callback<CosterState, anyhow::Error, StateStoreEvent> =
-            link.callback(|(state, event)| Msg::StateChanged(state, event)).into();
+        let state_callback: yew_state::Callback<CosterState, anyhow::Error, StateStoreEvent> = link
+            .callback(|(state, event)| Msg::StateChanged(state, event))
+            .into();
         state_store.borrow_mut().subscribe(&state_callback);
 
         Model {

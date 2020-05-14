@@ -13,7 +13,6 @@ pub trait AsListener<State, Error, Event> {
 #[derive(Clone)]
 pub struct Callback<State, Error, Event>(Rc<dyn Fn(Rc<State>, Event) -> CallbackResult<Error>>);
 
-
 impl<State, Error, Event> AsListener<State, Error, Event> for &Callback<State, Error, Event> {
     fn as_listener(&self) -> Listener<State, Error, Event> {
         Listener(Rc::downgrade(&self.0))
@@ -53,14 +52,14 @@ impl<State, Error, Event> AsListener<State, Error, Event> for Listener<State, Er
     }
 }
 
-impl<State, Error, Event> From<yew::Callback<Event>> for Callback<State, Error, Event>
+impl<State, Error, Event> From<yew::Callback<Rc<State>>> for Callback<State, Error, Event>
 where
     State: 'static,
     Event: 'static,
 {
-    fn from(yew_callback: yew::Callback<Event>) -> Self {
-        Callback(Rc::new(move |_, event| {
-            yew_callback.emit(event);
+    fn from(yew_callback: yew::Callback<Rc<State>>) -> Self {
+        Callback(Rc::new(move |state, _| {
+            yew_callback.emit(state);
             Ok(())
         }))
     }
@@ -74,6 +73,19 @@ where
     fn from(yew_callback: yew::Callback<(Rc<State>, Event)>) -> Self {
         Callback(Rc::new(move |state, event| {
             yew_callback.emit((state.clone(), event));
+            Ok(())
+        }))
+    }
+}
+
+impl<State, Error, Event> From<yew::Callback<()>> for Callback<State, Error, Event>
+where
+    State: 'static,
+    Event: 'static,
+{
+    fn from(yew_callback: yew::Callback<()>) -> Self {
+        Callback(Rc::new(move |_, _| {
+            yew_callback.emit(());
             Ok(())
         }))
     }

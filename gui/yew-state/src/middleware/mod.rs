@@ -1,7 +1,7 @@
 pub mod simple_logger;
 pub mod web_logger;
 
-use crate::{Store, CallbackResults};
+use crate::{CallbackResults, Store};
 
 pub type ReduceFn<State, Action, Error, Event> =
     fn(&mut Store<State, Action, Error, Event>, Option<Action>) -> Vec<Event>;

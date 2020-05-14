@@ -24,6 +24,7 @@ pub struct CosterReducer;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum StateStoreEvent {
+    LanguageChanged,
     None,
 }
 
@@ -37,13 +38,20 @@ impl StoreEvent for StateStoreEvent {
 }
 
 impl Reducer<CosterState, CosterAction, StateStoreEvent> for CosterReducer {
-    fn reduce(&self, state: &CosterState, action: &CosterAction) -> (CosterState, Vec<StateStoreEvent>) {
+    fn reduce(
+        &self,
+        state: &CosterState,
+        action: &CosterAction,
+    ) -> (CosterState, Vec<StateStoreEvent>) {
         let mut events = Vec::new();
-        
+
         let state = match action {
-            CosterAction::ChangeLanguage(language) => CosterState {
-                current_language: language.clone(),
-                ..*state
+            CosterAction::ChangeLanguage(language) => {
+                events.push(StateStoreEvent::LanguageChanged);
+                CosterState {
+                    current_language: language.clone(),
+                    ..*state
+                }
             }
         };
 

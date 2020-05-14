@@ -1,7 +1,8 @@
 use crate::{
-    middleware::Middleware, AsListener, Listener, Reducer, StoreEvent, ReducerResult, CallbackResults,
+    middleware::Middleware, AsListener, CallbackResults, Listener, Reducer, ReducerResult,
+    StoreEvent,
 };
-use std::{cell::RefCell, marker::PhantomData, rc::Rc, hash::Hash, collections::HashSet};
+use std::{cell::RefCell, collections::HashSet, hash::Hash, marker::PhantomData, rc::Rc};
 
 pub type DispatchResult<Error> = Result<(), Vec<Error>>;
 
@@ -22,9 +23,12 @@ pub struct Store<State, Action, Error, Event> {
 
 impl<State, Action, Error, Event> Store<State, Action, Error, Event>
 where
-    Event: StoreEvent + Clone + Hash + Eq
+    Event: StoreEvent + Clone + Hash + Eq,
 {
-    pub fn new<R: Reducer<State, Action, Event> + 'static>(reducer: R, initial_state: State) -> Self {
+    pub fn new<R: Reducer<State, Action, Event> + 'static>(
+        reducer: R,
+        initial_state: State,
+    ) -> Self {
         Self {
             reducer: Box::new(reducer),
             state: Rc::new(initial_state),
@@ -41,7 +45,7 @@ where
     }
 
     pub fn dispatch(&mut self, action: Action) -> DispatchResult<Error> {
-        let events= if self.action_middleware.is_empty() {
+        let events = if self.action_middleware.is_empty() {
             self.dispatch_reducer(action)
         } else {
             self.dispatch_middleware_reduce(action)
@@ -105,7 +109,7 @@ where
                             }
                         }
                     }
-                    
+
                     true
                 }
                 None => false,
@@ -134,17 +138,25 @@ where
         });
     }
 
-    pub fn subscribe_event<L: AsListener<State, Error, Event>>(&mut self, listener: L, event: Event) {
+    pub fn subscribe_event<L: AsListener<State, Error, Event>>(
+        &mut self,
+        listener: L,
+        event: Event,
+    ) {
         let mut events = HashSet::with_capacity(1);
         events.insert(event);
 
         self.listeners.push(ListenerEventPair {
             listener: listener.as_listener(),
-            events
+            events,
         });
     }
-    
-    pub fn subscribe_events<L: AsListener<State, Error, Event>, E: Into<HashSet<Event>>>(&mut self, listener: L, events: E) {
+
+    pub fn subscribe_events<L: AsListener<State, Error, Event>, E: Into<HashSet<Event>>>(
+        &mut self,
+        listener: L,
+        events: E,
+    ) {
         self.listeners.push(ListenerEventPair {
             listener: listener.as_listener(),
             events: events.into(),
@@ -159,7 +171,6 @@ where
             .push(Rc::new(RefCell::new(middleware)));
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -230,7 +241,7 @@ mod tests {
     enum TestEvent {
         Change(i32),
         IsZero,
-        None
+        None,
     }
 
     impl StoreEvent for TestEvent {
@@ -246,19 +257,19 @@ mod tests {
         }
     }
 
-    
-
     #[test]
     fn test_notify() {
         let initial_state = TestState { counter: 0 };
-        let store: Rc<RefCell<Store<TestState, TestAction, (), TestEvent>>> = Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
+        let store: Rc<RefCell<Store<TestState, TestAction, (), TestEvent>>> =
+            Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
 
         let callback_test = Rc::new(RefCell::new(0));
         let callback_test_copy = callback_test.clone();
-        let callback: Callback<TestState, (), TestEvent> = Callback::new(move |state: Rc<TestState>, _| {
-            *callback_test_copy.borrow_mut() = state.counter;
-            Ok(())
-        });
+        let callback: Callback<TestState, (), TestEvent> =
+            Callback::new(move |state: Rc<TestState>, _| {
+                *callback_test_copy.borrow_mut() = state.counter;
+                Ok(())
+            });
 
         store.borrow_mut().subscribe(&callback);
 
@@ -276,7 +287,8 @@ mod tests {
     #[test]
     fn test_anyhow_error() {
         let initial_state = TestState { counter: 0 };
-        let store: Rc<RefCell<Store<TestState, TestAction, anyhow::Error, TestEvent>>> = Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
+        let store: Rc<RefCell<Store<TestState, TestAction, anyhow::Error, TestEvent>>> =
+            Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
 
         let callback: Callback<TestState, anyhow::Error, TestEvent> =
             Callback::new(move |_: Rc<TestState>, _| Err(anyhow::anyhow!("Test Error")));
@@ -298,7 +310,8 @@ mod tests {
     #[test]
     fn test_custom_error() {
         let initial_state = TestState { counter: 0 };
-        let store: Rc<RefCell<Store<TestState, TestAction, TestError, TestEvent>>> = Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
+        let store: Rc<RefCell<Store<TestState, TestAction, TestError, TestEvent>>> =
+            Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
 
         let callback: Callback<TestState, TestError, TestEvent> =
             Callback::new(move |_: Rc<TestState>, _| Err(TestError::Error));
@@ -324,10 +337,11 @@ mod tests {
 
         let callback_test = Rc::new(RefCell::new(0));
         let callback_test_copy = callback_test.clone();
-        let callback: Callback<TestState, (), TestEvent> = Callback::new(move |state: Rc<TestState>, _| {
-            *callback_test_copy.borrow_mut() = state.counter;
-            Ok(())
-        });
+        let callback: Callback<TestState, (), TestEvent> =
+            Callback::new(move |state: Rc<TestState>, _| {
+                *callback_test_copy.borrow_mut() = state.counter;
+                Ok(())
+            });
 
         let mut store_mut = store.borrow_mut();
 
@@ -350,10 +364,11 @@ mod tests {
 
         let callback_test = Rc::new(RefCell::new(0));
         let callback_test_copy = callback_test.clone();
-        let callback: Callback<TestState, (), TestEvent> = Callback::new(move |state: Rc<TestState>, _| {
-            *callback_test_copy.borrow_mut() = state.counter;
-            Ok(())
-        });
+        let callback: Callback<TestState, (), TestEvent> =
+            Callback::new(move |state: Rc<TestState>, _| {
+                *callback_test_copy.borrow_mut() = state.counter;
+                Ok(())
+            });
 
         let mut store_mut = store.borrow_mut();
 
@@ -372,16 +387,18 @@ mod tests {
     #[test]
     fn test_subscribe_event() {
         let initial_state = TestState { counter: -2 };
-        let store: Rc<RefCell<Store<TestState, TestAction, (), TestEvent>>> = Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
+        let store: Rc<RefCell<Store<TestState, TestAction, (), TestEvent>>> =
+            Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
 
         let callback_test: Rc<RefCell<Option<TestEvent>>> = Rc::new(RefCell::new(None));
         let callback_test_copy = callback_test.clone();
-        
-        let callback_zero_subscription: Callback<TestState, (), TestEvent> = Callback::new(move |_: Rc<TestState>, event| {
-            assert_eq!(TestEvent::IsZero, event);
-            *callback_test_copy.borrow_mut() = Some(TestEvent::IsZero);
-            Ok(())
-        });
+
+        let callback_zero_subscription: Callback<TestState, (), TestEvent> =
+            Callback::new(move |_: Rc<TestState>, event| {
+                assert_eq!(TestEvent::IsZero, event);
+                *callback_test_copy.borrow_mut() = Some(TestEvent::IsZero);
+                Ok(())
+            });
 
         let mut store_mut = store.borrow_mut();
         store_mut.subscribe_event(&callback_zero_subscription, TestEvent::IsZero);

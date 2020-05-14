@@ -1,8 +1,8 @@
 use super::{Middleware, ReduceFn};
 use crate::{CallbackResults, StoreEvent};
 use serde::Serialize;
-use wasm_bindgen::JsValue;
 use std::hash::Hash;
+use wasm_bindgen::JsValue;
 
 pub enum LogLevel {
     Trace,

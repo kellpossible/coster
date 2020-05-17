@@ -32,7 +32,6 @@ use yew::{
     services::{storage, StorageService},
     Component, ComponentLink, Html, ShouldRender,
 };
-use yew_router::Switch;
 use yew_state::Store;
 
 #[derive(RustEmbed, I18nEmbed)]
@@ -47,25 +46,6 @@ lazy_static! {
 
 static TRANSLATIONS: Translations = Translations {};
 
-#[derive(Switch, Clone)]
-pub enum AppRoute {
-    /// Matches the `/tab` route.
-    #[to = "/tab"]
-    CostingTab,
-    /// Matches the `/new` route.
-    #[to = "/new"]
-    NewCostingTab,
-    /// Matches the `/help` route.
-    #[to = "/help"]
-    Help,
-    /// Matches the `/about` route.
-    #[to = "/about"]
-    About,
-    /// Matches the `/` route.
-    #[to = "/"]
-    Index, // Order is important here, the index needs to be last.
-}
-
 impl Debug for AppRoute {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Route (\"{}\")", self.to_string())
@@ -75,18 +55,6 @@ impl Debug for AppRoute {
 pub type AppRouterRef = Rc<RefCell<SwitchRouteService<AppRoute>>>;
 pub type LocalizerRef = Rc<Box<dyn Localizer<'static>>>;
 pub type LanguageRequesterRef = Rc<RefCell<dyn LanguageRequester<'static>>>;
-
-impl SwitchRoute for AppRoute {
-    fn to_string(&self) -> String {
-        match self {
-            AppRoute::CostingTab => "/tab".to_string(),
-            AppRoute::NewCostingTab => "/new".to_string(),
-            AppRoute::Help => "/help".to_string(),
-            AppRoute::About => "/about".to_string(),
-            AppRoute::Index => "/".to_string(),
-        }
-    }
-}
 
 pub enum Msg {
     RouteChanged(Option<AppRoute>),

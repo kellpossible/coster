@@ -50,8 +50,6 @@ impl Component for CostingTabList {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::NewCostingTab => {
-                //TODO: ensure that anyone using the router is listening
-                //      to it for events ie: the component in lib!
                 self.props
                     .router
                     .borrow_mut()

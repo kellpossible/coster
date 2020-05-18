@@ -1,4 +1,7 @@
-use crate::{state::{CosterAction, StateStoreRef}, AppRoute};
+use crate::{
+    state::{CosterAction, StateStoreRef},
+    AppRoute,
+};
 
 use std::cell::RefCell;
 use std::rc::Rc;

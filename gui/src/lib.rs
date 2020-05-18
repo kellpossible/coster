@@ -20,7 +20,10 @@ use lazy_static::lazy_static;
 use log;
 use log::{debug, error};
 use rust_embed::RustEmbed;
-use state::{AppRoute, CosterReducer, CosterState, StateStoreEvent, RouteMiddleware, StateStoreRef, CosterAction};
+use state::{
+    AppRoute, CosterAction, CosterReducer, CosterState, RouteMiddleware, StateStoreEvent,
+    StateStoreRef,
+};
 use std::cell::RefCell;
 use std::{fmt::Debug, rc::Rc};
 use tr::tr;
@@ -68,7 +71,7 @@ pub struct Model {
     link: ComponentLink<Self>,
     state_store: StateStoreRef,
     storage: Option<StorageService>,
-    _state_callback: yew_state::Callback<CosterState, anyhow::Error, StateStoreEvent>,
+    _state_callback: yew_state::Callback<CosterState, StateStoreEvent>,
 }
 
 impl Model {
@@ -145,7 +148,7 @@ impl Component for Model {
         // this will automatically be triggered.
         language_requester_rc.borrow_mut().poll().unwrap();
 
-        let state_callback: yew_state::Callback<CosterState, anyhow::Error, StateStoreEvent> = link
+        let state_callback: yew_state::Callback<CosterState, StateStoreEvent> = link
             .callback(|(state, event)| Msg::StateChanged(state, event))
             .into();
         state_store.subscribe(&state_callback);

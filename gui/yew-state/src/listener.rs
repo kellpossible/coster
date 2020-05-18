@@ -1,44 +1,41 @@
 use std::rc::{Rc, Weak};
 
-pub type CallbackResult<Error> = Result<(), Error>;
-pub type CallbackResults<Error> = Result<(), Vec<Error>>;
-
 #[derive(Clone)]
-pub struct Listener<State, Error, Event>(Weak<dyn Fn(Rc<State>, Event) -> CallbackResult<Error>>);
+pub struct Listener<State, Event>(Weak<dyn Fn(Rc<State>, Event)>);
 
-pub trait AsListener<State, Error, Event> {
-    fn as_listener(&self) -> Listener<State, Error, Event>;
+pub trait AsListener<State, Event> {
+    fn as_listener(&self) -> Listener<State, Event>;
 }
 
 #[derive(Clone)]
-pub struct Callback<State, Error, Event>(Rc<dyn Fn(Rc<State>, Event) -> CallbackResult<Error>>);
+pub struct Callback<State, Event>(Rc<dyn Fn(Rc<State>, Event)>);
 
-impl<State, Error, Event> AsListener<State, Error, Event> for &Callback<State, Error, Event> {
-    fn as_listener(&self) -> Listener<State, Error, Event> {
+impl<State, Event> AsListener<State, Event> for &Callback<State, Event> {
+    fn as_listener(&self) -> Listener<State, Event> {
         Listener(Rc::downgrade(&self.0))
     }
 }
 
-impl<State, Error, Event> Callback<State, Error, Event> {
-    pub fn new<C: Fn(Rc<State>, Event) -> CallbackResult<Error> + 'static>(closure: C) -> Self {
+impl<State, Event> Callback<State, Event> {
+    pub fn new<C: Fn(Rc<State>, Event) + 'static>(closure: C) -> Self {
         Callback(Rc::new(closure))
     }
-    pub fn emit(&self, state: Rc<State>, event: Event) -> CallbackResult<Error> {
+    pub fn emit(&self, state: Rc<State>, event: Event) {
         (self.0)(state, event)
     }
 }
 
-impl<C, State, Error, Event> From<C> for Callback<State, Error, Event>
+impl<C, State, Event> From<C> for Callback<State, Event>
 where
-    C: Fn(Rc<State>, Event) -> CallbackResult<Error> + 'static,
+    C: Fn(Rc<State>, Event) + 'static,
 {
     fn from(closure: C) -> Self {
         Callback(Rc::new(closure))
     }
 }
 
-impl<State, Error, Event> Listener<State, Error, Event> {
-    pub fn as_callback(&self) -> Option<Callback<State, Error, Event>> {
+impl<State, Event> Listener<State, Event> {
+    pub fn as_callback(&self) -> Option<Callback<State, Event>> {
         match self.0.upgrade() {
             Some(listener_rc) => Some(Callback(listener_rc)),
             None => None,
@@ -46,13 +43,13 @@ impl<State, Error, Event> Listener<State, Error, Event> {
     }
 }
 
-impl<State, Error, Event> AsListener<State, Error, Event> for Listener<State, Error, Event> {
-    fn as_listener(&self) -> Listener<State, Error, Event> {
+impl<State, Event> AsListener<State, Event> for Listener<State, Event> {
+    fn as_listener(&self) -> Listener<State, Event> {
         Listener(self.0.clone())
     }
 }
 
-impl<State, Error, Event> From<yew::Callback<Rc<State>>> for Callback<State, Error, Event>
+impl<State, Event> From<yew::Callback<Rc<State>>> for Callback<State, Event>
 where
     State: 'static,
     Event: 'static,
@@ -60,12 +57,11 @@ where
     fn from(yew_callback: yew::Callback<Rc<State>>) -> Self {
         Callback(Rc::new(move |state, _| {
             yew_callback.emit(state);
-            Ok(())
         }))
     }
 }
 
-impl<State, Error, Event> From<yew::Callback<(Rc<State>, Event)>> for Callback<State, Error, Event>
+impl<State, Event> From<yew::Callback<(Rc<State>, Event)>> for Callback<State, Event>
 where
     State: 'static,
     Event: 'static,
@@ -73,12 +69,11 @@ where
     fn from(yew_callback: yew::Callback<(Rc<State>, Event)>) -> Self {
         Callback(Rc::new(move |state, event| {
             yew_callback.emit((state.clone(), event));
-            Ok(())
         }))
     }
 }
 
-impl<State, Error, Event> From<yew::Callback<()>> for Callback<State, Error, Event>
+impl<State, Event> From<yew::Callback<()>> for Callback<State, Event>
 where
     State: 'static,
     Event: 'static,
@@ -86,7 +81,6 @@ where
     fn from(yew_callback: yew::Callback<()>) -> Self {
         Callback(Rc::new(move |_, _| {
             yew_callback.emit(());
-            Ok(())
         }))
     }
 }

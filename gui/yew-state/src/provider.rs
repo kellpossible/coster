@@ -38,26 +38,24 @@ impl<C: Component, State> Debug for MapStateToProps<C, State> {
 }
 
 #[derive(Clone, Properties)]
-struct Props<C, State, Action, Error>
+struct Props<C, State, Action>
 where
     C: Component + Clone,
     C::Properties: PartialEq,
     State: Clone,
     Action: Clone,
-    Error: Clone,
 {
     pub map_state_to_props: MapStateToProps<C, State>,
-    pub store: Rc<RefCell<Store<State, Action, Error, ()>>>,
+    pub store: Rc<RefCell<Store<State, Action, ()>>>,
     pub children: ChildrenWithProps<C>,
 }
 
-impl<C, State, Action, Error> Debug for Props<C, State, Action, Error>
+impl<C, State, Action> Debug for Props<C, State, Action>
 where
     C: Component + Clone,
     C::Properties: PartialEq,
     State: Clone,
     Action: Clone,
-    Error: Clone,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -68,15 +66,14 @@ where
     }
 }
 
-impl<C, State, Action, Error> PartialEq for Props<C, State, Action, Error>
+impl<C, State, Action> PartialEq for Props<C, State, Action>
 where
     C: Component + Clone,
     C::Properties: PartialEq,
     State: Clone,
     Action: Clone,
-    Error: Clone,
 {
-    fn eq(&self, other: &Props<C, State, Action, Error>) -> bool {
+    fn eq(&self, other: &Props<C, State, Action>) -> bool {
         // TODO: this should also include the children, but it's not currently possible due to https://github.com/yewstack/yew/issues/1216
         Rc::ptr_eq(&self.store, &other.store)
             && self.map_state_to_props == other.map_state_to_props
@@ -88,28 +85,26 @@ enum Msg<State> {
     StateUpdate(Rc<State>),
 }
 
-struct Provider<C, State, Action, Error, Event>
+struct Provider<C, State, Action, Event>
 where
     C: Component + Clone,
     C::Properties: PartialEq,
     State: Clone + 'static,
     Action: Clone + 'static,
-    Error: Clone + 'static,
     Event: Clone + 'static,
 {
-    props: Props<C, State, Action, Error>,
+    props: Props<C, State, Action>,
     children: ChildrenWithProps<C>,
-    _link: ComponentLink<Provider<C, State, Action, Error, Event>>,
-    _callback: crate::Callback<State, Error, Event>,
+    _link: ComponentLink<Provider<C, State, Action, Event>>,
+    _callback: crate::Callback<State, Event>,
 }
 
-impl<C, State, Action, Error, Event> Provider<C, State, Action, Error, Event>
+impl<C, State, Action, Event> Provider<C, State, Action, Event>
 where
     C: Component + Clone,
     C::Properties: PartialEq,
     State: Clone + 'static,
     Action: Clone + 'static,
-    Error: Clone + 'static,
     Event: Clone + 'static,
 {
     fn update_children_props(
@@ -140,19 +135,18 @@ where
     }
 }
 
-impl<C, State, Action, Error, Event> Component for Provider<C, State, Action, Error, Event>
+impl<C, State, Action, Event> Component for Provider<C, State, Action, Event>
 where
     C: Component + Clone,
     C::Properties: PartialEq,
     State: Clone + 'static,
     Action: Clone + 'static,
-    Error: Clone + 'static,
     Event: Clone + 'static,
 {
     type Message = Msg<State>;
-    type Properties = Props<C, State, Action, Error>;
+    type Properties = Props<C, State, Action>;
 
-    fn create(props: Props<C, State, Action, Error>, link: yew::ComponentLink<Self>) -> Self {
+    fn create(props: Props<C, State, Action>, link: yew::ComponentLink<Self>) -> Self {
         let callback = link.callback(|(state, _)| Msg::StateUpdate(state)).into();
 
         let children = match Self::update_children_props(
@@ -191,7 +185,7 @@ where
         }
     }
 
-    fn change(&mut self, props: Props<C, State, Action, Error>) -> yew::ShouldRender {
+    fn change(&mut self, props: Props<C, State, Action>) -> yew::ShouldRender {
         if self.props != props {
             // TODO: not currently possible due to https://github.com/yewstack/yew/issues/1216
             // workaround is to assume false.

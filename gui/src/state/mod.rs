@@ -5,7 +5,7 @@ pub use route::*;
 use unic_langid::LanguageIdentifier;
 use yew_state::{Reducer, StoreEvent, StoreRef};
 
-pub type StateStoreRef = StoreRef<CosterState, CosterAction, anyhow::Error, StateStoreEvent>;
+pub type StateStoreRef = StoreRef<CosterState, CosterAction, StateStoreEvent>;
 
 pub struct CosterState {
     language: LanguageIdentifier,

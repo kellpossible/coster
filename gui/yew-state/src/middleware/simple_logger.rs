@@ -1,11 +1,8 @@
 use crate::{
     middleware::{Middleware, ReduceFn},
-    CallbackResults, ReducerResult, Store, StoreEvent,
+    Store, StoreEvent,
 };
-use std::{
-    fmt::{Debug, Display},
-    hash::Hash,
-};
+use std::{fmt::Debug, hash::Hash};
 
 pub enum LogLevel {
     Trace,
@@ -48,18 +45,17 @@ impl SimpleLogger {
     }
 }
 
-impl<State, Action, Error, Event> Middleware<State, Action, Error, Event> for SimpleLogger
+impl<State, Action, Event> Middleware<State, Action, Event> for SimpleLogger
 where
-    Event: StoreEvent + Clone + Hash + Eq,
+    Event: StoreEvent + Clone + Hash + Eq + Debug,
     State: Debug,
     Action: Debug,
-    Error: Display,
 {
     fn on_reduce(
         &mut self,
-        store: &mut Store<State, Action, Error, Event>,
+        store: &mut Store<State, Action, Event>,
         action: Option<Action>,
-        reduce: ReduceFn<State, Action, Error, Event>,
+        reduce: ReduceFn<State, Action, Event>,
     ) -> Vec<Event> {
         let was_action = match &action {
             Some(action) => {
@@ -86,23 +82,18 @@ where
 
     fn on_notify(
         &mut self,
-        store: &mut Store<State, Action, Error, Event>,
+        store: &mut Store<State, Action, Event>,
         action: Action,
         events: Vec<Event>,
-        notify: super::NotifyFn<State, Action, Error, Event>,
-    ) -> CallbackResults<Error> {
-        let result = notify(store, events);
-
-        if let Err(errors) = &result {
-            let mut message = format!("{} listener errors:\n", errors.len());
-
-            for error in errors {
-                message.push_str(&format!("{}\n", error));
-            }
-
-            self.log_level.log(message);
+        notify: super::NotifyFn<State, Action, Event>,
+    ) {
+        for event in &events {
+            self.log_level.log(format!(
+                "event {:?} dispatched due to action {:?}",
+                event, action
+            ));
         }
 
-        result
+        notify(store, events);
     }
 }

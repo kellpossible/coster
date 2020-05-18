@@ -18,7 +18,3 @@ default = ["yew-compat", "web"]
 web = ["web-sys", "wasm-bindgen", "web-json-log"]
 yew-compat = ["yew"]
 web-json-log = ["serde", "wasm-bindgen/serde-serialize"]
-
-[dev-dependencies]
-thiserror = "1"
-anyhow = "1"

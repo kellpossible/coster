@@ -1,5 +1,5 @@
 use super::{Middleware, ReduceFn};
-use crate::{CallbackResults, StoreEvent};
+use crate::StoreEvent;
 use serde::Serialize;
 use std::hash::Hash;
 use wasm_bindgen::JsValue;
@@ -17,7 +17,7 @@ pub struct WebLogger {
     log_level: LogLevel,
 }
 
-impl<State, Action, Error, Event> Middleware<State, Action, Error, Event> for WebLogger
+impl<State, Action, Event> Middleware<State, Action, Event> for WebLogger
 where
     State: Serialize,
     Action: Serialize,

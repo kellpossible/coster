@@ -5,37 +5,6 @@
 //! Ripped out of Yew source code https://github.com/yewstack/yew/blob/8edf136da6ba1955c847c5860ec55623a27c08e9/src/components/select.rs
 //! License for original code: https://github.com/yewstack/yew/blob/master/LICENSE-APACHE
 //! Modified to support css `bulma` classes.
-//!
-//! ```
-//!# use yew::{Html, Component, components::Select, ComponentLink, html};
-//! #[derive(PartialEq, Clone)]
-//! enum Scene {
-//!     First,
-//!     Second,
-//! }
-//!# struct Model { link: ComponentLink<Self> };
-//!# impl Component for Model {
-//!#     type Message = ();type Properties = ();
-//!#     fn create(props: Self::Properties,link: ComponentLink<Self>) -> Self {unimplemented!()}
-//!#     fn update(&mut self,msg: Self::Message) -> bool {unimplemented!()}
-//!#     fn change(&mut self, _: Self::Properties) -> bool {unimplemented!()}
-//!#     fn view(&self) -> Html {unimplemented!()}}
-//! impl ToString for Scene {
-//!     fn to_string(&self) -> String {
-//!         match self {
-//!             Scene::First => "First".to_string(),
-//!             Scene::Second => "Second".to_string()
-//!         }
-//!     }
-//! }
-//!
-//! fn view(link: ComponentLink<Model>) -> Html {
-//!     let scenes = vec![Scene::First, Scene::Second];
-//!     html! {
-//!         <Select<Scene> options=scenes onchange=link.callback(|_| ()) />
-//!     }
-//! }
-//! ```
 
 use crate::bulma::{
     components::{icon, Icon},

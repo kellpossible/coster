@@ -1,4 +1,4 @@
-use super::{CosterAction, CosterState, StateStoreRef, StateStoreEvent};
+use super::{CosterAction, CosterState, StateStoreEvent, StateStoreRef};
 use crate::routing::{SwitchRoute, SwitchRouteService};
 use std::rc::Rc;
 use yew_router::Switch;
@@ -57,19 +57,14 @@ impl RouteMiddleware {
     }
 }
 
-impl Middleware<CosterState, CosterAction, anyhow::Error, StateStoreEvent> for RouteMiddleware {
+impl Middleware<CosterState, CosterAction, StateStoreEvent> for RouteMiddleware {
     fn on_notify(
         &mut self,
-        store: &mut Store<CosterState, CosterAction, anyhow::Error, StateStoreEvent>,
+        store: &mut Store<CosterState, CosterAction, StateStoreEvent>,
         _: CosterAction,
         events: Vec<StateStoreEvent>,
-        notify: yew_state::middleware::NotifyFn<
-            CosterState,
-            CosterAction,
-            anyhow::Error,
-            StateStoreEvent,
-        >,
-    ) -> yew_state::CallbackResults<anyhow::Error> {
+        notify: yew_state::middleware::NotifyFn<CosterState, CosterAction, StateStoreEvent>,
+    ) {
         for event in &events {
             match event {
                 StateStoreEvent::RouteChanged(route) => {
@@ -78,6 +73,6 @@ impl Middleware<CosterState, CosterAction, anyhow::Error, StateStoreEvent> for R
                 _ => {}
             }
         }
-        notify(store, events)
+        notify(store, events);
     }
 }

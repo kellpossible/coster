@@ -7,7 +7,7 @@ use chrono::{Local, NaiveDate};
 use commodity::{Commodity, CommodityType, CommodityTypeID};
 use doublecount::{
     sum_account_states, Account, AccountID, AccountState, AccountStatus, AccountingError,
-    Program, ProgramState, Transaction, TransactionElement, ActionTypeValue,
+    ActionTypeValue, Program, ProgramState, Transaction, TransactionElement,
 };
 use std::cmp::Reverse;
 use std::collections::HashMap;
@@ -169,16 +169,16 @@ impl Tab {
     pub fn balance_transactions(&self) -> Result<Vec<Settlement>, CostingError> {
         let zero = Commodity::zero(self.working_currency.id);
 
-        let mut actual_transactions: Vec<Rc<ActionTypeValue>> = Vec::with_capacity(self.expenses.len());
-        let mut shared_transactions: Vec<Rc<ActionTypeValue>> = Vec::with_capacity(self.expenses.len());
+        let mut actual_transactions: Vec<Rc<ActionTypeValue>> =
+            Vec::with_capacity(self.expenses.len());
+        let mut shared_transactions: Vec<Rc<ActionTypeValue>> =
+            Vec::with_capacity(self.expenses.len());
 
         let mut accounts: HashMap<AccountID, Rc<Account>> = HashMap::new();
 
         for expense in &self.expenses {
-            actual_transactions
-                .push(Rc::new(expense.get_actual_transaction(self)?.into()));
-            shared_transactions
-                .push(Rc::new(expense.get_shared_transaction(self)?.into()));
+            actual_transactions.push(Rc::new(expense.get_actual_transaction(self)?.into()));
+            shared_transactions.push(Rc::new(expense.get_shared_transaction(self)?.into()));
 
             let account = self.get_expense_category_account(&expense.category)?;
             accounts.insert(account.id, account.clone());

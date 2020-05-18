@@ -1,3 +1,4 @@
+use log::{debug, info};
 use mime_guess;
 use rust_embed::RustEmbed;
 use std::path::PathBuf;
@@ -9,7 +10,6 @@ use warp::{
     reply::Response,
     Filter, Rejection, Reply,
 };
-use log::{info, debug};
 
 #[derive(RustEmbed)]
 #[folder = "public/"]
@@ -36,7 +36,7 @@ pub fn api() -> BoxedFilter<(impl Reply,)> {
         .map(|path| {
             debug!(target: "coster::api", "api call: {:?}", path);
             std::convert::identity(path)
-        })  // Echos the string back in the response body
+        }) // Echos the string back in the response body
         // .with(log)
         .boxed()
 }
@@ -58,22 +58,21 @@ fn static_files_handler() -> BoxedFilter<(impl Reply,)> {
     warp::path("dist")
         .and(warp::get())
         .and(warp::path::tail())
-        .and_then(|path: Tail| async move { 
+        .and_then(|path: Tail| async move {
             debug!(target: "coster::dist", "Serving a request for static file in dist/{:?}", path);
-            serve_impl(path.as_str()) 
+            serve_impl(path.as_str())
         })
         // .with(log)
         .boxed()
 }
 
-
 /// For any path not already matched, return the index.html, so the app will bootstrap itself
 /// regardless of whatever the frontend-specific path is.
 fn index_static_file_redirect() -> BoxedFilter<(impl Reply,)> {
     warp::path::tail()
-        .and_then(|tail| async move { 
+        .and_then(|tail| async move {
             debug!(target: "coster::index-redirect", "Serving index page for path: {:?}", tail);
-            serve_impl("index.html") 
+            serve_impl("index.html")
         })
         .boxed()
 }

@@ -1222,10 +1222,8 @@ dependencies = [
 name = "yew-state"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "log",
  "serde",
- "thiserror",
  "wasm-bindgen",
  "web-sys",
  "yew",

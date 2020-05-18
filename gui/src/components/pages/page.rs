@@ -1,11 +1,12 @@
 use crate::{
-    components::navbar::Navbar, state::{CosterAction, StateStoreRef}, LanguageRequesterRef, LocalizerRef,
+    components::navbar::Navbar,
+    state::{CosterAction, StateStoreRef},
+    LanguageRequesterRef, LocalizerRef,
 };
 
 use log::debug;
 use yew::{
-    html, html::Renderable, Children, Component, ComponentLink, Html, Properties,
-    ShouldRender,
+    html, html::Renderable, Children, Component, ComponentLink, Html, Properties, ShouldRender,
 };
 
 pub struct Page {
@@ -54,7 +55,9 @@ impl Component for Page {
                     .unwrap();
                 self.props.language_requester.borrow_mut().poll().unwrap();
                 self.change(self.props.clone());
-                self.props.state_store.dispatch(CosterAction::ChangeLanguage(language));
+                self.props
+                    .state_store
+                    .dispatch(CosterAction::ChangeLanguage(language));
                 true
             }
         }

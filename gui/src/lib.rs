@@ -21,7 +21,7 @@ use log;
 use log::{debug, error};
 use rust_embed::RustEmbed;
 use state::{
-    middleware::RouteMiddleware, AppRoute, CosterReducer, CosterState, RouteType, StateStoreEvent,
+    middleware::route::RouteMiddleware, AppRoute, CosterReducer, CosterState, RouteType, StateStoreEvent,
     StateStoreRef,
 };
 use std::cell::RefCell;

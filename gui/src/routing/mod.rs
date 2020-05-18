@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 use yew::Callback;
 use yew_router::{route::Route, service::RouteService};
 
-pub trait SwitchRoute<STATE=()>: Clone + From<Route<STATE>> {
+pub trait SwitchRoute<STATE = ()>: Clone + From<Route<STATE>> {
     fn to_string(&self) -> String;
     fn to_route(&self) -> Route {
         Route {
@@ -65,7 +65,9 @@ where
     pub fn register_callback(&mut self, callback: Callback<SR>) {
         self.callbacks.push(callback.clone());
         self.service
-            .register_callback(Callback::from(move |route: Route| callback.emit(route.into())))
+            .register_callback(Callback::from(move |route: Route| {
+                callback.emit(route.into())
+            }))
     }
 
     pub fn get_route_raw(&self) -> Route {

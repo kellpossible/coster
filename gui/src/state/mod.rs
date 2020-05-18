@@ -1,7 +1,7 @@
 pub mod middleware;
 
 use crate::routing::SwitchRoute;
-use middleware::{RouteAction, RouteEvent, RouteState};
+use middleware::route::{RouteAction, RouteEvent, RouteState};
 use std::fmt::Debug;
 use unic_langid::LanguageIdentifier;
 use yew_router::{route::Route, Switch};
@@ -66,9 +66,12 @@ impl From<AppRoute> for RouteType {
     }
 }
 
-impl <STATE> From<Route<STATE>> for RouteType {
+impl<STATE> From<Route<STATE>> for RouteType
+where
+    STATE: Clone,
+{
     fn from(route: Route<STATE>) -> Self {
-        match AppRoute::switch(route) {
+        match AppRoute::switch(Route::<STATE>::clone(&route)) {
             Some(app_route) => RouteType::Valid(app_route),
             None => RouteType::Invalid(route.to_string()),
         }

@@ -4,8 +4,8 @@ use crate::bulma::{
 };
 use crate::validation::{ValidationError, Validator};
 use crate::{
-    state::{CosterAction, StateStoreRef},
-    AppRoute, AppRouterRef,
+    state::{middleware::route::RouteStoreRef, StateStoreRef},
+    AppRoute,
 };
 use commodity::CommodityType;
 use log::info;
@@ -94,9 +94,7 @@ impl Component for NewCostingTab {
                 // self.props.router.borrow_mut().set_route(AppRoute::Index);
             }
             Msg::Cancel => {
-                self.props
-                    .state_store
-                    .dispatch(CosterAction::ChangeRoute(AppRoute::Index));
+                self.props.state_store.change_route(AppRoute::Index);
             }
         }
         true

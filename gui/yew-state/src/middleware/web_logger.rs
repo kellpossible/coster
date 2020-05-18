@@ -1,8 +1,7 @@
-use super::{Middleware, ReduceFn};
+use super::Middleware;
 use crate::StoreEvent;
 use serde::Serialize;
 use std::hash::Hash;
-use wasm_bindgen::JsValue;
 
 pub enum LogLevel {
     Trace,
@@ -14,7 +13,7 @@ pub enum LogLevel {
 
 /// Aiming to be something similar to https://github.com/LogRocket/redux-logger
 pub struct WebLogger {
-    log_level: LogLevel,
+    _log_level: LogLevel,
 }
 
 impl<State, Action, Event> Middleware<State, Action, Event> for WebLogger

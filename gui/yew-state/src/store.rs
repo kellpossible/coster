@@ -1,5 +1,8 @@
 use crate::{middleware::Middleware, AsListener, Listener, Reducer, StoreEvent};
-use std::{cell::RefCell, collections::HashSet, hash::Hash, marker::PhantomData, rc::Rc};
+use std::iter::FromIterator;
+use std::{
+    cell::RefCell, collections::HashSet, convert::TryInto, hash::Hash, marker::PhantomData, rc::Rc,
+};
 
 struct ListenerEventPair<State, Event> {
     pub listener: Listener<State, Event>,
@@ -31,6 +34,10 @@ where
         StoreRef(Rc::new(RefCell::new(Store::new(reducer, initial_state))))
     }
 
+    pub fn state(&self) -> Rc<State> {
+        self.0.borrow().state().clone()
+    }
+
     pub fn dispatch(&self, action: Action) {
         self.0.borrow_mut().dispatch(action)
     }
@@ -43,8 +50,8 @@ where
         self.0.borrow_mut().subscribe_event(listener, event)
     }
 
-    pub fn subscribe_events<L: AsListener<State, Event>, E: Into<HashSet<Event>>>(
-        &mut self,
+    pub fn subscribe_events<L: AsListener<State, Event>, E: IntoIterator<Item = Event>>(
+        &self,
         listener: L,
         events: E,
     ) {
@@ -180,14 +187,14 @@ where
         });
     }
 
-    pub fn subscribe_events<L: AsListener<State, Event>, E: Into<HashSet<Event>>>(
+    pub fn subscribe_events<L: AsListener<State, Event>, E: IntoIterator<Item = Event>>(
         &mut self,
         listener: L,
         events: E,
     ) {
         self.listeners.push(ListenerEventPair {
             listener: listener.as_listener(),
-            events: events.into(),
+            events: HashSet::from_iter(events.into_iter()),
         });
     }
 

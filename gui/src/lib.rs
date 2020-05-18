@@ -20,7 +20,7 @@ use lazy_static::lazy_static;
 use log;
 use log::{debug, error};
 use rust_embed::RustEmbed;
-use state::{CosterReducer, CosterState, StateStore, StateStoreEvent};
+use state::{AppRoute, CosterReducer, CosterState, StateStoreEvent, RouteMiddleware, StateStoreRef, CosterAction};
 use std::cell::RefCell;
 use std::{fmt::Debug, rc::Rc};
 use tr::tr;
@@ -32,7 +32,6 @@ use yew::{
     services::{storage, StorageService},
     Component, ComponentLink, Html, ShouldRender,
 };
-use yew_state::Store;
 
 #[derive(RustEmbed, I18nEmbed)]
 #[folder = "i18n/mo"]
@@ -53,12 +52,11 @@ impl Debug for AppRoute {
 }
 
 pub type AppRouterRef = Rc<RefCell<SwitchRouteService<AppRoute>>>;
-pub type LocalizerRef = Rc<Box<dyn Localizer<'static>>>;
+pub type LocalizerRef = Rc<dyn Localizer<'static>>;
 pub type LanguageRequesterRef = Rc<RefCell<dyn LanguageRequester<'static>>>;
 
 pub enum Msg {
     RouteChanged(Option<AppRoute>),
-    ChangeRoute(AppRoute),
     LanguageChanged(LanguageIdentifier),
     StateChanged(Rc<CosterState>, StateStoreEvent),
 }
@@ -66,10 +64,9 @@ pub enum Msg {
 pub struct Model {
     language_requester: LanguageRequesterRef,
     localizer: LocalizerRef,
-    router: AppRouterRef,
     route: Option<AppRoute>,
     link: ComponentLink<Self>,
-    state_store: StateStore,
+    state_store: StateStoreRef,
     storage: Option<StorageService>,
     _state_callback: yew_state::Callback<CosterState, anyhow::Error, StateStoreEvent>,
 }
@@ -82,10 +79,9 @@ impl Model {
 
         html! {
             <Page
-                router = self.router.clone()
+                state_store = self.state_store.clone()
                 localizer = self.localizer.clone()
-                language_requester = self.language_requester.clone()
-                on_language_change = language_change_callback>
+                language_requester = self.language_requester.clone()>
                 { inner }
             </Page>
         }
@@ -97,16 +93,15 @@ impl Component for Model {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let state_store: StateStore = Rc::new(RefCell::new(Store::new(
-            CosterReducer,
-            CosterState::default(),
-        )));
+        let state_store: StateStoreRef = StateStoreRef::new(CosterReducer, CosterState::default());
+        let route_middleware = RouteMiddleware::new(&state_store);
+        state_store.add_middleware(route_middleware);
 
         let mut language_requester: WebLanguageRequester<'static> = WebLanguageRequester::new();
 
         let localizer = DefaultLocalizer::new(&*LANGUAGE_LOADER, &TRANSLATIONS);
 
-        let localizer_rc: Rc<Box<dyn Localizer<'static>>> = Rc::new(Box::from(localizer));
+        let localizer_rc: Rc<dyn Localizer<'static>> = Rc::new(localizer);
         language_requester.add_listener(&localizer_rc);
 
         let language_requester_rc: Rc<RefCell<dyn LanguageRequester<'static>>> =
@@ -153,12 +148,11 @@ impl Component for Model {
         let state_callback: yew_state::Callback<CosterState, anyhow::Error, StateStoreEvent> = link
             .callback(|(state, event)| Msg::StateChanged(state, event))
             .into();
-        state_store.borrow_mut().subscribe(&state_callback);
+        state_store.subscribe(&state_callback);
 
         Model {
             link,
             language_requester: language_requester_rc,
-            router: route_service_rc,
             route,
             localizer: localizer_rc,
             state_store,
@@ -172,10 +166,6 @@ impl Component for Model {
             Msg::RouteChanged(route) => {
                 debug!("Route changed: {:?}", route);
                 self.route = route;
-                true
-            }
-            Msg::ChangeRoute(route) => {
-                self.router.borrow_mut().set_route(route);
                 true
             }
             Msg::LanguageChanged(lang) => {
@@ -201,12 +191,14 @@ impl Component for Model {
         let route_match_node = match &self.route {
             Some(AppRoute::CostingTab) => {
                 debug!(target: "gui::router", "Detected CostingTab Route: {:?}", self.route);
-                self.page(centered(html! {<CostingTab state_store=self.state_store.clone()/>}))
+                self.page(centered(
+                    html! {<CostingTab state_store=self.state_store.clone()/>},
+                ))
             }
             Some(AppRoute::NewCostingTab) => {
                 debug!(target: "gui::router", "Detected NewCostingTab Route: {:?}", self.route);
                 self.page(centered(
-                    html! {<NewCostingTab state_store=self.state_store.clone() router=self.router.clone()/>},
+                    html! {<NewCostingTab state_store=self.state_store.clone()/>},
                 ))
             }
             Some(AppRoute::Help) => {
@@ -219,7 +211,7 @@ impl Component for Model {
                 if self.route.as_ref().unwrap().to_string() == "/" {
                     debug!(target: "gui::router", "Detected CostingTabListPage Route: {:?}", self.route);
                     self.page(centered(
-                        html! {<CostingTabList router=self.router.clone() state_store=self.state_store.clone()/>},
+                        html! {<CostingTabList state_store=self.state_store.clone()/>},
                     ))
                 } else {
                     debug!(target: "gui::router", "Detected Invalid Route: {:?}", self.route);

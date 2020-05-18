@@ -1,9 +1,10 @@
-use crate::{components::navbar::Navbar, AppRouterRef, LanguageRequesterRef, LocalizerRef};
+use crate::{
+    components::navbar::Navbar, state::{CosterAction, StateStoreRef}, LanguageRequesterRef, LocalizerRef,
+};
 
 use log::debug;
-use unic_langid::LanguageIdentifier;
 use yew::{
-    html, html::Renderable, Callback, Children, Component, ComponentLink, Html, Properties,
+    html, html::Renderable, Children, Component, ComponentLink, Html, Properties,
     ShouldRender,
 };
 
@@ -18,11 +19,10 @@ pub enum LanguageMsg {
 
 #[derive(Clone, Properties)]
 pub struct Props {
-    pub router: AppRouterRef,
+    pub state_store: StateStoreRef,
     pub language_requester: LanguageRequesterRef,
     pub localizer: LocalizerRef,
     #[prop_or_default]
-    pub on_language_change: Callback<LanguageIdentifier>,
     pub children: Children,
 }
 
@@ -33,7 +33,6 @@ impl PartialEq for Props {
             && self.language_requester.borrow().requested_languages()
                 == other.language_requester.borrow().requested_languages()
             && self.children == other.children
-            && self.on_language_change == other.on_language_change
     }
 }
 
@@ -55,7 +54,7 @@ impl Component for Page {
                     .unwrap();
                 self.props.language_requester.borrow_mut().poll().unwrap();
                 self.change(self.props.clone());
-                self.props.on_language_change.emit(language);
+                self.props.state_store.dispatch(CosterAction::ChangeLanguage(language));
                 true
             }
         }
@@ -76,7 +75,7 @@ impl Component for Page {
         html! {
             <>
                 <Navbar
-                    router = self.props.router.clone()
+                    state_store = self.props.state_store.clone()
                     lang = lang.clone()
                     localizer = self.props.localizer.clone()
                     on_language_change = self.link.callback(|selection| {

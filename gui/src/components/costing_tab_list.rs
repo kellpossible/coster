@@ -1,4 +1,4 @@
-use crate::{AppRoute, AppRouterRef, state::StateStore};
+use crate::{state::{CosterAction, StateStoreRef}, AppRoute};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -20,16 +20,9 @@ pub enum Msg {
     NewCostingTab,
 }
 
-#[derive(Clone, Properties)]
+#[derive(Clone, Properties, PartialEq)]
 pub struct Props {
-    pub router: AppRouterRef,
-    pub state_store: StateStore,
-}
-
-impl PartialEq for Props {
-    fn eq(&self, other: &Self) -> bool {
-        StateStore::ptr_eq(&self.state_store, &other.state_store) && self.router == other.router
-    }
+    pub state_store: StateStoreRef,
 }
 
 impl Component for CostingTabList {
@@ -51,9 +44,8 @@ impl Component for CostingTabList {
         match msg {
             Msg::NewCostingTab => {
                 self.props
-                    .router
-                    .borrow_mut()
-                    .set_route(AppRoute::NewCostingTab);
+                    .state_store
+                    .dispatch(CosterAction::ChangeRoute(AppRoute::NewCostingTab));
             }
         }
         true

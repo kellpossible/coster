@@ -1,5 +1,9 @@
 use crate::bulma::components::Select;
-use crate::{bulma, AppRoute, AppRouterRef, LocalizerRef};
+use crate::{
+    bulma,
+    state::{CosterAction, StateStoreRef},
+    AppRoute, AppRouterRef, LocalizerRef,
+};
 
 use tr::tr;
 use unic_langid::LanguageIdentifier;
@@ -20,7 +24,7 @@ pub enum Msg {
 
 #[derive(Clone, Properties)]
 pub struct Props {
-    pub router: AppRouterRef,
+    pub state_store: StateStoreRef,
     #[prop_or_default]
     pub on_language_change: Callback<LanguageIdentifier>,
     pub localizer: LocalizerRef,
@@ -52,15 +56,21 @@ impl Component for Navbar {
             }
             Msg::ToIndex => {
                 self.burger_menu_active = false;
-                self.props.router.borrow_mut().set_route(AppRoute::Index);
+                self.props
+                    .state_store
+                    .dispatch(CosterAction::ChangeRoute(AppRoute::Index));
             }
             Msg::ToAbout => {
                 self.burger_menu_active = false;
-                self.props.router.borrow_mut().set_route(AppRoute::About);
+                self.props
+                    .state_store
+                    .dispatch(CosterAction::ChangeRoute(AppRoute::About));
             }
             Msg::ToHelp => {
                 self.burger_menu_active = false;
-                self.props.router.borrow_mut().set_route(AppRoute::Help);
+                self.props
+                    .state_store
+                    .dispatch(CosterAction::ChangeRoute(AppRoute::Help));
             }
         }
         true

@@ -3,11 +3,13 @@ use crate::bulma::{
     FieldKey, InputValue,
 };
 use crate::validation::{ValidationError, Validator};
-use crate::{AppRoute, AppRouterRef, state::StateStore};
+use crate::{
+    state::{CosterAction, StateStoreRef},
+    AppRoute, AppRouterRef,
+};
 use commodity::CommodityType;
-use log::debug;
 use log::info;
-use std::{rc::Rc, fmt::Display};
+use std::fmt::Display;
 use tr::tr;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
@@ -56,16 +58,9 @@ pub enum Msg {
     Cancel,
 }
 
-#[derive(Clone, Properties)]
+#[derive(Clone, Properties, PartialEq)]
 pub struct Props {
-    pub state_store: StateStore,
-    pub router: AppRouterRef,
-}
-
-impl PartialEq for Props {
-    fn eq(&self, other: &Self) -> bool {
-        StateStore::ptr_eq(&self.state_store, &other.state_store) && self.router == other.router
-    }
+    pub state_store: StateStoreRef,
 }
 
 impl Component for NewCostingTab {
@@ -99,7 +94,9 @@ impl Component for NewCostingTab {
                 // self.props.router.borrow_mut().set_route(AppRoute::Index);
             }
             Msg::Cancel => {
-                self.props.router.borrow_mut().set_route(AppRoute::Index);
+                self.props
+                    .state_store
+                    .dispatch(CosterAction::ChangeRoute(AppRoute::Index));
             }
         }
         true

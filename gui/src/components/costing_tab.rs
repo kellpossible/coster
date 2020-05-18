@@ -1,11 +1,11 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::state::StateStoreRef;
 use commodity::CommodityType;
 use costing::Tab;
 use tr::tr;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
-use crate::state::StateStore;
 
 pub struct CostingTab {
     tab: RefCell<Tab>,
@@ -13,15 +13,9 @@ pub struct CostingTab {
     link: ComponentLink<Self>,
 }
 
-#[derive(Clone, Properties)]
+#[derive(Clone, Properties, PartialEq)]
 pub struct Props {
-    pub state_store: StateStore,
-}
-
-impl PartialEq for Props {
-    fn eq(&self, other: &Self) -> bool {
-        StateStore::ptr_eq(&self.state_store, &other.state_store)
-    }
+    pub state_store: StateStoreRef,
 }
 
 impl Component for CostingTab {

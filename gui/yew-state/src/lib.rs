@@ -8,4 +8,4 @@ mod store;
 pub use event::*;
 pub use listener::*;
 pub use reducer::*;
-pub use store::Store;
+pub use store::{Store, StoreRef};

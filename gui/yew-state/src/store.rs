@@ -1,7 +1,4 @@
-use crate::{
-    middleware::Middleware, AsListener, CallbackResults, Listener, Reducer, ReducerResult,
-    StoreEvent,
-};
+use crate::{middleware::Middleware, AsListener, CallbackResults, Listener, Reducer, StoreEvent};
 use std::{cell::RefCell, collections::HashSet, hash::Hash, marker::PhantomData, rc::Rc};
 
 pub type DispatchResult<Error> = Result<(), Vec<Error>>;
@@ -9,6 +6,60 @@ pub type DispatchResult<Error> = Result<(), Vec<Error>>;
 struct ListenerEventPair<State, Error, Event> {
     pub listener: Listener<State, Error, Event>,
     pub events: HashSet<Event>,
+}
+
+pub struct StoreRef<State, Action, Error, Event>(Rc<RefCell<Store<State, Action, Error, Event>>>);
+
+impl <State, Action, Error, Event> Clone for StoreRef<State, Action, Error, Event> {
+    fn clone(&self) -> Self {
+        StoreRef(self.0.clone())
+    }
+}
+
+impl <State, Action, Error, Event> PartialEq for StoreRef<State, Action, Error, Event> {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+
+}
+
+impl<State, Action, Error, Event> StoreRef<State, Action, Error, Event>
+where
+    Event: StoreEvent + Clone + Hash + Eq,
+{
+    pub fn new<R: Reducer<State, Action, Event> + 'static>(
+        reducer: R,
+        initial_state: State,
+    ) -> Self {
+        StoreRef(Rc::new(RefCell::new(Store::new(reducer, initial_state))))
+    }
+
+    pub fn dispatch(&self, action: Action) -> DispatchResult<Error> {
+        self.0.borrow_mut().dispatch(action)
+    }
+
+    pub fn subscribe<L: AsListener<State, Error, Event>>(&self, listener: L) {
+        self.0.borrow_mut().subscribe(listener)
+    }
+
+    pub fn subscribe_event<L: AsListener<State, Error, Event>>(&self, listener: L, event: Event) {
+        self.0.borrow_mut().subscribe_event(listener, event)
+    }
+
+    pub fn subscribe_events<L: AsListener<State, Error, Event>, E: Into<HashSet<Event>>>(
+        &mut self,
+        listener: L,
+        events: E,
+    ) {
+        self.0.borrow_mut().subscribe_events(listener, events)
+    }
+
+    pub fn add_middleware<M: Middleware<State, Action, Error, Event> + 'static>(
+        &self,
+        middleware: M,
+    ) {
+        self.0.borrow_mut().add_middleware(middleware)
+    }
 }
 
 pub struct Store<State, Action, Error, Event> {
@@ -44,19 +95,8 @@ where
         &self.state
     }
 
-    pub fn dispatch(&mut self, action: Action) -> DispatchResult<Error> {
-        let events = if self.action_middleware.is_empty() {
-            self.dispatch_reducer(action)
-        } else {
-            self.dispatch_middleware_reduce(action)
-        };
-
-        // TODO: if there was no action (after the middleware), then don't notify.
-        self.notify_listeners(events)
-    }
-
     fn dispatch_reducer(&mut self, action: Action) -> Vec<Event> {
-        let (state, events) = self.reducer.reduce(&self.state, &action);
+        let (state, events) = self.reducer.reduce(&self.state, action);
         self.state = Rc::new(state);
         events
     }
@@ -131,6 +171,17 @@ where
         }
     }
 
+    pub fn dispatch(&mut self, action: Action) -> DispatchResult<Error> {
+        let events = if self.action_middleware.is_empty() {
+            self.dispatch_reducer(action)
+        } else {
+            self.dispatch_middleware_reduce(action)
+        };
+
+        // TODO: if there was no action (after the middleware), then don't notify.
+        self.notify_listeners(events)
+    }
+
     pub fn subscribe<L: AsListener<State, Error, Event>>(&mut self, listener: L) {
         self.listeners.push(ListenerEventPair {
             listener: listener.as_listener(),
@@ -138,11 +189,7 @@ where
         });
     }
 
-    pub fn subscribe_event<L: AsListener<State, Error, Event>>(
-        &mut self,
-        listener: L,
-        event: Event,
-    ) {
+    pub fn subscribe_event<L: AsListener<State, Error, Event>>(&mut self, listener: L, event: Event) {
         let mut events = HashSet::with_capacity(1);
         events.insert(event);
 
@@ -163,7 +210,7 @@ where
         });
     }
 
-    pub fn add_action_middleware<M: Middleware<State, Action, Error, Event> + 'static>(
+    pub fn add_middleware<M: Middleware<State, Action, Error, Event> + 'static>(
         &mut self,
         middleware: M,
     ) {
@@ -194,7 +241,7 @@ mod tests {
     struct TestReducer;
 
     impl Reducer<TestState, TestAction, TestEvent> for TestReducer {
-        fn reduce(&self, state: &TestState, action: &TestAction) -> (TestState, Vec<TestEvent>) {
+        fn reduce(&self, state: &TestState, action: TestAction) -> (TestState, Vec<TestEvent>) {
             let mut events = Vec::new();
             let new_state = match action {
                 TestAction::Increment => TestState {
@@ -346,10 +393,10 @@ mod tests {
         let mut store_mut = store.borrow_mut();
 
         store_mut.subscribe(&callback);
-        store_mut.add_action_middleware(TestMiddleware {
+        store_mut.add_middleware(TestMiddleware {
             new_action: TestAction::Decrement,
         });
-        store_mut.add_action_middleware(TestMiddleware {
+        store_mut.add_middleware(TestMiddleware {
             new_action: TestAction::Decrement2,
         });
 
@@ -373,10 +420,10 @@ mod tests {
         let mut store_mut = store.borrow_mut();
 
         store_mut.subscribe(&callback);
-        store_mut.add_action_middleware(TestMiddleware {
+        store_mut.add_middleware(TestMiddleware {
             new_action: TestAction::Decrement2,
         });
-        store_mut.add_action_middleware(TestMiddleware {
+        store_mut.add_middleware(TestMiddleware {
             new_action: TestAction::Decrement,
         });
 

@@ -1,7 +1,7 @@
 use crate::bulma::components::Select;
 use crate::{
     bulma,
-    state::{CosterAction, StateStoreRef},
+    state::{CosterAction, StateStoreRef, middleware::RouteStoreRef},
     AppRoute, AppRouterRef, LocalizerRef,
 };
 
@@ -58,19 +58,19 @@ impl Component for Navbar {
                 self.burger_menu_active = false;
                 self.props
                     .state_store
-                    .dispatch(CosterAction::ChangeRoute(AppRoute::Index));
+                    .change_route(AppRoute::Index);
             }
             Msg::ToAbout => {
                 self.burger_menu_active = false;
                 self.props
                     .state_store
-                    .dispatch(CosterAction::ChangeRoute(AppRoute::About));
+                    .change_route(AppRoute::About);
             }
             Msg::ToHelp => {
                 self.burger_menu_active = false;
                 self.props
                     .state_store
-                    .dispatch(CosterAction::ChangeRoute(AppRoute::Help));
+                    .change_route(AppRoute::Help);
             }
         }
         true

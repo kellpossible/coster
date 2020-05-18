@@ -1,5 +1,5 @@
 use crate::{
-    state::{CosterAction, StateStoreRef},
+    state::{CosterAction, StateStoreRef, middleware::RouteStoreRef},
     AppRoute,
 };
 
@@ -48,7 +48,7 @@ impl Component for CostingTabList {
             Msg::NewCostingTab => {
                 self.props
                     .state_store
-                    .dispatch(CosterAction::ChangeRoute(AppRoute::NewCostingTab));
+                    .change_route(AppRoute::NewCostingTab);
             }
         }
         true

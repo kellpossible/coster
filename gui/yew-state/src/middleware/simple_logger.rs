@@ -28,13 +28,13 @@ impl Default for LogLevel {
     }
 }
 
-pub struct SimpleLogger {
+pub struct SimpleLoggerMiddleware {
     log_level: LogLevel,
 }
 
-impl SimpleLogger {
+impl SimpleLoggerMiddleware {
     pub fn new() -> Self {
-        SimpleLogger {
+        SimpleLoggerMiddleware {
             log_level: LogLevel::default(),
         }
     }
@@ -45,7 +45,7 @@ impl SimpleLogger {
     }
 }
 
-impl<State, Action, Event> Middleware<State, Action, Event> for SimpleLogger
+impl<State, Action, Event> Middleware<State, Action, Event> for SimpleLoggerMiddleware
 where
     Event: StoreEvent + Clone + Hash + Eq + Debug,
     State: Debug,

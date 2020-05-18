@@ -1,13 +1,14 @@
 use crate::bulma::components::Select;
 use crate::{
     bulma,
-    state::{middleware::route::RouteStoreRef, StateStoreRef},
-    AppRoute, LocalizerRef,
+    state::{middleware::{route::RouteStoreRef, localize::{LocalizeStoreRef}}, StateStoreRef},
+    AppRoute, LanguageRequesterRef,
 };
 
 use tr::tr;
 use unic_langid::LanguageIdentifier;
-use yew::{html, Callback, Component, ComponentLink, Html, Properties, ShouldRender};
+use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
+use std::rc::Rc;
 
 pub struct Navbar {
     burger_menu_active: bool,
@@ -20,20 +21,18 @@ pub enum Msg {
     ToIndex,
     ToHelp,
     ToAbout,
+    SelectLanguage(LanguageIdentifier),
 }
 
 #[derive(Clone, Properties)]
 pub struct Props {
     pub state_store: StateStoreRef,
-    #[prop_or_default]
-    pub on_language_change: Callback<LanguageIdentifier>,
-    pub localizer: LocalizerRef,
-    pub lang: unic_langid::LanguageIdentifier,
+    pub language_requester: LanguageRequesterRef,
 }
 
 impl PartialEq for Props {
     fn eq(&self, other: &Props) -> bool {
-        self.on_language_change == other.on_language_change && self.lang == other.lang
+        self.state_store == other.state_store && Rc::ptr_eq(&self.language_requester, &other.language_requester)
     }
 }
 
@@ -66,13 +65,20 @@ impl Component for Navbar {
                 self.burger_menu_active = false;
                 self.props.state_store.change_route(AppRoute::Help);
             }
+            Msg::SelectLanguage(language) => {
+                self.props.state_store.change_selected_language(Some(language));
+            }
         }
         true
     }
 
     fn view(&self) -> Html {
-        let languages = self.props.localizer.available_languages().unwrap();
-        let default_language = self.props.localizer.language_loader().current_language();
+        let languages = self.props.language_requester.borrow().available_languages().unwrap();
+
+        // TODO: perhaps use the domain rather than just getting the first.
+        let current_language = self.props.language_requester.borrow().current_languages().values().next().expect("expected there to be at least one currently loaded language").clone();
+
+        let on_language_change = self.link.callback(Msg::SelectLanguage);
 
         let select_icon_props = bulma::components::icon::Props {
             color: Some(bulma::Color::Info),
@@ -121,9 +127,9 @@ impl Component for Navbar {
                         <div class="navbar-item">
                             <Select<LanguageIdentifier>
                                 size=bulma::Size::Big
-                                selected=default_language
+                                selected=current_language
                                 options=languages
-                                onchange=self.props.on_language_change.clone()
+                                onchange=on_language_change
                                 icon_props=select_icon_props
                                 />
                         </div>

@@ -21,7 +21,7 @@ use log;
 use log::{debug, error};
 use rust_embed::RustEmbed;
 use state::{
-    middleware::route::RouteMiddleware, AppRoute, CosterReducer, CosterState, RouteType, StateStoreEvent,
+    middleware::{localize::LocalizeMiddleware, route::RouteMiddleware}, AppRoute, CosterReducer, CosterState, RouteType, StateStoreEvent,
     StateStoreRef,
 };
 use std::cell::RefCell;
@@ -34,6 +34,7 @@ use yew::{
     services::{storage, StorageService},
     Component, ComponentLink, Html, ShouldRender,
 };
+use yew_state::middleware::simple_logger::{LogLevel, SimpleLoggerMiddleware};
 
 #[derive(RustEmbed, I18nEmbed)]
 #[folder = "i18n/mo"]
@@ -45,7 +46,7 @@ lazy_static! {
     static ref LANGUAGE_LOADER: WebLanguageLoader = WebLanguageLoader::new();
 }
 
-static TRANSLATIONS: Translations = Translations {};
+static TRANSLATIONS: Translations = Translations;
 
 pub type AppRouterRef = Rc<RefCell<SwitchRouteService<AppRoute>>>;
 pub type LocalizerRef = Rc<dyn Localizer<'static>>;
@@ -57,7 +58,6 @@ pub enum Msg {
 
 pub struct Model {
     language_requester: LanguageRequesterRef,
-    localizer: LocalizerRef,
     link: ComponentLink<Self>,
     state_store: StateStoreRef,
     storage: Option<StorageService>,
@@ -69,7 +69,6 @@ impl Model {
         html! {
             <Page
                 state_store = self.state_store.clone()
-                localizer = self.localizer.clone()
                 language_requester = self.language_requester.clone()>
                 { inner }
             </Page>
@@ -83,48 +82,48 @@ impl Component for Model {
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         let state_store: StateStoreRef = StateStoreRef::new(CosterReducer, CosterState::default());
+        let log_middleware = SimpleLoggerMiddleware::new().log_level(LogLevel::Debug);
+        state_store.add_middleware(log_middleware);
+
         let route_middleware = RouteMiddleware::new(&state_store);
         state_store.add_middleware(route_middleware);
 
         let mut language_requester: WebLanguageRequester<'static> = WebLanguageRequester::new();
-
         let localizer = DefaultLocalizer::new(&*LANGUAGE_LOADER, &TRANSLATIONS);
-
-        let localizer_rc: Rc<dyn Localizer<'static>> = Rc::new(localizer);
-        language_requester.add_listener(&localizer_rc);
-
-        let language_requester_rc: Rc<RefCell<dyn LanguageRequester<'static>>> =
-            Rc::new(RefCell::from(language_requester));
+        let localizer_ref: Rc<dyn Localizer<'static>> = Rc::new(localizer);
+        language_requester.add_listener(&localizer_ref);
 
         let storage = StorageService::new(storage::Area::Local).ok();
+        // if let Some(storage) = &storage {
+        //     let selected_language_result: Result<String, anyhow::Error> =
+        //         storage.restore("user-selected-language");
 
-        if let Some(storage) = &storage {
-            let selected_language_result: Result<String, anyhow::Error> =
-                storage.restore("user-selected-language");
-
-            match selected_language_result {
-                Ok(selected_language_id) => {
-                    let selected_language: unic_langid::LanguageIdentifier =
-                        selected_language_id.parse().unwrap();
-                    debug!(
-                        "Model::update restoring user-selected-language: {}",
-                        selected_language.to_string()
-                    );
-                    language_requester_rc
-                        .borrow_mut()
-                        .set_languge_override(Some(selected_language))
-                        .unwrap();
-                }
-                Err(error) => {
-                    error!("{}", error);
-                }
-            }
-        }
+        //     match selected_language_result {
+        //         Ok(selected_language_id) => {
+        //             let selected_language: unic_langid::LanguageIdentifier =
+        //                 selected_language_id.parse().unwrap();
+        //             debug!(
+        //                 "Model::update restoring user-selected-language: {}",
+        //                 selected_language.to_string()
+        //             );
+        //             language_requester
+        //                 .set_languge_override(Some(selected_language))
+        //                 .unwrap();
+        //         }
+        //         Err(error) => {
+        //             error!("{}", error);
+        //         }
+        //     }
+        // }
 
         // Manually check the currently requested system language,
         // and update the listeners. When the system language changes,
         // this will automatically be triggered.
-        language_requester_rc.borrow_mut().poll().unwrap();
+        language_requester.poll().unwrap();
+
+        let language_requester_ref = Rc::new(RefCell::new(language_requester));
+        let localize_middleware = LocalizeMiddleware::new(language_requester_ref.clone());
+        state_store.add_middleware(localize_middleware);
 
         let state_callback: yew_state::Callback<CosterState, StateStoreEvent> = link
             .callback(|(state, event)| Msg::StateChanged(state, event))
@@ -139,8 +138,7 @@ impl Component for Model {
 
         Model {
             link,
-            language_requester: language_requester_rc,
-            localizer: localizer_rc,
+            language_requester: language_requester_ref,
             state_store,
             storage,
             _state_callback: state_callback,
@@ -151,14 +149,15 @@ impl Component for Model {
         match msg {
             Msg::StateChanged(state, event) => match event {
                 StateStoreEvent::LanguageChanged => {
-                    if let Some(storage) = &mut self.storage {
-                        debug!(
-                            "Model::update storing user-selected-language: {}",
-                            state.language.to_string()
-                        );
-                        storage.store("user-selected-language", Ok(state.language.to_string()));
-                    }
-                    debug!("Language changed in coster::lib {:?}", state.language);
+                    // if let Some(storage) = &mut self.storage {
+                    //     debug!(
+                    //         "Model::update storing user-selected-language: {:?}",
+                    //         state.selected_language
+                    //     );
+                        
+                    //     storage.store("user-selected-language", Ok(state.selected_language.to_string()));
+                    // }
+                    // debug!("Language changed in coster::lib {:?}", state.selected_language);
                     true
                 }
                 StateStoreEvent::RouteChanged => true,

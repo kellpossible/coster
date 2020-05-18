@@ -35,6 +35,29 @@ where
     }
 }
 
+impl<SR, State, Action, Event> Middleware<State, Action, Event>
+    for RouteMiddleware<SR, State, Action, Event>
+where
+    SR: SwitchRoute + 'static,
+    State: RouteState<SR>,
+    Event: RouteEvent<SR> + PartialEq + StoreEvent + Clone + Hash + Eq,
+{
+    fn on_notify(
+        &mut self,
+        store: &mut Store<State, Action, Event>,
+        _: Action,
+        events: Vec<Event>,
+        notify: yew_state::middleware::NotifyFn<State, Action, Event>,
+    ) {
+        for event in &events {
+            if event == &Event::route_changed() {
+                self.router.set_route(store.state().get_route().clone());
+            }
+        }
+        notify(store, events);
+    }
+}
+
 pub trait RouteState<SR> {
     fn get_route(&self) -> &SR;
 }
@@ -82,28 +105,5 @@ where
 {
     fn change_route<R: Into<SR>>(&mut self, route: R) {
         self.dispatch(Action::change_route(route));
-    }
-}
-
-impl<SR, State, Action, Event> Middleware<State, Action, Event>
-    for RouteMiddleware<SR, State, Action, Event>
-where
-    SR: SwitchRoute + 'static,
-    State: RouteState<SR>,
-    Event: RouteEvent<SR> + PartialEq + StoreEvent + Clone + Hash + Eq,
-{
-    fn on_notify(
-        &mut self,
-        store: &mut Store<State, Action, Event>,
-        _: Action,
-        events: Vec<Event>,
-        notify: yew_state::middleware::NotifyFn<State, Action, Event>,
-    ) {
-        for event in &events {
-            if event == &Event::route_changed() {
-                self.router.set_route(store.state().get_route().clone());
-            }
-        }
-        notify(store, events);
     }
 }

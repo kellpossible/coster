@@ -12,11 +12,11 @@ pub enum LogLevel {
 }
 
 /// Aiming to be something similar to https://github.com/LogRocket/redux-logger
-pub struct WebLogger {
+pub struct WebLoggerMiddleware {
     _log_level: LogLevel,
 }
 
-impl<State, Action, Event> Middleware<State, Action, Event> for WebLogger
+impl<State, Action, Event> Middleware<State, Action, Event> for WebLoggerMiddleware
 where
     State: Serialize,
     Action: Serialize,

@@ -1,7 +1,7 @@
 pub mod middleware;
 
 use crate::routing::SwitchRoute;
-use middleware::route::{RouteAction, RouteEvent, RouteState};
+use middleware::{localize::{LocalizeEvent, LocalizeAction, LocalizeState}, route::{RouteAction, RouteEvent, RouteState}};
 use std::fmt::Debug;
 use unic_langid::LanguageIdentifier;
 use yew_router::{route::Route, Switch};
@@ -86,15 +86,16 @@ impl Debug for AppRoute {
 
 pub type StateStoreRef = StoreRef<CosterState, CosterAction, StateStoreEvent>;
 
+#[derive(Debug)]
 pub struct CosterState {
-    pub language: LanguageIdentifier,
+    pub selected_language: Option<LanguageIdentifier>,
     pub route: RouteType,
 }
 
 impl Default for CosterState {
     fn default() -> Self {
         Self {
-            language: "en".parse().unwrap(),
+            selected_language: None,
             route: RouteType::Valid(AppRoute::Index),
         }
     }
@@ -103,14 +104,14 @@ impl Default for CosterState {
 impl CosterState {
     pub fn change_route(&self, route: RouteType) -> Self {
         Self {
-            language: self.language.clone(),
+            selected_language: self.selected_language.clone(),
             route,
         }
     }
 
-    pub fn change_language(&self, language: LanguageIdentifier) -> Self {
+    pub fn change_selected_language(&self, selected_language: Option<LanguageIdentifier>) -> Self {
         Self {
-            language,
+            selected_language,
             route: self.route.clone(),
         }
     }
@@ -122,9 +123,22 @@ impl RouteState<RouteType> for CosterState {
     }
 }
 
+impl LocalizeState for CosterState {
+    fn get_selected_language(&self) -> &Option<LanguageIdentifier> {
+        &self.selected_language
+    }
+}
+
+#[derive(Debug)]
 pub enum CosterAction {
-    ChangeLanguage(LanguageIdentifier),
+    ChangeSelectedLanguage(Option<LanguageIdentifier>),
     ChangeRoute(RouteType),
+}
+
+impl LocalizeAction for CosterAction {
+    fn change_selected_language(selected_language: Option<LanguageIdentifier>) -> Self {
+        CosterAction::ChangeSelectedLanguage(selected_language)
+    }
 }
 
 impl RouteAction<RouteType> for CosterAction {
@@ -151,6 +165,12 @@ impl StoreEvent for StateStoreEvent {
     }
 }
 
+impl LocalizeEvent for StateStoreEvent {
+    fn language_changed() -> Self {
+        StateStoreEvent::LanguageChanged
+    }
+}
+
 impl RouteEvent<RouteType> for StateStoreEvent {
     fn route_changed() -> Self {
         StateStoreEvent::RouteChanged
@@ -166,9 +186,9 @@ impl Reducer<CosterState, CosterAction, StateStoreEvent> for CosterReducer {
         let mut events = Vec::new();
 
         let state = match action {
-            CosterAction::ChangeLanguage(language) => {
+            CosterAction::ChangeSelectedLanguage(language) => {
                 events.push(StateStoreEvent::LanguageChanged);
-                state.change_language(language)
+                state.change_selected_language(language)
             }
             CosterAction::ChangeRoute(route) => {
                 events.push(StateStoreEvent::RouteChanged);

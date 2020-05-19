@@ -6,11 +6,11 @@ use crate::Store;
 pub type ReduceFn<State, Action, Event> =
     fn(&mut Store<State, Action, Event>, Option<Action>) -> Vec<Event>;
 
-pub type NotifyFn<State, Action, Event> = fn(&mut Store<State, Action, Event>, Vec<Event>);
+pub type NotifyFn<State, Action, Event> = fn(&mut Store<State, Action, Event>, Vec<Event>) -> Vec<Event>;
 
 pub trait Middleware<State, Action, Event> {
     fn on_reduce(
-        &mut self,
+        &self,
         store: &mut Store<State, Action, Event>,
         action: Option<Action>,
         reduce: ReduceFn<State, Action, Event>,
@@ -19,12 +19,11 @@ pub trait Middleware<State, Action, Event> {
     }
 
     fn on_notify(
-        &mut self,
+        &self,
         store: &mut Store<State, Action, Event>,
-        action: Action,
         events: Vec<Event>,
         notify: NotifyFn<State, Action, Event>,
-    ) {
-        notify(store, events);
+    ) -> Vec<Event> {
+        notify(store, events)
     }
 }

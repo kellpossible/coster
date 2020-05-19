@@ -23,7 +23,7 @@ where
     Action: LocalizeAction,
 {
     fn on_reduce(
-        &mut self,
+        &self,
         store: &mut Store<State, Action, Event>,
         action: Option<Action>,
         reduce: yew_state::middleware::ReduceFn<State, Action, Event>,
@@ -39,16 +39,6 @@ where
             }
         }
         reduce(store, action)
-    }
-
-    fn on_notify(
-        &mut self,
-        store: &mut yew_state::Store<State, Action, Event>,
-        _: Action,
-        events: Vec<Event>,
-        notify: yew_state::middleware::NotifyFn<State, Action, Event>,
-    ) {
-        notify(store, events);
     }
 }
 
@@ -105,14 +95,14 @@ where
     Event: LocalizeEvent + PartialEq + StoreEvent + Clone + Hash + Eq + 'static,
 {
     fn change_selected_language(&self, selected_language: Option<LanguageIdentifier>) {
-        self.dispatch(Action::change_selected_language(selected_language))
+        self.dispatch(Action::change_selected_language(selected_language)).expect("unable to perform Store::dispatch")
     }
 
     fn subscribe_language_changed<COMP: Component>(&self, link: &ComponentLink<COMP>, message: COMP::Message) -> Callback<State, Event> where COMP::Message: Clone {
         let callback = link
             .callback(move |()| message.clone())
             .into();
-        self.subscribe_event(&callback, LocalizeEvent::language_changed());
+        self.subscribe_event(&callback, LocalizeEvent::language_changed()).expect("Unable to subscribe to language changed event on LanguageStoreRef");
         callback
     }
 }

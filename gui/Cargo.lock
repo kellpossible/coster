@@ -431,6 +431,7 @@ dependencies = [
  "rust_decimal",
  "serde",
  "serde_derive",
+ "switch-router",
  "tr",
  "unic-langid",
  "wasm-bindgen",
@@ -910,6 +911,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f3eb36b47e512f8f1c9e3d10c2c1965bc992bd9cdb024fa581e2194501c83d3"
 
 [[package]]
+name = "switch-router"
+version = "0.1.0"
+dependencies = [
+ "gloo-events",
+ "web-sys",
+ "yew-router-min",
+]
+
+[[package]]
 name = "syn"
 version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1211,6 +1221,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "yew-router-min"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5cc85d91f23403e03d06144f04c25c9f78138eecf9370d58d137195fe2830c3"
+dependencies = [
+ "log",
+ "nom",
+ "serde",
+ "serde_derive",
+ "yew-router-min-macro",
+ "yew-router-min-route-parser",
+]
+
+[[package]]
+name = "yew-router-min-macro"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50cf7c4116b6aa61f7813eb6d91c5a90c80820797325c06d4b123ec0d81acd95"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "yew-router-min-route-parser",
+]
+
+[[package]]
+name = "yew-router-min-route-parser"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58854ad95bf37b08f55bf87f9963828956efe0c776562d990aa44ca9922c7456"
+dependencies = [
+ "log",
+ "nom",
+]
+
+[[package]]
 name = "yew-router-route-parser"
 version = "0.12.0"
 source = "git+https://github.com/yewstack/yew.git#5b0ecc0badfb214ee9c80aacf2e34bfa912e3f08"
@@ -1224,6 +1270,7 @@ version = "0.1.0"
 dependencies = [
  "log",
  "serde",
+ "thiserror",
  "wasm-bindgen",
  "web-sys",
  "yew",

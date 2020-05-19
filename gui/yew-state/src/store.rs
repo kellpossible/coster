@@ -1,8 +1,33 @@
 use crate::{middleware::Middleware, AsListener, Listener, Reducer, StoreEvent};
 use std::iter::FromIterator;
 use std::{
-    cell::RefCell, collections::HashSet, convert::TryInto, hash::Hash, marker::PhantomData, rc::Rc,
+    cell::{BorrowMutError, RefCell, BorrowError}, collections::HashSet, hash::Hash, marker::PhantomData, rc::Rc, fmt::Display,
 };
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub struct StoreRefBorrowMutError {
+    #[from]
+    pub source: BorrowMutError,
+}
+
+impl Display for StoreRefBorrowMutError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Error while borrowing StoreRef as mutable: {}", self.source)
+    }
+}
+
+#[derive(Error, Debug)]
+pub struct StoreRefBorrowError {
+    #[from]
+    pub source: BorrowError,
+}
+
+impl Display for StoreRefBorrowError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Error while borrowing StoreRef as immutable: {}", self.source)
+    }
+}
 
 struct ListenerEventPair<State, Event> {
     pub listener: Listener<State, Event>,
@@ -34,32 +59,37 @@ where
         StoreRef(Rc::new(RefCell::new(Store::new(reducer, initial_state))))
     }
 
-    pub fn state(&self) -> Rc<State> {
-        self.0.borrow().state().clone()
+    pub fn state(&self) -> Result<Rc<State>, StoreRefBorrowError> {
+        Ok(self.0.try_borrow()?.state().clone())
     }
 
-    pub fn dispatch(&self, action: Action) {
-        self.0.borrow_mut().dispatch(action)
+    pub fn dispatch(&self, action: Action) -> Result<(), StoreRefBorrowMutError> {
+        self.0.try_borrow_mut()?.dispatch(action);
+        Ok(())
     }
 
-    pub fn subscribe<L: AsListener<State, Event>>(&self, listener: L) {
-        self.0.borrow_mut().subscribe(listener)
+    pub fn subscribe<L: AsListener<State, Event>>(&self, listener: L) -> Result<(), StoreRefBorrowMutError>  {
+        self.0.try_borrow_mut()?.subscribe(listener);
+        Ok(())
     }
 
-    pub fn subscribe_event<L: AsListener<State, Event>>(&self, listener: L, event: Event) {
-        self.0.borrow_mut().subscribe_event(listener, event)
+    pub fn subscribe_event<L: AsListener<State, Event>>(&self, listener: L, event: Event) -> Result<(), StoreRefBorrowMutError>  {
+        self.0.try_borrow_mut()?.subscribe_event(listener, event);
+        Ok(())
     }
 
     pub fn subscribe_events<L: AsListener<State, Event>, E: IntoIterator<Item = Event>>(
         &self,
         listener: L,
         events: E,
-    ) {
-        self.0.borrow_mut().subscribe_events(listener, events)
+    ) -> Result<(), StoreRefBorrowMutError> {
+        self.0.try_borrow_mut()?.subscribe_events(listener, events);
+        Ok(())
     }
 
-    pub fn add_middleware<M: Middleware<State, Action, Event> + 'static>(&self, middleware: M) {
-        self.0.borrow_mut().add_middleware(middleware)
+    pub fn add_middleware<M: Middleware<State, Action, Event> + 'static>(&self, middleware: M) -> Result<(), StoreRefBorrowMutError> {
+        self.0.try_borrow_mut()?.add_middleware(middleware);
+        Ok(())
     }
 }
 
@@ -67,7 +97,7 @@ pub struct Store<State, Action, Event> {
     reducer: Box<dyn Reducer<State, Action, Event>>,
     state: Rc<State>,
     listeners: Vec<ListenerEventPair<State, Event>>,
-    action_middleware: Vec<Rc<RefCell<dyn Middleware<State, Action, Event>>>>,
+    middleware: Vec<Rc<dyn Middleware<State, Action, Event>>>,
     prev_middleware: i32,
     phantom_action: PhantomData<Action>,
     phantom_event: PhantomData<Event>,
@@ -85,7 +115,7 @@ where
             reducer: Box::new(reducer),
             state: Rc::new(initial_state),
             listeners: Vec::new(),
-            action_middleware: Vec::new(),
+            middleware: Vec::new(),
             prev_middleware: -1,
             phantom_action: PhantomData,
             phantom_event: PhantomData,
@@ -98,7 +128,7 @@ where
 
     fn dispatch_reducer(&mut self, action: Action) -> Vec<Event> {
         let (state, events) = self.reducer.reduce(&self.state, action);
-        self.state = Rc::new(state);
+        self.state = state;
         events
     }
 
@@ -109,8 +139,11 @@ where
 
     fn dispatch_middleware_reduce_next(&mut self, action: Option<Action>) -> Vec<Event> {
         let current_middleware = self.prev_middleware + 1;
-        if current_middleware as usize == self.action_middleware.len() {
+        if current_middleware as usize == self.middleware.len() {
             return match action {
+                //TODO: move this outside the dispatch middleware because it could be 
+                // a situation where a middleware decides not to call next and this will
+                // never be reached.
                 Some(action) => self.dispatch_reducer(action),
                 None => Vec::new(),
             };
@@ -120,12 +153,28 @@ where
         // on this value for the next() function.
         self.prev_middleware = current_middleware;
 
-        let result = self.action_middleware[current_middleware as usize]
+        let result = self.middleware[current_middleware as usize]
             .clone()
-            .borrow_mut()
             .on_reduce(self, action, Self::dispatch_middleware_reduce_next);
 
         result
+    }
+
+    fn dispatch_middleware_notify(&mut self, events: Vec<Event>) -> Vec<Event> {
+        self.prev_middleware = -1;
+        self.dispatch_middleware_notify_next(events)
+    }
+
+    fn dispatch_middleware_notify_next(&mut self, events: Vec<Event>) -> Vec<Event> {
+        let current_middleware = self.prev_middleware + 1;
+
+        if current_middleware as usize == self.middleware.len() {
+            return events;
+        }
+
+        self.prev_middleware = current_middleware;
+
+        self.middleware[current_middleware as usize].clone().on_notify(self, events, Self::dispatch_middleware_notify_next)
     }
 
     fn notify_listeners(&mut self, events: Vec<Event>) {
@@ -160,14 +209,15 @@ where
     }
 
     pub fn dispatch(&mut self, action: Action) {
-        let events = if self.action_middleware.is_empty() {
+        let events = if self.middleware.is_empty() {
             self.dispatch_reducer(action)
         } else {
             self.dispatch_middleware_reduce(action)
         };
 
         // TODO: if there was no action (after the middleware), then don't notify.
-        self.notify_listeners(events);
+        let middleware_events = self.dispatch_middleware_notify(events);
+        self.notify_listeners(middleware_events)
     }
 
     pub fn subscribe<L: AsListener<State, Event>>(&mut self, listener: L) {
@@ -199,8 +249,8 @@ where
     }
 
     pub fn add_middleware<M: Middleware<State, Action, Event> + 'static>(&mut self, middleware: M) {
-        self.action_middleware
-            .push(Rc::new(RefCell::new(middleware)));
+        self.middleware
+            .push(Rc::new(middleware));
     }
 }
 
@@ -251,7 +301,7 @@ mod tests {
 
     impl Middleware<TestState, TestAction, TestEvent> for TestMiddleware {
         fn on_reduce(
-            &mut self,
+            &self,
             store: &mut Store<TestState, TestAction, TestEvent>,
             action: Option<TestAction>,
             reduce: crate::middleware::ReduceFn<TestState, TestAction, TestEvent>,

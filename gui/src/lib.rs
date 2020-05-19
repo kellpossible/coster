@@ -22,7 +22,7 @@ use log::{debug, error};
 use rust_embed::RustEmbed;
 use state::{
     middleware::{localize::LocalizeMiddleware, route::RouteMiddleware},
-    AppRoute, CosterReducer, CosterState, RouteType, StateStoreEvent, StateStoreRef,
+    AppRoute, CosterReducer, CosterState, RouteType, StateStoreEvent, StateStoreRef, CosterAction,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -84,10 +84,10 @@ impl Component for Model {
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         let state_store: StateStoreRef = StateStoreRef::new(CosterReducer, CosterState::default());
         let log_middleware = SimpleLoggerMiddleware::new().log_level(LogLevel::Debug);
-        state_store.add_middleware(log_middleware);
+        state_store.add_middleware(log_middleware).expect("Unable to add logging middleware to Store");
 
         let route_middleware = RouteMiddleware::new(&state_store);
-        state_store.add_middleware(route_middleware);
+        state_store.add_middleware(route_middleware).expect("Unable to add RouteMiddleware to Store");
 
         let mut language_requester: WebLanguageRequester<'static> = WebLanguageRequester::new();
         let localizer = DefaultLocalizer::new(&*LANGUAGE_LOADER, &TRANSLATIONS);
@@ -124,7 +124,7 @@ impl Component for Model {
 
         let language_requester_ref = Rc::new(RefCell::new(language_requester));
         let localize_middleware = LocalizeMiddleware::new(language_requester_ref.clone());
-        state_store.add_middleware(localize_middleware);
+        state_store.add_middleware(localize_middleware).expect("Unable to add LocalizeMiddleware to Store");
 
         let state_callback: yew_state::Callback<CosterState, StateStoreEvent> = link
             .callback(|(state, event)| Msg::StateChanged(state, event))
@@ -135,7 +135,9 @@ impl Component for Model {
                 StateStoreEvent::LanguageChanged,
                 StateStoreEvent::RouteChanged,
             ],
-        );
+        ).expect("Unable to subscribe to Store events");
+
+        state_store.dispatch(CosterAction::PollBrowserRoute).expect("Unable to dispatch PollBrowserRoute on StoreRef");
 
         Model {
             language_requester: language_requester_ref,
@@ -171,7 +173,7 @@ impl Component for Model {
     fn view(&self) -> Html {
         debug!("Rendering coster::lib");
 
-        let state = self.state_store.state();
+        let state = self.state_store.state().expect("unable to get Store state");
         let route_match_node = match &state.route {
             RouteType::Valid(AppRoute::CostingTab) => {
                 debug!(target: "gui::router", "Detected CostingTab Route: {:?}", state.route);

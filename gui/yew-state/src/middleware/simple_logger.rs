@@ -52,7 +52,7 @@ where
     Action: Debug,
 {
     fn on_reduce(
-        &mut self,
+        &self,
         store: &mut Store<State, Action, Event>,
         action: Option<Action>,
         reduce: ReduceFn<State, Action, Event>,
@@ -81,20 +81,19 @@ where
     }
 
     fn on_notify(
-        &mut self,
+        &self,
         store: &mut Store<State, Action, Event>,
-        action: Action,
         events: Vec<Event>,
         notify: super::NotifyFn<State, Action, Event>,
-    ) {
+    ) -> Vec<Event> {
         self.log_level.log("on_notify");
         for event in &events {
             self.log_level.log(format!(
-                "event {:?} dispatched due to action {:?}",
-                event, action
+                "event {:?} dispatched",
+                event
             ));
         }
 
-        notify(store, events);
+        notify(store, events)
     }
 }

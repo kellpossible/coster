@@ -5,7 +5,7 @@ use middleware::{
     localize::{LocalizeAction, LocalizeEvent, LocalizeState},
     route::{RouteAction, RouteEvent, RouteState},
 };
-use std::fmt::Debug;
+use std::{rc::Rc, fmt::Debug};
 use unic_langid::LanguageIdentifier;
 use yew_router::{route::Route, Switch};
 use yew_state::{Reducer, StoreEvent, StoreRef};
@@ -43,7 +43,7 @@ impl ToString for AppRoute {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum RouteType {
     Valid(AppRoute),
     Invalid(String),
@@ -91,7 +91,7 @@ impl Debug for AppRoute {
 
 pub type StateStoreRef = StoreRef<CosterState, CosterAction, StateStoreEvent>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CosterState {
     pub selected_language: Option<LanguageIdentifier>,
     pub route: RouteType,
@@ -134,10 +134,12 @@ impl LocalizeState for CosterState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CosterAction {
     ChangeSelectedLanguage(Option<LanguageIdentifier>),
     ChangeRoute(RouteType),
+    BrowserChangeRoute(RouteType),
+    PollBrowserRoute,
 }
 
 impl LocalizeAction for CosterAction {
@@ -157,6 +159,24 @@ impl LocalizeAction for CosterAction {
 impl RouteAction<RouteType> for CosterAction {
     fn change_route<R: Into<RouteType>>(route: R) -> Self {
         CosterAction::ChangeRoute(route.into())
+    }
+    fn browser_change_route(route: RouteType) -> Self {
+        CosterAction::BrowserChangeRoute(route)
+    }
+    fn get_browser_change_route(&self) -> Option<&RouteType> {
+        match self {
+            CosterAction::BrowserChangeRoute(route) => Some(route),
+            _ => None,
+        }
+    }
+    fn get_change_route(&self) -> Option<&RouteType> {
+        match self {
+            CosterAction::ChangeRoute(route) => Some(route),
+            _ => None,
+        }
+    }
+    fn poll_browser_route() -> Self {
+        CosterAction::PollBrowserRoute
     }
 }
 
@@ -193,19 +213,26 @@ impl RouteEvent<RouteType> for StateStoreEvent {
 impl Reducer<CosterState, CosterAction, StateStoreEvent> for CosterReducer {
     fn reduce(
         &self,
-        state: &CosterState,
+        prev_state: &Rc<CosterState>,
         action: CosterAction,
-    ) -> (CosterState, Vec<StateStoreEvent>) {
+    ) -> (Rc<CosterState>, Vec<StateStoreEvent>) {
         let mut events = Vec::new();
 
         let state = match action {
             CosterAction::ChangeSelectedLanguage(language) => {
                 events.push(StateStoreEvent::LanguageChanged);
-                state.change_selected_language(language)
+                Rc::new(prev_state.change_selected_language(language))
             }
             CosterAction::ChangeRoute(route) => {
                 events.push(StateStoreEvent::RouteChanged);
-                state.change_route(route)
+                Rc::new(prev_state.change_route(route))
+            }
+            CosterAction::BrowserChangeRoute(route) => {
+                events.push(StateStoreEvent::RouteChanged);
+                Rc::new(prev_state.change_route(route))
+            }
+            CosterAction::PollBrowserRoute => {
+                prev_state.clone()
             }
         };
 

@@ -10,16 +10,17 @@ crate-type = ["cdylib", "rlib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+costing = { path = "../costing" }
+yew-state = { path = "yew-state" }
+switch-router = { path = "switch-router" }
 commodity = { version = "0.3", features = ["serde-support"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_derive = "1.0"
 rust_decimal = "1.5.0"
-costing = { path = "../costing" }
 yew = { git = "https://github.com/yewstack/yew.git" }
 yew-router = { git = "https://github.com/yewstack/yew.git" }
 yewtil = { git = "https://github.com/yewstack/yew.git", default-features = false, features = ["neq"] }
-yew-state = { path = "yew-state" }
 tr = { version = "0.1", default-features = false, features = ["gettext"] }
 rust-embed = "5.5.1"
 i18n-embed = { path = "../../cargo-i18n/i18n-embed", version = "0.6", features = ["web-sys-requester"] }
@@ -37,7 +38,8 @@ logging = ["wasm-logger"]
 
 [workspace]
 members = [
-    "yew-state"
+    "yew-state",
+    "switch-router"
 ]
 
 # [profile.release]

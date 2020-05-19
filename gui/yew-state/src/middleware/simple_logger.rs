@@ -87,6 +87,7 @@ where
         events: Vec<Event>,
         notify: super::NotifyFn<State, Action, Event>,
     ) {
+        self.log_level.log("on_notify");
         for event in &events {
             self.log_level.log(format!(
                 "event {:?} dispatched due to action {:?}",

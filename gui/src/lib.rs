@@ -21,8 +21,8 @@ use log;
 use log::{debug, error};
 use rust_embed::RustEmbed;
 use state::{
-    middleware::{localize::LocalizeMiddleware, route::RouteMiddleware}, AppRoute, CosterReducer, CosterState, RouteType, StateStoreEvent,
-    StateStoreRef,
+    middleware::{localize::LocalizeMiddleware, route::RouteMiddleware},
+    AppRoute, CosterReducer, CosterState, RouteType, StateStoreEvent, StateStoreRef,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -58,6 +58,7 @@ pub enum Msg {
 
 pub struct Model {
     language_requester: LanguageRequesterRef,
+    localizer: LocalizerRef,
     link: ComponentLink<Self>,
     state_store: StateStoreRef,
     storage: Option<StorageService>,
@@ -91,7 +92,7 @@ impl Component for Model {
         let mut language_requester: WebLanguageRequester<'static> = WebLanguageRequester::new();
         let localizer = DefaultLocalizer::new(&*LANGUAGE_LOADER, &TRANSLATIONS);
         let localizer_ref: Rc<dyn Localizer<'static>> = Rc::new(localizer);
-        language_requester.add_listener(&localizer_ref);
+        language_requester.add_listener(Rc::downgrade(&localizer_ref));
 
         let storage = StorageService::new(storage::Area::Local).ok();
         // if let Some(storage) = &storage {
@@ -137,8 +138,9 @@ impl Component for Model {
         );
 
         Model {
-            link,
             language_requester: language_requester_ref,
+            localizer: localizer_ref,
+            link,
             state_store,
             storage,
             _state_callback: state_callback,
@@ -154,7 +156,7 @@ impl Component for Model {
                     //         "Model::update storing user-selected-language: {:?}",
                     //         state.selected_language
                     //     );
-                        
+
                     //     storage.store("user-selected-language", Ok(state.selected_language.to_string()));
                     // }
                     // debug!("Language changed in coster::lib {:?}", state.selected_language);

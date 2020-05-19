@@ -1,6 +1,7 @@
 use crate::routing::{SwitchRoute, SwitchRouteService};
 use std::{hash::Hash, marker::PhantomData, rc::Rc};
 use yew_state::{middleware::Middleware, Store, StoreEvent, StoreRef};
+use log::debug;
 
 pub struct RouteMiddleware<SR, State, Action, Event> {
     pub router: SwitchRouteService<SR>,
@@ -49,6 +50,7 @@ where
         events: Vec<Event>,
         notify: yew_state::middleware::NotifyFn<State, Action, Event>,
     ) {
+        debug!("state::middleware::route on_notify");
         for event in &events {
             if event == &Event::route_changed() {
                 self.router.set_route(store.state().get_route().clone());

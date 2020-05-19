@@ -1,11 +1,16 @@
 pub mod middleware;
 
 use crate::routing::SwitchRoute;
-use middleware::{localize::{LocalizeEvent, LocalizeAction, LocalizeState}, route::{RouteAction, RouteEvent, RouteState}};
+use middleware::{
+    localize::{LocalizeAction, LocalizeEvent, LocalizeState},
+    route::{RouteAction, RouteEvent, RouteState},
+};
 use std::fmt::Debug;
 use unic_langid::LanguageIdentifier;
 use yew_router::{route::Route, Switch};
 use yew_state::{Reducer, StoreEvent, StoreRef};
+
+pub type StateCallback = yew_state::Callback<CosterState, StateStoreEvent>;
 
 #[derive(Switch, Clone, Hash, Eq, PartialEq)]
 pub enum AppRoute {
@@ -138,6 +143,14 @@ pub enum CosterAction {
 impl LocalizeAction for CosterAction {
     fn change_selected_language(selected_language: Option<LanguageIdentifier>) -> Self {
         CosterAction::ChangeSelectedLanguage(selected_language)
+    }
+    fn get_change_selected_language(&self) -> Option<Option<&LanguageIdentifier>> {
+        match self {
+            CosterAction::ChangeSelectedLanguage(selected_language) => {
+                Some(selected_language.as_ref())
+            }
+            _ => None,
+        }
     }
 }
 

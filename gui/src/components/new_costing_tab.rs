@@ -4,7 +4,7 @@ use crate::bulma::{
 };
 use crate::validation::{ValidationError, Validator};
 use crate::{
-    state::{middleware::route::RouteStoreRef, StateStoreRef},
+    state::{middleware::{localize::LocalizeStoreRef, route::RouteStoreRef}, StateStoreRef, StateCallback},
     AppRoute,
 };
 use commodity::CommodityType;
@@ -49,13 +49,16 @@ pub struct NewCostingTab {
     currencies: Vec<CommodityType>,
     link: ComponentLink<Self>,
     form_field_link: FormFieldLink<FormFields>,
+    _language_changed_callback: StateCallback,
 }
 
+#[derive(Clone)]
 pub enum Msg {
     UpdateName(String),
     UpdateWorkingCurrency(CommodityType),
     Create,
     Cancel,
+    LanguageChanged,
 }
 
 #[derive(Clone, Properties, PartialEq)]
@@ -67,9 +70,11 @@ impl Component for NewCostingTab {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(props: Props, link: ComponentLink<Self>) -> Self {
         let mut currencies = commodity::all_iso4217_currencies();
         currencies.sort_by(|a, b| a.id.cmp(&b.id));
+
+        let callback = props.state_store.subscribe_language_changed(&link, Msg::LanguageChanged);
 
         NewCostingTab {
             form_data: FormData::default(),
@@ -77,6 +82,7 @@ impl Component for NewCostingTab {
             currencies,
             link,
             form_field_link: FormFieldLink::new(),
+            _language_changed_callback: callback,
         }
     }
 
@@ -84,20 +90,23 @@ impl Component for NewCostingTab {
         match msg {
             Msg::UpdateName(name) => {
                 self.form_data.name = name.trim().to_string();
+                true
             }
             Msg::UpdateWorkingCurrency(working_currency) => {
                 self.form_data.working_currency = Some(working_currency);
+                true
             }
             Msg::Create => {
                 info!("Creating Tab with data: {:?}", self.form_data);
-
+                true
                 // self.props.router.borrow_mut().set_route(AppRoute::Index);
             }
             Msg::Cancel => {
                 self.props.state_store.change_route(AppRoute::Index);
+                true
             }
+            Msg::LanguageChanged => true,
         }
-        true
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {

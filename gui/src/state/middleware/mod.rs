@@ -1,2 +1,2 @@
-pub mod route;
 pub mod localize;
+pub mod route;

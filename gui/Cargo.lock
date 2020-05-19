@@ -2,9 +2,9 @@
 # It is not intended for manual editing.
 [[package]]
 name = "anyhow"
-version = "1.0.30"
+version = "1.0.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2494382e9ba43995f3c56359e518641f450f5c36feeb4632a75cde2ec297c867"
+checksum = "85bb70cc08ec97ca5450e6eba421deeea5f172c0fc61f78b5357b2a8e8be195f"
 
 [[package]]
 name = "anymap"
@@ -158,9 +158,9 @@ dependencies = [
 
 [[package]]
 name = "doublecount"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a586f8681928f798617a9b4f16052cf545883899eeb69e76f70a5e35473828bd"
+checksum = "002e810eba4ef12aebf6b911c9020f5abc0e362905231191d16cffa888bf6912"
 dependencies = [
  "arrayvec 0.5.1",
  "chrono",
@@ -247,9 +247,9 @@ dependencies = [
 
 [[package]]
 name = "fnv"
-version = "1.0.6"
+version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fad85553e09a6f881f739c29f0b00b0f01357c743266d478b68951ce23285f3"
+checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "fuchsia-cprng"
@@ -466,7 +466,7 @@ dependencies = [
 
 [[package]]
 name = "i18n-embed"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "fluent-langneg",
  "gettext",
@@ -614,18 +614,18 @@ checksum = "0b631f7e854af39a1739f401cf34a8a013dfe09eac4fa4dba91e9768bd28168d"
 
 [[package]]
 name = "pin-project"
-version = "0.4.16"
+version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81d480cb4e89522ccda96d0eed9af94180b7a5f93fb28f66e1fd7d68431663d1"
+checksum = "edc93aeee735e60ecb40cf740eb319ff23eab1c5748abfdb5c180e4ce49f7791"
 dependencies = [
  "pin-project-internal",
 ]
 
 [[package]]
 name = "pin-project-internal"
-version = "0.4.16"
+version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a82996f11efccb19b685b14b5df818de31c1edcee3daa256ab5775dd98e72feb"
+checksum = "e58db2081ba5b4c93bd6be09c40fd36cb9193a8336c384f3b40012e531aa7e40"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -652,18 +652,18 @@ checksum = "8e946095f9d3ed29ec38de908c22f95d9ac008e424c7bcae54c75a79c527c694"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.12"
+version = "1.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8872cf6f48eee44265156c111456a700ab3483686b3f96df4cf5481c89157319"
+checksum = "53f5ffe53a6b28e37c9c1ce74893477864d64f74778a93a4beb43c8fa167f639"
 dependencies = [
  "unicode-xid",
 ]
 
 [[package]]
 name = "quote"
-version = "1.0.5"
+version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42934bc9c8ab0d3b273a16d8551c8f0fcff46be73276ca083ec2414c15c4ba5e"
+checksum = "54a21852a652ad6f610c9510194f398ff6f8692e334fd1145fed931f7fbe44ea"
 dependencies = [
  "proc-macro2",
 ]
@@ -911,9 +911,9 @@ checksum = "7f3eb36b47e512f8f1c9e3d10c2c1965bc992bd9cdb024fa581e2194501c83d3"
 
 [[package]]
 name = "syn"
-version = "1.0.21"
+version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4696caa4048ac7ce2bcd2e484b3cef88c1004e41b8e945a277e2c25dc0b72060"
+checksum = "1425de3c33b0941002740a420b1a906a350b88d08b82b2c8a01035a3f9447bac"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -922,18 +922,18 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.17"
+version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "467e5ff447618a916519a4e0d62772ab14f434897f3d63f05d8700ef1e9b22c1"
+checksum = "5976891d6950b4f68477850b5b9e5aa64d955961466f9e174363f573e54e8ca7"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.17"
+version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e63c1091225b9834089b429bc4a2e01223470e3183e891582909e9d1c4cb55d9"
+checksum = "ab81dbd1cd69cd2ce22ecfbdd3bdb73334ba25350649408cc6c085f46d89573d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1138,8 +1138,8 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "yew"
-version = "0.16.1"
-source = "git+https://github.com/yewstack/yew.git#bc116a42d9f902a14962e556ee86ce83e9d6879a"
+version = "0.16.2"
+source = "git+https://github.com/yewstack/yew.git#5b0ecc0badfb214ee9c80aacf2e34bfa912e3f08"
 dependencies = [
  "anyhow",
  "anymap",
@@ -1169,7 +1169,7 @@ dependencies = [
 [[package]]
 name = "yew-macro"
 version = "0.16.1"
-source = "git+https://github.com/yewstack/yew.git#bc116a42d9f902a14962e556ee86ce83e9d6879a"
+source = "git+https://github.com/yewstack/yew.git#5b0ecc0badfb214ee9c80aacf2e34bfa912e3f08"
 dependencies = [
  "boolinator",
  "lazy_static",
@@ -1182,7 +1182,7 @@ dependencies = [
 [[package]]
 name = "yew-router"
 version = "0.12.1"
-source = "git+https://github.com/yewstack/yew.git#bc116a42d9f902a14962e556ee86ce83e9d6879a"
+source = "git+https://github.com/yewstack/yew.git#5b0ecc0badfb214ee9c80aacf2e34bfa912e3f08"
 dependencies = [
  "cfg-if",
  "cfg-match",
@@ -1202,7 +1202,7 @@ dependencies = [
 [[package]]
 name = "yew-router-macro"
 version = "0.12.0"
-source = "git+https://github.com/yewstack/yew.git#bc116a42d9f902a14962e556ee86ce83e9d6879a"
+source = "git+https://github.com/yewstack/yew.git#5b0ecc0badfb214ee9c80aacf2e34bfa912e3f08"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1213,7 +1213,7 @@ dependencies = [
 [[package]]
 name = "yew-router-route-parser"
 version = "0.12.0"
-source = "git+https://github.com/yewstack/yew.git#bc116a42d9f902a14962e556ee86ce83e9d6879a"
+source = "git+https://github.com/yewstack/yew.git#5b0ecc0badfb214ee9c80aacf2e34bfa912e3f08"
 dependencies = [
  "nom",
 ]
@@ -1232,7 +1232,7 @@ dependencies = [
 [[package]]
 name = "yewtil"
 version = "0.2.0"
-source = "git+https://github.com/yewstack/yew.git#bc116a42d9f902a14962e556ee86ce83e9d6879a"
+source = "git+https://github.com/yewstack/yew.git#5b0ecc0badfb214ee9c80aacf2e34bfa912e3f08"
 dependencies = [
  "log",
  "yew",

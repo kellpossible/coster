@@ -1,7 +1,8 @@
 use crate::{
-    state::{middleware::route::RouteStoreRef, StateStoreRef},
+    state::{middleware::route::RouteStoreRef, StateStoreRef, CosterState, StateStoreEvent, StateCallback},
     AppRoute,
 };
+use crate::state::middleware::localize::LocalizeStoreRef;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -17,10 +18,13 @@ pub struct CostingTabList {
     tab: RefCell<Tab>,
     props: Props,
     link: ComponentLink<Self>,
+    _language_changed_callback: StateCallback,
 }
 
+#[derive(Clone)]
 pub enum Msg {
     NewCostingTab,
+    LanguageChanged,
 }
 
 #[derive(Clone, Properties, PartialEq)]
@@ -33,6 +37,8 @@ impl Component for CostingTabList {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        let callback = props.state_store.subscribe_language_changed(&link, Msg::LanguageChanged);
+
         let tab = RefCell::new(Tab::new(
             0,
             "Test Tab",
@@ -40,16 +46,20 @@ impl Component for CostingTabList {
             vec![],
             vec![],
         ));
-        CostingTabList { tab, props, link }
+
+        CostingTabList { tab, props, link, _language_changed_callback: callback}
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::NewCostingTab => {
                 self.props.state_store.change_route(AppRoute::NewCostingTab);
+                true
+            }
+            Msg::LanguageChanged => {
+                true
             }
         }
-        true
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {

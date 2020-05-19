@@ -1,13 +1,14 @@
 use crate::{
     components::navbar::Navbar,
-    state::{CosterAction, StateStoreRef}, LanguageRequesterRef,
+    state::{CosterAction, StateStoreRef},
+    LanguageRequesterRef,
 };
 
 use log::debug;
+use std::rc::Rc;
 use yew::{
     html, html::Renderable, Children, Component, ComponentLink, Html, Properties, ShouldRender,
 };
-use std::rc::Rc;
 
 pub struct Page {
     props: Props,
@@ -24,7 +25,9 @@ pub struct Props {
 
 impl PartialEq for Props {
     fn eq(&self, other: &Self) -> bool {
-        self.state_store == other.state_store && Rc::ptr_eq(&self.language_requester, &other.language_requester) && self.children == other.children
+        self.state_store == other.state_store
+            && Rc::ptr_eq(&self.language_requester, &other.language_requester)
+            && self.children == other.children
     }
 }
 

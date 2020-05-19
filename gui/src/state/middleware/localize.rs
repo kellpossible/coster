@@ -1,23 +1,46 @@
-use yew_state::{StoreEvent, middleware::Middleware, Store, StoreRef};
-use unic_langid::LanguageIdentifier;
 use i18n_embed::LanguageRequester;
-use std::{cell::RefCell, rc::Rc, hash::Hash};
+use std::{cell::RefCell, hash::Hash, rc::Rc};
+use unic_langid::LanguageIdentifier;
+use yew_state::{middleware::Middleware, Store, StoreEvent, StoreRef, Callback};
+use yew::{Component, ComponentLink};
 
 pub struct LocalizeMiddleware<LR> {
-    pub language_requester: Rc<RefCell<LR>>
+    pub language_requester: Rc<RefCell<LR>>,
 }
 
-impl <'a, LR> LocalizeMiddleware<LR>
-where LR: LanguageRequester<'a> 
+impl<'a, LR> LocalizeMiddleware<LR>
+where
+    LR: LanguageRequester<'a>,
 {
     pub fn new(language_requester: Rc<RefCell<LR>>) -> Self {
-        Self {
-            language_requester
-        }
+        Self { language_requester }
     }
 }
 
-impl <LR, State, Action, Event> Middleware<State, Action, Event> for LocalizeMiddleware<LR> {
+impl<'a, LR, State, Action, Event> Middleware<State, Action, Event> for LocalizeMiddleware<LR>
+where
+    LR: LanguageRequester<'a>,
+    Action: LocalizeAction,
+{
+    fn on_reduce(
+        &mut self,
+        store: &mut Store<State, Action, Event>,
+        action: Option<Action>,
+        reduce: yew_state::middleware::ReduceFn<State, Action, Event>,
+    ) -> Vec<Event> {
+        if let Some(action) = &action {
+            if let Some(selected_language) = action.get_change_selected_language() {
+                self.language_requester
+                    .borrow_mut()
+                    .set_language_override(selected_language.map(|l| l.clone()))
+                    .unwrap();
+
+                self.language_requester.borrow_mut().poll().unwrap();
+            }
+        }
+        reduce(store, action)
+    }
+
     fn on_notify(
         &mut self,
         store: &mut yew_state::Store<State, Action, Event>,
@@ -25,9 +48,6 @@ impl <LR, State, Action, Event> Middleware<State, Action, Event> for LocalizeMid
         events: Vec<Event>,
         notify: yew_state::middleware::NotifyFn<State, Action, Event>,
     ) {
-        for event in &events {
-
-        }
         notify(store, events);
     }
 }
@@ -38,38 +58,61 @@ pub trait LocalizeEvent {
 
 pub trait LocalizeAction {
     fn change_selected_language(selected_language: Option<LanguageIdentifier>) -> Self;
+    fn get_change_selected_language(&self) -> Option<Option<&LanguageIdentifier>>;
 }
 
 pub trait LocalizeState {
     fn get_selected_language(&self) -> &Option<LanguageIdentifier>;
 }
 
-pub trait LocalizeStore {
+pub trait LocalizeStore<State, Event> {
     fn change_selected_language(&mut self, selected_language: Option<LanguageIdentifier>);
+    fn subscribe_language_changed<COMP: Component>(&mut self, link: &ComponentLink<COMP>, message: COMP::Message) -> Callback<State, Event> where COMP::Message: Clone;
 }
 
-impl<State, Action, Event> LocalizeStore for Store<State, Action, Event>
+impl<State, Action, Event> LocalizeStore<State, Event> for Store<State, Action, Event>
 where
     Action: LocalizeAction,
-    State: LocalizeState,
-    Event: LocalizeEvent + PartialEq + StoreEvent + Clone + Hash + Eq,
+    State: LocalizeState + 'static,
+    Event: LocalizeEvent + PartialEq + StoreEvent + Clone + Hash + Eq + 'static,
 {
     fn change_selected_language(&mut self, selected_language: Option<LanguageIdentifier>) {
         self.dispatch(Action::change_selected_language(selected_language))
     }
+
+    fn subscribe_language_changed<COMP: Component>(&mut self, link: &ComponentLink<COMP>, message: COMP::Message) -> Callback<State, Event> where COMP::Message: Clone {
+        let callback = link
+            .callback(move |()| message.clone())
+            .into();
+        self.subscribe_event(&callback, LocalizeEvent::language_changed());
+        callback
+    }
 }
 
-pub trait LocalizeStoreRef {
+pub trait LocalizeStoreRef<State, Event> {
     fn change_selected_language(&self, selected_language: Option<LanguageIdentifier>);
+    /// Create a callback and subscribe it to the 
+    /// [LocalizeEvent::langauge_changed()](LocalizeEvent::langauge_changed()) language changed
+    /// event. You need to maintain the reference to the returned callback for as long
+    /// as you want the subscription to persist.
+    fn subscribe_language_changed<COMP: Component>(&self, link: &ComponentLink<COMP>, message: COMP::Message) -> Callback<State, Event> where COMP::Message: Clone;
 }
 
-impl<State, Action, Event> LocalizeStoreRef for StoreRef<State, Action, Event>
+impl<State, Action, Event> LocalizeStoreRef<State, Event> for StoreRef<State, Action, Event>
 where
     Action: LocalizeAction,
-    State: LocalizeState,
-    Event: LocalizeEvent + PartialEq + StoreEvent + Clone + Hash + Eq,
+    State: LocalizeState + 'static,
+    Event: LocalizeEvent + PartialEq + StoreEvent + Clone + Hash + Eq + 'static,
 {
     fn change_selected_language(&self, selected_language: Option<LanguageIdentifier>) {
         self.dispatch(Action::change_selected_language(selected_language))
+    }
+
+    fn subscribe_language_changed<COMP: Component>(&self, link: &ComponentLink<COMP>, message: COMP::Message) -> Callback<State, Event> where COMP::Message: Clone {
+        let callback = link
+            .callback(move |()| message.clone())
+            .into();
+        self.subscribe_event(&callback, LocalizeEvent::language_changed());
+        callback
     }
 }

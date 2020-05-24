@@ -1,7 +1,12 @@
 use crate::{middleware::Middleware, AsListener, Listener, Reducer, StoreEvent};
 use std::iter::FromIterator;
 use std::{
-    cell::{BorrowMutError, RefCell, BorrowError}, collections::HashSet, hash::Hash, marker::PhantomData, rc::Rc, fmt::Display,
+    cell::{BorrowError, BorrowMutError, RefCell},
+    collections::HashSet,
+    fmt::Display,
+    hash::Hash,
+    marker::PhantomData,
+    rc::Rc,
 };
 use thiserror::Error;
 
@@ -13,7 +18,11 @@ pub struct StoreRefBorrowMutError {
 
 impl Display for StoreRefBorrowMutError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Error while borrowing StoreRef as mutable: {}", self.source)
+        write!(
+            f,
+            "Error while borrowing StoreRef as mutable: {}",
+            self.source
+        )
     }
 }
 
@@ -25,7 +34,11 @@ pub struct StoreRefBorrowError {
 
 impl Display for StoreRefBorrowError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Error while borrowing StoreRef as immutable: {}", self.source)
+        write!(
+            f,
+            "Error while borrowing StoreRef as immutable: {}",
+            self.source
+        )
     }
 }
 
@@ -68,12 +81,19 @@ where
         Ok(())
     }
 
-    pub fn subscribe<L: AsListener<State, Event>>(&self, listener: L) -> Result<(), StoreRefBorrowMutError>  {
+    pub fn subscribe<L: AsListener<State, Event>>(
+        &self,
+        listener: L,
+    ) -> Result<(), StoreRefBorrowMutError> {
         self.0.try_borrow_mut()?.subscribe(listener);
         Ok(())
     }
 
-    pub fn subscribe_event<L: AsListener<State, Event>>(&self, listener: L, event: Event) -> Result<(), StoreRefBorrowMutError>  {
+    pub fn subscribe_event<L: AsListener<State, Event>>(
+        &self,
+        listener: L,
+        event: Event,
+    ) -> Result<(), StoreRefBorrowMutError> {
         self.0.try_borrow_mut()?.subscribe_event(listener, event);
         Ok(())
     }
@@ -87,7 +107,10 @@ where
         Ok(())
     }
 
-    pub fn add_middleware<M: Middleware<State, Action, Event> + 'static>(&self, middleware: M) -> Result<(), StoreRefBorrowMutError> {
+    pub fn add_middleware<M: Middleware<State, Action, Event> + 'static>(
+        &self,
+        middleware: M,
+    ) -> Result<(), StoreRefBorrowMutError> {
         self.0.try_borrow_mut()?.add_middleware(middleware);
         Ok(())
     }
@@ -141,7 +164,7 @@ where
         let current_middleware = self.prev_middleware + 1;
         if current_middleware as usize == self.middleware.len() {
             return match action {
-                //TODO: move this outside the dispatch middleware because it could be 
+                //TODO: move this outside the dispatch middleware because it could be
                 // a situation where a middleware decides not to call next and this will
                 // never be reached.
                 Some(action) => self.dispatch_reducer(action),
@@ -174,7 +197,9 @@ where
 
         self.prev_middleware = current_middleware;
 
-        self.middleware[current_middleware as usize].clone().on_notify(self, events, Self::dispatch_middleware_notify_next)
+        self.middleware[current_middleware as usize]
+            .clone()
+            .on_notify(self, events, Self::dispatch_middleware_notify_next)
     }
 
     fn notify_listeners(&mut self, events: Vec<Event>) {
@@ -249,8 +274,7 @@ where
     }
 
     pub fn add_middleware<M: Middleware<State, Action, Event> + 'static>(&mut self, middleware: M) {
-        self.middleware
-            .push(Rc::new(middleware));
+        self.middleware.push(Rc::new(middleware));
     }
 }
 

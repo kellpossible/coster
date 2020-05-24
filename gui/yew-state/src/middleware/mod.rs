@@ -6,7 +6,8 @@ use crate::Store;
 pub type ReduceFn<State, Action, Event> =
     fn(&mut Store<State, Action, Event>, Option<Action>) -> Vec<Event>;
 
-pub type NotifyFn<State, Action, Event> = fn(&mut Store<State, Action, Event>, Vec<Event>) -> Vec<Event>;
+pub type NotifyFn<State, Action, Event> =
+    fn(&mut Store<State, Action, Event>, Vec<Event>) -> Vec<Event>;
 
 pub trait Middleware<State, Action, Event> {
     fn on_reduce(

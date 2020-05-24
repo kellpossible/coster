@@ -915,6 +915,7 @@ name = "switch-router"
 version = "0.1.0"
 dependencies = [
  "gloo-events",
+ "wasm-bindgen",
  "web-sys",
  "yew-router-min",
 ]

@@ -88,10 +88,7 @@ where
     ) -> Vec<Event> {
         self.log_level.log("on_notify");
         for event in &events {
-            self.log_level.log(format!(
-                "event {:?} dispatched",
-                event
-            ));
+            self.log_level.log(format!("event {:?} dispatched", event));
         }
 
         notify(store, events)

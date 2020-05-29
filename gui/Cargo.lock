@@ -435,6 +435,7 @@ dependencies = [
  "tr",
  "unic-langid",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "wasm-logger",
  "web-sys",
  "yew",
@@ -1235,6 +1236,7 @@ dependencies = [
  "serde",
  "thiserror",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
  "yew",
 ]

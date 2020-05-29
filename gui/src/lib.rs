@@ -33,7 +33,10 @@ use yew::{
     services::{storage, StorageService},
     Component, ComponentLink, Html, ShouldRender,
 };
-use yew_state::middleware::simple_logger::{LogLevel, SimpleLoggerMiddleware};
+use yew_state::{
+    middleware::simple_logger::{LogLevel, SimpleLoggerMiddleware},
+    InvokeLater,
+};
 
 #[derive(RustEmbed, I18nEmbed)]
 #[folder = "i18n/mo"]
@@ -131,9 +134,10 @@ impl Component for Model {
             .add_middleware(localize_middleware)
             .expect("Unable to add LocalizeMiddleware to Store");
 
-        let state_callback: yew_state::Callback<CosterState, StateStoreEvent> = link
-            .callback(|(state, event)| Msg::StateChanged(state, event))
+        let state_callback = link
+            .callback_later(|(state, event)| Msg::StateChanged(state, event))
             .into();
+
         state_store
             .subscribe_events(
                 &state_callback,
@@ -159,6 +163,7 @@ impl Component for Model {
     }
 
     fn update(&mut self, msg: Msg) -> ShouldRender {
+        debug!("Model::update invoked");
         match msg {
             Msg::StateChanged(state, event) => match event {
                 StateStoreEvent::LanguageChanged => {

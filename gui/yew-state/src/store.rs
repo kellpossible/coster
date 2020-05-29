@@ -36,7 +36,7 @@ impl Display for StoreRefBorrowError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Error while borrowing StoreRef as immutable: {}",
+            "Error while borrowing StoreRef as immutable: {:?}",
             self.source
         )
     }
@@ -280,7 +280,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{middleware::Middleware, Callback, Reducer, Store, StoreEvent, ReducerResult};
+    use crate::{middleware::Middleware, Callback, Reducer, ReducerResult, Store, StoreEvent};
     use std::{cell::RefCell, rc::Rc};
 
     #[derive(Debug, PartialEq)]
@@ -298,7 +298,11 @@ mod tests {
     struct TestReducer;
 
     impl Reducer<TestState, TestAction, TestEvent> for TestReducer {
-        fn reduce(&self, state: &Rc<TestState>, action: TestAction) -> ReducerResult<TestState, TestEvent> {
+        fn reduce(
+            &self,
+            state: &Rc<TestState>,
+            action: TestAction,
+        ) -> ReducerResult<TestState, TestEvent> {
             let mut events = Vec::new();
             let new_state = match action {
                 TestAction::Increment => TestState {

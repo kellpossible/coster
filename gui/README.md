@@ -5,7 +5,7 @@ This crate contains the code for the web GUI which compiles to WASM. See [build.
 For debugging/development purposes, you can build the library using this command:
 
 ```bash
-wasm-pack build --target web --out-dir ../public/js/gui
+./build-wasm.sh
 ```
 
 To build the css files (not required) run:

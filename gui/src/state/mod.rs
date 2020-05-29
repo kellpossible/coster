@@ -1,11 +1,11 @@
 pub mod middleware;
 
-use crate::routing::SwitchRoute;
 use middleware::{
     localize::{LocalizeAction, LocalizeEvent, LocalizeState},
     route::{RouteAction, RouteEvent, RouteState},
 };
-use std::{rc::Rc, fmt::Debug};
+use std::{fmt::Debug, rc::Rc};
+use switch_router::SwitchRoute;
 use unic_langid::LanguageIdentifier;
 use yew_router::{route::Route, Switch};
 use yew_state::{Reducer, StoreEvent, StoreRef};
@@ -49,8 +49,8 @@ pub enum RouteType {
     Invalid(String),
 }
 
-impl SwitchRoute<()> for RouteType {
-    fn to_string(&self) -> String {
+impl SwitchRoute for RouteType {
+    fn path(&self) -> String {
         match self {
             RouteType::Valid(app_route) => app_route.to_string(),
             RouteType::Invalid(route) => route.clone(),
@@ -63,23 +63,18 @@ impl SwitchRoute<()> for RouteType {
             _ => false,
         }
     }
+
+    fn switch(route: &str) -> Self {
+        match AppRoute::switch(Route::new_no_state(route)) {
+            Some(app_route) => RouteType::Valid(app_route),
+            None => RouteType::Invalid(route.to_string()),
+        }
+    }
 }
 
 impl From<AppRoute> for RouteType {
     fn from(route: AppRoute) -> Self {
         RouteType::Valid(route)
-    }
-}
-
-impl<STATE> From<Route<STATE>> for RouteType
-where
-    STATE: Clone,
-{
-    fn from(route: Route<STATE>) -> Self {
-        match AppRoute::switch(Route::<STATE>::clone(&route)) {
-            Some(app_route) => RouteType::Valid(app_route),
-            None => RouteType::Invalid(route.to_string()),
-        }
     }
 }
 
@@ -231,9 +226,7 @@ impl Reducer<CosterState, CosterAction, StateStoreEvent> for CosterReducer {
                 events.push(StateStoreEvent::RouteChanged);
                 Rc::new(prev_state.change_route(route))
             }
-            CosterAction::PollBrowserRoute => {
-                prev_state.clone()
-            }
+            CosterAction::PollBrowserRoute => prev_state.clone(),
         };
 
         (state, events)

@@ -13,6 +13,8 @@
     <body>
         <!-- Note the usage of `type=module` here as this is an ES6 module -->
         <script type="module">
+	    // DEBUG: Increate the stack trace limit (because rust programs have a big stack)
+	    Error.stackTraceLimit = 100;
             // Use ES module import syntax to import functionality from the module
             // that we have compiled.
             //

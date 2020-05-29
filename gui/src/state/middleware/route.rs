@@ -1,11 +1,14 @@
-use crate::routing::{SwitchRoute, SwitchRouteService};
-use std::{hash::Hash, marker::PhantomData, rc::Rc, fmt::Debug, cell::RefCell};
-use yew_state::{middleware::{ReduceFn, Middleware}, Store, StoreEvent, StoreRef};
 use log::{debug, error};
+use std::{cell::RefCell, fmt::Debug, hash::Hash, marker::PhantomData};
+use switch_router::{SwitchRoute, SwitchRouteService};
+use yew_state::{
+    middleware::{Middleware, ReduceFn},
+    Store, StoreEvent, StoreRef,
+};
 
 pub struct RouteMiddleware<SR, State, Action, Event> {
     pub router: RefCell<SwitchRouteService<SR>>,
-    callback: yew::Callback<SR>,
+    callback: switch_router::Callback<SR>,
     state_type: PhantomData<State>,
     action_type: PhantomData<Action>,
     event_type: PhantomData<Event>,
@@ -21,15 +24,21 @@ where
     pub fn new(store: &StoreRef<State, Action, Event>) -> Self {
         let router = RefCell::new(SwitchRouteService::new());
         let store_rc = store.clone();
-        let callback: yew::Callback<SR> = yew::Callback::Callback(Rc::new(move |route: SR| {
-            debug!("state::middleware::route::callback callback invoked for route: {}", route.to_string());
-            if let Err(err) = store_rc.dispatch(Action::browser_change_route(route)) {
-                error!("Unable to dispatch RouteAction::browser_change_route Action to Store: {}", err);
-            };
-        }));
+        let callback: switch_router::Callback<SR> =
+            switch_router::Callback::new(move |route: SR| {
+                debug!(
+                    "state::middleware::route::callback callback invoked for route: {}",
+                    route.path()
+                );
+                if let Err(err) = store_rc.dispatch(Action::browser_change_route(route)) {
+                    error!(
+                        "Unable to dispatch RouteAction::browser_change_route Action to Store: {}",
+                        err
+                    );
+                };
+            });
 
-        // TODO: this might cause errors if the callback is called from another thread...
-        // TODO: there is multiple borrow error with this callback
+        // FIXME: there is multiple borrow error with this callback
         match router.try_borrow_mut() {
             Ok(mut router_mut) => {
                 router_mut.register_callback(callback.clone());
@@ -47,35 +56,52 @@ where
             event_type: PhantomData,
         }
     }
+
+    fn set_route_no_callback<SRI: Into<SR>>(&self, switch_route: SRI) {
+        match self.router.try_borrow_mut() {
+            Ok(mut router) => {
+                router.deregister_callback(&self.callback);
+                router.set_route(switch_route);
+                router.register_callback(self.callback.clone());
+            }
+            Err(err) => {
+                error!("Unable to set route with no callback: {}", err);
+            }
+        }
+    }
 }
 
 impl<SR, State, Action, Event> Middleware<State, Action, Event>
     for RouteMiddleware<SR, State, Action, Event>
 where
     SR: SwitchRoute + 'static,
-    Action: RouteAction<SR> + PartialEq + Debug,
-    State: RouteState<SR>,
-    Event: RouteEvent<SR> + PartialEq + StoreEvent + Clone + Hash + Eq,
+    Action: RouteAction<SR> + PartialEq + Debug + 'static,
+    State: RouteState<SR> + 'static,
+    Event: RouteEvent<SR> + PartialEq + StoreEvent + Clone + Hash + Eq + 'static,
 {
-    fn on_reduce(&self, store: &mut Store<State, Action, Event>, action: Option<Action>, reduce: ReduceFn<State, Action, Event>) -> Vec<Event> {
-        debug!("state::middleware::route::on_reduce started with action {:?}", action);
-        
+    fn on_reduce(
+        &self,
+        store: &mut Store<State, Action, Event>,
+        action: Option<Action>,
+        reduce: ReduceFn<State, Action, Event>,
+    ) -> Vec<Event> {
+        debug!(
+            "state::middleware::route::on_reduce started with action {:?}",
+            action
+        );
+
         if let Some(action) = &action {
             if let Some(route) = action.get_change_route() {
-                debug!("state::middleware::route::on_reduce setting route: {}", route.to_string());
-                match self.router.try_borrow_mut() {
-                    Ok(mut router_mut) => {
-                        router_mut.set_route(route.clone())
-                    }
-                    Err(err) => {
-                        error!("Cannot borrow mut self.router: {}", err);
-                    }
-                }
+                debug!(
+                    "state::middleware::route::on_reduce setting route: {}",
+                    route.path()
+                );
+                self.set_route_no_callback(route.clone());
             } else if action == &Action::poll_browser_route() {
                 match self.router.try_borrow_mut() {
                     Ok(router_mut) => {
                         let route = router_mut.get_route();
-                        return reduce(store, Some(Action::browser_change_route(route)))
+                        return reduce(store, Some(Action::browser_change_route(route)));
                     }
                     Err(err) => {
                         error!("Cannot borrow mut self.router: {}", err);
@@ -85,7 +111,7 @@ where
         }
         debug!("state::middleware::route::on_reduce finished");
         reduce(store, action)
-    } 
+    }
 }
 
 pub trait RouteState<SR> {
@@ -123,7 +149,10 @@ where
 {
     fn change_route<R: Into<SR>>(&self, route: R) {
         if let Err(err) = self.dispatch(Action::change_route(route)) {
-            error!("Unable to dispatch change route Action on RouteStoreRef: {}", err);
+            error!(
+                "Unable to dispatch change route Action on RouteStoreRef: {}",
+                err
+            );
         }
     }
 }

@@ -280,7 +280,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{middleware::Middleware, Callback, Reducer, Store, StoreEvent};
+    use crate::{middleware::Middleware, Callback, Reducer, Store, StoreEvent, ReducerResult};
     use std::{cell::RefCell, rc::Rc};
 
     #[derive(Debug, PartialEq)]
@@ -298,7 +298,7 @@ mod tests {
     struct TestReducer;
 
     impl Reducer<TestState, TestAction, TestEvent> for TestReducer {
-        fn reduce(&self, state: &TestState, action: TestAction) -> (TestState, Vec<TestEvent>) {
+        fn reduce(&self, state: &Rc<TestState>, action: TestAction) -> ReducerResult<TestState, TestEvent> {
             let mut events = Vec::new();
             let new_state = match action {
                 TestAction::Increment => TestState {
@@ -316,7 +316,7 @@ mod tests {
                 events.push(TestEvent::IsZero);
             }
 
-            (new_state, events)
+            (Rc::new(new_state), events)
         }
     }
     struct TestMiddleware {

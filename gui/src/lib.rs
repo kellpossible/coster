@@ -2,7 +2,6 @@
 
 mod bulma;
 mod components;
-mod routing;
 mod state;
 mod validation;
 
@@ -10,7 +9,7 @@ use components::costing_tab::CostingTab;
 use components::costing_tab_list::CostingTabList;
 use components::new_costing_tab::NewCostingTab;
 use components::pages::{centered, Page};
-use routing::{SwitchRoute, SwitchRouteService};
+use switch_router::{SwitchRoute, SwitchRouteService};
 
 use i18n_embed::{
     language_loader, DefaultLocalizer, I18nEmbed, LanguageRequester, Localizer,
@@ -18,11 +17,11 @@ use i18n_embed::{
 };
 use lazy_static::lazy_static;
 use log;
-use log::{debug, error};
+use log::debug;
 use rust_embed::RustEmbed;
 use state::{
     middleware::{localize::LocalizeMiddleware, route::RouteMiddleware},
-    AppRoute, CosterReducer, CosterState, RouteType, StateStoreEvent, StateStoreRef, CosterAction,
+    AppRoute, CosterAction, CosterReducer, CosterState, RouteType, StateStoreEvent, StateStoreRef,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -84,10 +83,14 @@ impl Component for Model {
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         let state_store: StateStoreRef = StateStoreRef::new(CosterReducer, CosterState::default());
         let log_middleware = SimpleLoggerMiddleware::new().log_level(LogLevel::Debug);
-        state_store.add_middleware(log_middleware).expect("Unable to add logging middleware to Store");
+        state_store
+            .add_middleware(log_middleware)
+            .expect("Unable to add logging middleware to Store");
 
         let route_middleware = RouteMiddleware::new(&state_store);
-        state_store.add_middleware(route_middleware).expect("Unable to add RouteMiddleware to Store");
+        state_store
+            .add_middleware(route_middleware)
+            .expect("Unable to add RouteMiddleware to Store");
 
         let mut language_requester: WebLanguageRequester<'static> = WebLanguageRequester::new();
         let localizer = DefaultLocalizer::new(&*LANGUAGE_LOADER, &TRANSLATIONS);
@@ -124,20 +127,26 @@ impl Component for Model {
 
         let language_requester_ref = Rc::new(RefCell::new(language_requester));
         let localize_middleware = LocalizeMiddleware::new(language_requester_ref.clone());
-        state_store.add_middleware(localize_middleware).expect("Unable to add LocalizeMiddleware to Store");
+        state_store
+            .add_middleware(localize_middleware)
+            .expect("Unable to add LocalizeMiddleware to Store");
 
         let state_callback: yew_state::Callback<CosterState, StateStoreEvent> = link
             .callback(|(state, event)| Msg::StateChanged(state, event))
             .into();
-        state_store.subscribe_events(
-            &state_callback,
-            vec![
-                StateStoreEvent::LanguageChanged,
-                StateStoreEvent::RouteChanged,
-            ],
-        ).expect("Unable to subscribe to Store events");
+        state_store
+            .subscribe_events(
+                &state_callback,
+                vec![
+                    StateStoreEvent::LanguageChanged,
+                    StateStoreEvent::RouteChanged,
+                ],
+            )
+            .expect("Unable to subscribe to Store events");
 
-        state_store.dispatch(CosterAction::PollBrowserRoute).expect("Unable to dispatch PollBrowserRoute on StoreRef");
+        state_store
+            .dispatch(CosterAction::PollBrowserRoute)
+            .expect("Unable to dispatch PollBrowserRoute on StoreRef");
 
         Model {
             language_requester: language_requester_ref,
@@ -194,7 +203,7 @@ impl Component for Model {
                 self.page(html! { <h1 class="title is-1">{ tr!("About Coster") }</h1> })
             }
             RouteType::Valid(AppRoute::Index) => {
-                if state.route.to_string() == "/" {
+                if state.route.path() == "/" {
                     debug!(target: "gui::router", "Detected CostingTabListPage Route: {:?}", state.route);
                     self.page(centered(
                         html! {<CostingTabList state_store=self.state_store.clone()/>},

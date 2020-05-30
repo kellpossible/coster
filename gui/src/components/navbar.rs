@@ -3,7 +3,7 @@ use crate::{
     bulma,
     state::{
         middleware::{localize::{LocalizeStoreRef}, route::RouteStoreRef},
-        StateStoreRef, CosterState, StateStoreEvent, StateCallback,
+        StateStoreRef, StateCallback,
     },
     AppRoute, LanguageRequesterRef,
 };
@@ -12,7 +12,6 @@ use std::rc::Rc;
 use tr::tr;
 use unic_langid::LanguageIdentifier;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
-use log::debug;
 
 pub struct Navbar {
     burger_menu_active: bool,

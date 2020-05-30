@@ -1,5 +1,5 @@
 use crate::{
-    state::{middleware::route::RouteStoreRef, StateStoreRef, CosterState, StateStoreEvent, StateCallback},
+    state::{middleware::route::RouteStoreRef, StateStoreRef, StateCallback},
     AppRoute,
 };
 use crate::state::middleware::localize::LocalizeStoreRef;
@@ -72,6 +72,7 @@ impl Component for CostingTabList {
     }
 
     fn view(&self) -> Html {
+        // TODO: do something with this tab
         let tab = self.tab.borrow();
 
         let new_tab_handler = self.link.callback(|msg: MouseEvent| {

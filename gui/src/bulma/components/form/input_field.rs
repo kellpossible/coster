@@ -35,6 +35,16 @@ impl InputValue {
     }
 }
 
+impl Display for InputValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InputValue::String(value) => {
+                Display::fmt(&value, f)
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct InputField<Key>
 where
@@ -141,6 +151,7 @@ where
                     .form_link
                     .send_form_message(FormMsg::FieldValueUpdate(self.props.field_key.clone()));
                 self.update(Msg::Validate);
+                true
             }
             Msg::Validate => {
                 self.validation_errors = self.validate_or_empty();
@@ -149,10 +160,10 @@ where
                     .send_form_message(FormMsg::FieldValidationUpdate(
                         self.props.field_key.clone(),
                         self.validation_errors.clone(),
-                    ))
+                    ));
+                true
             }
         }
-        true
     }
 
     fn view(&self) -> Html {
@@ -186,6 +197,7 @@ where
                 <div class="control">
                     <input
                         class=classes
+                        value=self.value
                         type="text"
                         placeholder=self.props.placeholder
                         onchange=input_onchange/>

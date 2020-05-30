@@ -10,7 +10,6 @@ use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 pub struct CostingTab {
     tab: RefCell<Tab>,
     props: Props,
-    link: ComponentLink<Self>,
 }
 
 #[derive(Clone, Properties, PartialEq)]
@@ -22,7 +21,7 @@ impl Component for CostingTab {
     type Message = ();
     type Properties = Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(props: Self::Properties, _link: ComponentLink<Self>) -> Self {
         let tab = RefCell::new(Tab::new(
             0,
             "Test Tab",
@@ -30,7 +29,7 @@ impl Component for CostingTab {
             vec![],
             vec![],
         ));
-        CostingTab { tab, props, link }
+        CostingTab { tab, props }
     }
 
     fn update(&mut self, _: Self::Message) -> ShouldRender {

@@ -22,7 +22,7 @@ yew = { git = "https://github.com/yewstack/yew.git" }
 yew-router = { git = "https://github.com/yewstack/yew.git" }
 yewtil = { git = "https://github.com/yewstack/yew.git", default-features = false, features = ["neq"] }
 tr = { version = "0.1", default-features = false, features = ["gettext"] }
-rust-embed = "5.5.1"
+rust-embed = { version = "5.5.1", features = ["debug-embed"] }
 i18n-embed = { path = "../../cargo-i18n/i18n-embed", version = "0.6", features = ["web-sys-requester"] }
 unic-langid = "0.9.0"
 anyhow = "1.0"

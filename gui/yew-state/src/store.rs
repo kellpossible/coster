@@ -1,5 +1,4 @@
 use crate::{middleware::Middleware, AsListener, Listener, Reducer, StoreEvent};
-use log::debug;
 use std::iter::FromIterator;
 use std::ops::Deref;
 use std::{
@@ -146,10 +145,6 @@ where
     }
 
     fn notify_listeners(&self, events: Vec<Event>) {
-        debug!(
-            "Store::notify_listeners before: {:?}",
-            self.listeners.borrow()
-        );
         let mut listeners_to_remove: Vec<usize> = Vec::new();
         for (i, pair) in self.listeners.borrow().iter().enumerate() {
             let retain = match pair.listener.as_callback() {
@@ -304,7 +299,7 @@ mod tests {
             (Rc::new(new_state), events)
         }
     }
-    
+
     struct TestMiddleware {
         new_action: TestAction,
     }

@@ -4,7 +4,6 @@ use crate::{
     LanguageRequesterRef,
 };
 
-use log::debug;
 use std::rc::Rc;
 use yew::{
     html, html::Renderable, Children, Component, ComponentLink, Html, Properties, ShouldRender,

@@ -35,7 +35,6 @@ use yew::{
 };
 use yew_state::{
     middleware::simple_logger::{LogLevel, SimpleLoggerMiddleware},
-    InvokeLater,
 };
 
 #[derive(RustEmbed, I18nEmbed)]

@@ -38,9 +38,7 @@ impl InputValue {
 impl Display for InputValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            InputValue::String(value) => {
-                Display::fmt(&value, f)
-            }
+            InputValue::String(value) => Display::fmt(&value, f),
         }
     }
 }

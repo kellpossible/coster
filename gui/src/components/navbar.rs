@@ -2,8 +2,8 @@ use crate::bulma::components::Select;
 use crate::{
     bulma,
     state::{
-        middleware::{localize::{LocalizeStoreRef}, route::RouteStoreRef},
-        StateStoreRef, StateCallback,
+        middleware::{localize::LocalizeStore, route::RouteStore},
+        StateCallback, StateStoreRef,
     },
     AppRoute, LanguageRequesterRef,
 };
@@ -48,7 +48,9 @@ impl Component for Navbar {
     type Properties = Props;
 
     fn create(props: Props, link: ComponentLink<Self>) -> Self {
-        let callback = props.state_store.subscribe_language_changed(&link, Msg::LanguageChanged);
+        let callback = props
+            .state_store
+            .subscribe_language_changed(&link, Msg::LanguageChanged);
 
         Navbar {
             burger_menu_active: false,
@@ -85,9 +87,7 @@ impl Component for Navbar {
                     .change_selected_language(Some(language));
                 true
             }
-            Msg::LanguageChanged => {
-                true
-            }
+            Msg::LanguageChanged => true,
         }
     }
 
@@ -102,7 +102,9 @@ impl Component for Navbar {
         languages.sort();
 
         let current_languages = self.props.language_requester.borrow().current_languages();
-        let current_language = current_languages.get("gui").expect("expected there to be a current language for the \"gui\" module/domain");
+        let current_language = current_languages
+            .get("gui")
+            .expect("expected there to be a current language for the \"gui\" module/domain");
 
         let on_language_change = self.link.callback(Msg::SelectLanguage);
 

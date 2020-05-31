@@ -21,21 +21,15 @@ where
     Action: RouteAction<SR> + 'static,
     Event: StoreEvent + Clone + Hash + Eq + 'static,
 {
-    pub fn new(store: &StoreRef<State, Action, Event>) -> Self {
+    pub fn new(store: StoreRef<State, Action, Event>) -> Self {
         let router = RefCell::new(SwitchRouteService::new());
-        let store_rc = store.clone();
         let callback: switch_router::Callback<SR> =
             switch_router::Callback::new(move |route: SR| {
                 debug!(
                     "state::middleware::route::callback callback invoked for route: {}",
                     route.path()
                 );
-                if let Err(err) = store_rc.dispatch(Action::browser_change_route(route)) {
-                    error!(
-                        "Unable to dispatch RouteAction::browser_change_route Action to Store: {}",
-                        err
-                    );
-                };
+                store.dispatch(Action::browser_change_route(route));
             });
 
         // FIXME: there is multiple borrow error with this callback
@@ -81,7 +75,7 @@ where
 {
     fn on_reduce(
         &self,
-        store: &mut Store<State, Action, Event>,
+        store: &Store<State, Action, Event>,
         action: Option<Action>,
         reduce: ReduceFn<State, Action, Event>,
     ) -> Vec<Event> {
@@ -125,7 +119,7 @@ where
     fn route_changed() -> Self;
 }
 
-pub trait RouteAction<SR>
+pub trait RouteAction<SR>: Clone
 where
     SR: SwitchRoute + 'static,
 {
@@ -136,29 +130,8 @@ where
     fn get_browser_change_route(&self) -> Option<&SR>;
 }
 
-pub trait RouteStoreRef<SR> {
-    fn change_route<R: Into<SR>>(&self, route: R);
-}
-
-impl<SR, State, Action, Event> RouteStoreRef<SR> for StoreRef<State, Action, Event>
-where
-    SR: SwitchRoute + 'static,
-    Action: RouteAction<SR>,
-    State: RouteState<SR>,
-    Event: RouteEvent<SR> + PartialEq + StoreEvent + Clone + Hash + Eq,
-{
-    fn change_route<R: Into<SR>>(&self, route: R) {
-        if let Err(err) = self.dispatch(Action::change_route(route)) {
-            error!(
-                "Unable to dispatch change route Action on RouteStoreRef: {}",
-                err
-            );
-        }
-    }
-}
-
 pub trait RouteStore<SR> {
-    fn change_route<R: Into<SR>>(&mut self, route: R);
+    fn change_route<R: Into<SR>>(&self, route: R);
 }
 
 impl<SR, State, Action, Event> RouteStore<SR> for Store<State, Action, Event>
@@ -168,7 +141,7 @@ where
     State: RouteState<SR>,
     Event: RouteEvent<SR> + PartialEq + StoreEvent + Clone + Hash + Eq,
 {
-    fn change_route<R: Into<SR>>(&mut self, route: R) {
+    fn change_route<R: Into<SR>>(&self, route: R) {
         self.dispatch(Action::change_route(route));
     }
 }

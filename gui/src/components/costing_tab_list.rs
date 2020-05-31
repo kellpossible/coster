@@ -1,8 +1,8 @@
+use crate::state::middleware::localize::LocalizeStore;
 use crate::{
-    state::{middleware::route::RouteStoreRef, StateStoreRef, StateCallback},
+    state::{middleware::route::RouteStore, StateCallback, StateStoreRef},
     AppRoute,
 };
-use crate::state::middleware::localize::LocalizeStoreRef;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -37,7 +37,9 @@ impl Component for CostingTabList {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let callback = props.state_store.subscribe_language_changed(&link, Msg::LanguageChanged);
+        let callback = props
+            .state_store
+            .subscribe_language_changed(&link, Msg::LanguageChanged);
 
         let tab = RefCell::new(Tab::new(
             0,
@@ -47,7 +49,12 @@ impl Component for CostingTabList {
             vec![],
         ));
 
-        CostingTabList { tab, props, link, _language_changed_callback: callback}
+        CostingTabList {
+            tab,
+            props,
+            link,
+            _language_changed_callback: callback,
+        }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -56,9 +63,7 @@ impl Component for CostingTabList {
                 self.props.state_store.change_route(AppRoute::NewCostingTab);
                 true
             }
-            Msg::LanguageChanged => {
-                true
-            }
+            Msg::LanguageChanged => true,
         }
     }
 

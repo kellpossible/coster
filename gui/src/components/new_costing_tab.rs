@@ -4,7 +4,10 @@ use crate::bulma::{
 };
 use crate::validation::{ValidationError, Validator};
 use crate::{
-    state::{middleware::{localize::LocalizeStoreRef, route::RouteStoreRef}, StateStoreRef, StateCallback},
+    state::{
+        middleware::{localize::LocalizeStore, route::RouteStore},
+        StateCallback, StateStoreRef,
+    },
     AppRoute,
 };
 use commodity::CommodityType;
@@ -74,7 +77,9 @@ impl Component for NewCostingTab {
         let mut currencies = commodity::all_iso4217_currencies();
         currencies.sort_by(|a, b| a.id.cmp(&b.id));
 
-        let callback = props.state_store.subscribe_language_changed(&link, Msg::LanguageChanged);
+        let callback = props
+            .state_store
+            .subscribe_language_changed(&link, Msg::LanguageChanged);
 
         NewCostingTab {
             form_data: FormData::default(),

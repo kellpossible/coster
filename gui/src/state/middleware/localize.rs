@@ -1,8 +1,8 @@
 use i18n_embed::LanguageRequester;
 use std::{cell::RefCell, hash::Hash, rc::Rc};
 use unic_langid::LanguageIdentifier;
-use yew_state::{middleware::Middleware, Store, StoreEvent, StoreRef, Callback};
 use yew::{Component, ComponentLink};
+use yew_state::{middleware::Middleware, Callback, Store, StoreEvent};
 
 pub struct LocalizeMiddleware<LR> {
     pub language_requester: Rc<RefCell<LR>>,
@@ -24,7 +24,7 @@ where
 {
     fn on_reduce(
         &self,
-        store: &mut Store<State, Action, Event>,
+        store: &Store<State, Action, Event>,
         action: Option<Action>,
         reduce: yew_state::middleware::ReduceFn<State, Action, Event>,
     ) -> Vec<Event> {
@@ -56,8 +56,14 @@ pub trait LocalizeState {
 }
 
 pub trait LocalizeStore<State, Event> {
-    fn change_selected_language(&mut self, selected_language: Option<LanguageIdentifier>);
-    fn subscribe_language_changed<COMP: Component>(&mut self, link: &ComponentLink<COMP>, message: COMP::Message) -> Callback<State, Event> where COMP::Message: Clone;
+    fn change_selected_language(&self, selected_language: Option<LanguageIdentifier>);
+    fn subscribe_language_changed<COMP: Component>(
+        &self,
+        link: &ComponentLink<COMP>,
+        message: COMP::Message,
+    ) -> Callback<State, Event>
+    where
+        COMP::Message: Clone;
 }
 
 impl<State, Action, Event> LocalizeStore<State, Event> for Store<State, Action, Event>
@@ -66,43 +72,20 @@ where
     State: LocalizeState + 'static,
     Event: LocalizeEvent + PartialEq + StoreEvent + Clone + Hash + Eq + 'static,
 {
-    fn change_selected_language(&mut self, selected_language: Option<LanguageIdentifier>) {
+    fn change_selected_language(&self, selected_language: Option<LanguageIdentifier>) {
         self.dispatch(Action::change_selected_language(selected_language))
     }
 
-    fn subscribe_language_changed<COMP: Component>(&mut self, link: &ComponentLink<COMP>, message: COMP::Message) -> Callback<State, Event> where COMP::Message: Clone {
-        let callback = link
-            .callback(move |()| message.clone())
-            .into();
+    fn subscribe_language_changed<COMP: Component>(
+        &self,
+        link: &ComponentLink<COMP>,
+        message: COMP::Message,
+    ) -> Callback<State, Event>
+    where
+        COMP::Message: Clone,
+    {
+        let callback = link.callback(move |()| message.clone()).into();
         self.subscribe_event(&callback, LocalizeEvent::language_changed());
-        callback
-    }
-}
-
-pub trait LocalizeStoreRef<State, Event> {
-    fn change_selected_language(&self, selected_language: Option<LanguageIdentifier>);
-    /// Create a callback and subscribe it to the 
-    /// [LocalizeEvent::langauge_changed()](LocalizeEvent::langauge_changed()) language changed
-    /// event. You need to maintain the reference to the returned callback for as long
-    /// as you want the subscription to persist.
-    fn subscribe_language_changed<COMP: Component>(&self, link: &ComponentLink<COMP>, message: COMP::Message) -> Callback<State, Event> where COMP::Message: Clone;
-}
-
-impl<State, Action, Event> LocalizeStoreRef<State, Event> for StoreRef<State, Action, Event>
-where
-    Action: LocalizeAction,
-    State: LocalizeState + 'static,
-    Event: LocalizeEvent + PartialEq + StoreEvent + Clone + Hash + Eq + 'static,
-{
-    fn change_selected_language(&self, selected_language: Option<LanguageIdentifier>) {
-        self.dispatch(Action::change_selected_language(selected_language)).expect("unable to perform Store::dispatch")
-    }
-
-    fn subscribe_language_changed<COMP: Component>(&self, link: &ComponentLink<COMP>, message: COMP::Message) -> Callback<State, Event> where COMP::Message: Clone {
-        let callback = link
-            .callback(move |()| message.clone())
-            .into();
-        self.subscribe_event(&callback, LocalizeEvent::language_changed()).expect("Unable to subscribe to language changed event on LanguageStoreRef");
         callback
     }
 }

@@ -86,14 +86,10 @@ impl Component for Model {
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         let state_store: StateStoreRef = StateStoreRef::new(CosterReducer, CosterState::default());
         let log_middleware = SimpleLoggerMiddleware::new().log_level(LogLevel::Debug);
-        state_store
-            .add_middleware(log_middleware)
-            .expect("Unable to add logging middleware to Store");
+        state_store.add_middleware(log_middleware);
 
-        let route_middleware = RouteMiddleware::new(&state_store);
-        state_store
-            .add_middleware(route_middleware)
-            .expect("Unable to add RouteMiddleware to Store");
+        let route_middleware = RouteMiddleware::new(state_store.clone());
+        state_store.add_middleware(route_middleware);
 
         let mut language_requester: WebLanguageRequester<'static> = WebLanguageRequester::new();
         let localizer = DefaultLocalizer::new(&*LANGUAGE_LOADER, &TRANSLATIONS);
@@ -130,27 +126,21 @@ impl Component for Model {
 
         let language_requester_ref = Rc::new(RefCell::new(language_requester));
         let localize_middleware = LocalizeMiddleware::new(language_requester_ref.clone());
-        state_store
-            .add_middleware(localize_middleware)
-            .expect("Unable to add LocalizeMiddleware to Store");
+        state_store.add_middleware(localize_middleware);
 
         let state_callback = link
-            .callback_later(|(state, event)| Msg::StateChanged(state, event))
+            .callback(|(state, event)| Msg::StateChanged(state, event))
             .into();
 
-        state_store
-            .subscribe_events(
-                &state_callback,
-                vec![
-                    StateStoreEvent::LanguageChanged,
-                    StateStoreEvent::RouteChanged,
-                ],
-            )
-            .expect("Unable to subscribe to Store events");
+        state_store.subscribe_events(
+            &state_callback,
+            vec![
+                StateStoreEvent::LanguageChanged,
+                StateStoreEvent::RouteChanged,
+            ],
+        );
 
-        state_store
-            .dispatch(CosterAction::PollBrowserRoute)
-            .expect("Unable to dispatch PollBrowserRoute on StoreRef");
+        state_store.dispatch(CosterAction::PollBrowserRoute);
 
         Model {
             language_requester: language_requester_ref,
@@ -165,7 +155,7 @@ impl Component for Model {
     fn update(&mut self, msg: Msg) -> ShouldRender {
         debug!("Model::update invoked");
         match msg {
-            Msg::StateChanged(state, event) => match event {
+            Msg::StateChanged(_state, event) => match event {
                 StateStoreEvent::LanguageChanged => {
                     // if let Some(storage) = &mut self.storage {
                     //     debug!(
@@ -187,7 +177,7 @@ impl Component for Model {
     fn view(&self) -> Html {
         debug!("Rendering coster::lib");
 
-        let state = self.state_store.state().expect("unable to get Store state");
+        let state = self.state_store.state();
         let route_match_node = match &state.route {
             RouteType::Valid(AppRoute::CostingTab) => {
                 debug!(target: "gui::router", "Detected CostingTab Route: {:?}", state.route);

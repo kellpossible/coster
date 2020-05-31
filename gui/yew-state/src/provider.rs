@@ -109,7 +109,7 @@ where
 {
     fn update_children_props(
         children: &ChildrenWithProps<C>,
-        state: &Rc<State>,
+        state: Rc<State>,
         map_state_to_props: &MapStateToProps<C, State>,
     ) -> Option<ChildrenWithProps<C>> {
         // TODO: only make the children vec if props changed
@@ -171,7 +171,7 @@ where
             Msg::StateUpdate(state) => {
                 let result: Option<ChildrenWithProps<C>> = Self::update_children_props(
                     &self.props.children,
-                    &state,
+                    state,
                     &self.props.map_state_to_props,
                 );
                 match result {

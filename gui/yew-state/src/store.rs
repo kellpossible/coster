@@ -1,65 +1,34 @@
 use crate::{middleware::Middleware, AsListener, Listener, Reducer, StoreEvent};
+use log::debug;
 use std::iter::FromIterator;
+use std::ops::Deref;
 use std::{
-    cell::{BorrowError, BorrowMutError, RefCell},
-    collections::HashSet,
-    fmt::Display,
+    cell::{Cell, RefCell},
+    collections::{HashSet, VecDeque},
+    fmt::Debug,
     hash::Hash,
     marker::PhantomData,
     rc::Rc,
 };
-use thiserror::Error;
-
-#[derive(Error, Debug)]
-pub struct StoreRefBorrowMutError {
-    #[from]
-    pub source: BorrowMutError,
-}
-
-impl Display for StoreRefBorrowMutError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Error while borrowing StoreRef as mutable: {}",
-            self.source
-        )
-    }
-}
-
-#[derive(Error, Debug)]
-pub struct StoreRefBorrowError {
-    #[from]
-    pub source: BorrowError,
-}
-
-impl Display for StoreRefBorrowError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Error while borrowing StoreRef as immutable: {:?}",
-            self.source
-        )
-    }
-}
 
 struct ListenerEventPair<State, Event> {
     pub listener: Listener<State, Event>,
     pub events: HashSet<Event>,
 }
 
-pub struct StoreRef<State, Action, Event>(Rc<RefCell<Store<State, Action, Event>>>);
-
-impl<State, Action, Event> Clone for StoreRef<State, Action, Event> {
-    fn clone(&self) -> Self {
-        StoreRef(self.0.clone())
+impl<State, Event> Debug for ListenerEventPair<State, Event> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ListenerEventPair")
     }
 }
 
-impl<State, Action, Event> PartialEq for StoreRef<State, Action, Event> {
-    fn eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.0, &other.0)
-    }
+enum StoreModification<State, Action, Event> {
+    AddListener(ListenerEventPair<State, Event>),
+    AddMiddleware(Rc<dyn Middleware<State, Action, Event>>),
 }
+
+#[derive(Clone)]
+pub struct StoreRef<State, Action, Event>(Rc<Store<State, Action, Event>>);
 
 impl<State, Action, Event> StoreRef<State, Action, Event>
 where
@@ -69,59 +38,34 @@ where
         reducer: R,
         initial_state: State,
     ) -> Self {
-        StoreRef(Rc::new(RefCell::new(Store::new(reducer, initial_state))))
+        Self(Rc::new(Store::new(reducer, initial_state)))
     }
+}
 
-    pub fn state(&self) -> Result<Rc<State>, StoreRefBorrowError> {
-        Ok(self.0.try_borrow()?.state().clone())
+impl<State, Action, Event> Deref for StoreRef<State, Action, Event> {
+    type Target = Store<State, Action, Event>;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.0
     }
+}
 
-    pub fn dispatch(&self, action: Action) -> Result<(), StoreRefBorrowMutError> {
-        self.0.try_borrow_mut()?.dispatch(action);
-        Ok(())
-    }
-
-    pub fn subscribe<L: AsListener<State, Event>>(
-        &self,
-        listener: L,
-    ) -> Result<(), StoreRefBorrowMutError> {
-        self.0.try_borrow_mut()?.subscribe(listener);
-        Ok(())
-    }
-
-    pub fn subscribe_event<L: AsListener<State, Event>>(
-        &self,
-        listener: L,
-        event: Event,
-    ) -> Result<(), StoreRefBorrowMutError> {
-        self.0.try_borrow_mut()?.subscribe_event(listener, event);
-        Ok(())
-    }
-
-    pub fn subscribe_events<L: AsListener<State, Event>, E: IntoIterator<Item = Event>>(
-        &self,
-        listener: L,
-        events: E,
-    ) -> Result<(), StoreRefBorrowMutError> {
-        self.0.try_borrow_mut()?.subscribe_events(listener, events);
-        Ok(())
-    }
-
-    pub fn add_middleware<M: Middleware<State, Action, Event> + 'static>(
-        &self,
-        middleware: M,
-    ) -> Result<(), StoreRefBorrowMutError> {
-        self.0.try_borrow_mut()?.add_middleware(middleware);
-        Ok(())
+impl<State, Action, Event> PartialEq for StoreRef<State, Action, Event> {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
     }
 }
 
 pub struct Store<State, Action, Event> {
+    /// This lock is used to prevent dispatch recursion and a large stack.
+    dispatch_lock: RefCell<()>,
+    dispatch_queue: RefCell<VecDeque<Action>>,
+    modification_queue: RefCell<VecDeque<StoreModification<State, Action, Event>>>,
     reducer: Box<dyn Reducer<State, Action, Event>>,
-    state: Rc<State>,
-    listeners: Vec<ListenerEventPair<State, Event>>,
-    middleware: Vec<Rc<dyn Middleware<State, Action, Event>>>,
-    prev_middleware: i32,
+    state: RefCell<Rc<State>>,
+    listeners: RefCell<Vec<ListenerEventPair<State, Event>>>,
+    middleware: RefCell<Vec<Rc<dyn Middleware<State, Action, Event>>>>,
+    prev_middleware: Cell<i32>,
     phantom_action: PhantomData<Action>,
     phantom_event: PhantomData<Event>,
 }
@@ -135,34 +79,38 @@ where
         initial_state: State,
     ) -> Self {
         Self {
+            dispatch_lock: RefCell::new(()),
+            dispatch_queue: RefCell::new(VecDeque::new()),
+            modification_queue: RefCell::new(VecDeque::new()),
             reducer: Box::new(reducer),
-            state: Rc::new(initial_state),
-            listeners: Vec::new(),
-            middleware: Vec::new(),
-            prev_middleware: -1,
+            state: RefCell::new(Rc::new(initial_state)),
+            listeners: RefCell::new(Vec::new()),
+            middleware: RefCell::new(Vec::new()),
+            prev_middleware: Cell::new(-1),
             phantom_action: PhantomData,
             phantom_event: PhantomData,
         }
     }
 
-    pub fn state(&self) -> &Rc<State> {
-        &self.state
+    pub fn state(&self) -> Rc<State> {
+        self.state.borrow().clone()
     }
 
-    fn dispatch_reducer(&mut self, action: Action) -> Vec<Event> {
-        let (state, events) = self.reducer.reduce(&self.state, action);
-        self.state = state;
+    fn dispatch_reducer(&self, action: Action) -> Vec<Event> {
+        let (state, events) = self.reducer.reduce(self.state(), action);
+        *self.state.borrow_mut() = state;
         events
     }
 
-    fn dispatch_middleware_reduce(&mut self, action: Action) -> Vec<Event> {
-        self.prev_middleware = -1;
+    fn dispatch_middleware_reduce(&self, action: Action) -> Vec<Event> {
+        self.prev_middleware.set(-1);
         self.dispatch_middleware_reduce_next(Some(action))
     }
 
-    fn dispatch_middleware_reduce_next(&mut self, action: Option<Action>) -> Vec<Event> {
-        let current_middleware = self.prev_middleware + 1;
-        if current_middleware as usize == self.middleware.len() {
+    fn dispatch_middleware_reduce_next(&self, action: Option<Action>) -> Vec<Event> {
+        let current_middleware = self.prev_middleware.get() + 1;
+        self.prev_middleware.set(current_middleware);
+        if current_middleware as usize == self.middleware.borrow().len() {
             return match action {
                 //TODO: move this outside the dispatch middleware because it could be
                 // a situation where a middleware decides not to call next and this will
@@ -172,48 +120,47 @@ where
             };
         }
 
-        // assign before invoking the middleware which will rely
-        // on this value for the next() function.
-        self.prev_middleware = current_middleware;
-
-        let result = self.middleware[current_middleware as usize]
+        let result = self.middleware.borrow()[current_middleware as usize]
             .clone()
             .on_reduce(self, action, Self::dispatch_middleware_reduce_next);
 
         result
     }
 
-    fn dispatch_middleware_notify(&mut self, events: Vec<Event>) -> Vec<Event> {
-        self.prev_middleware = -1;
+    fn dispatch_middleware_notify(&self, events: Vec<Event>) -> Vec<Event> {
+        self.prev_middleware.set(-1);
         self.dispatch_middleware_notify_next(events)
     }
 
-    fn dispatch_middleware_notify_next(&mut self, events: Vec<Event>) -> Vec<Event> {
-        let current_middleware = self.prev_middleware + 1;
+    fn dispatch_middleware_notify_next(&self, events: Vec<Event>) -> Vec<Event> {
+        let current_middleware = self.prev_middleware.get() + 1;
+        self.prev_middleware.set(current_middleware);
 
-        if current_middleware as usize == self.middleware.len() {
+        if current_middleware as usize == self.middleware.borrow().len() {
             return events;
         }
 
-        self.prev_middleware = current_middleware;
-
-        self.middleware[current_middleware as usize]
+        self.middleware.borrow()[current_middleware as usize]
             .clone()
             .on_notify(self, events, Self::dispatch_middleware_notify_next)
     }
 
-    fn notify_listeners(&mut self, events: Vec<Event>) {
+    fn notify_listeners(&self, events: Vec<Event>) {
+        debug!(
+            "Store::notify_listeners before: {:?}",
+            self.listeners.borrow()
+        );
         let mut listeners_to_remove: Vec<usize> = Vec::new();
-        for (i, pair) in self.listeners.iter().enumerate() {
+        for (i, pair) in self.listeners.borrow().iter().enumerate() {
             let retain = match pair.listener.as_callback() {
                 Some(callback) => {
                     if pair.events.is_empty() {
-                        callback.emit(self.state.clone(), Event::none());
+                        callback.emit(self.state.borrow().clone(), Event::none());
                     } else {
                         //  call the listener for every matching listener event
                         for event in &events {
                             if pair.events.contains(event) {
-                                callback.emit(self.state.clone(), event.clone());
+                                callback.emit(self.state.borrow().clone(), event.clone());
                             }
                         }
                     }
@@ -224,63 +171,97 @@ where
             };
 
             if !retain {
-                listeners_to_remove.push(i);
+                listeners_to_remove.insert(0, i);
             }
         }
 
         for index in listeners_to_remove {
-            self.listeners.swap_remove(index);
+            self.listeners.borrow_mut().swap_remove(index);
         }
     }
 
-    pub fn dispatch(&mut self, action: Action) {
-        let events = if self.middleware.is_empty() {
-            self.dispatch_reducer(action)
-        } else {
-            self.dispatch_middleware_reduce(action)
-        };
-
-        // TODO: if there was no action (after the middleware), then don't notify.
-        let middleware_events = self.dispatch_middleware_notify(events);
-        self.notify_listeners(middleware_events)
+    fn process_pending_modifications(&self) {
+        while let Some(modification) = self.modification_queue.borrow_mut().pop_front() {
+            match modification {
+                StoreModification::AddListener(listener_pair) => {
+                    self.listeners.borrow_mut().push(listener_pair);
+                }
+                StoreModification::AddMiddleware(middleware) => {
+                    self.middleware.borrow_mut().push(middleware);
+                }
+            }
+        }
     }
 
-    pub fn subscribe<L: AsListener<State, Event>>(&mut self, listener: L) {
-        self.listeners.push(ListenerEventPair {
-            listener: listener.as_listener(),
-            events: HashSet::new(),
-        });
+    pub fn dispatch(&self, action: Action) {
+        self.dispatch_queue.borrow_mut().push_back(action);
+
+        // If the lock fails to acquire, then the dispatch is already in progress.
+        // This prevents recursion, when a listener callback also triggers another
+        // dispatch.
+        if let Ok(_lock) = self.dispatch_lock.try_borrow_mut() {
+            while let Some(action) = self.dispatch_queue.borrow_mut().pop_front() {
+                self.process_pending_modifications();
+
+                let events = if self.middleware.borrow().is_empty() {
+                    self.dispatch_reducer(action)
+                } else {
+                    self.dispatch_middleware_reduce(action)
+                };
+
+                // TODO: if there was no action (after the middleware), then don't notify.
+                let middleware_events = self.dispatch_middleware_notify(events);
+                self.notify_listeners(middleware_events)
+            }
+        }
     }
 
-    pub fn subscribe_event<L: AsListener<State, Event>>(&mut self, listener: L, event: Event) {
+    pub fn subscribe<L: AsListener<State, Event>>(&self, listener: L) {
+        self.modification_queue
+            .borrow_mut()
+            .push_back(StoreModification::AddListener(ListenerEventPair {
+                listener: listener.as_listener(),
+                events: HashSet::new(),
+            }));
+    }
+
+    pub fn subscribe_event<L: AsListener<State, Event>>(&self, listener: L, event: Event) {
         let mut events = HashSet::with_capacity(1);
         events.insert(event);
 
-        self.listeners.push(ListenerEventPair {
-            listener: listener.as_listener(),
-            events,
-        });
+        self.modification_queue
+            .borrow_mut()
+            .push_back(StoreModification::AddListener(ListenerEventPair {
+                listener: listener.as_listener(),
+                events,
+            }));
     }
 
     pub fn subscribe_events<L: AsListener<State, Event>, E: IntoIterator<Item = Event>>(
-        &mut self,
+        &self,
         listener: L,
         events: E,
     ) {
-        self.listeners.push(ListenerEventPair {
-            listener: listener.as_listener(),
-            events: HashSet::from_iter(events.into_iter()),
-        });
+        self.modification_queue
+            .borrow_mut()
+            .push_back(StoreModification::AddListener(ListenerEventPair {
+                listener: listener.as_listener(),
+                events: HashSet::from_iter(events.into_iter()),
+            }));
     }
 
-    pub fn add_middleware<M: Middleware<State, Action, Event> + 'static>(&mut self, middleware: M) {
-        self.middleware.push(Rc::new(middleware));
+    pub fn add_middleware<M: Middleware<State, Action, Event> + 'static>(&self, middleware: M) {
+        self.modification_queue
+            .borrow_mut()
+            .push_back(StoreModification::AddMiddleware(Rc::new(middleware)));
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{middleware::Middleware, Callback, Reducer, ReducerResult, Store, StoreEvent};
+    use crate::{
+        middleware::Middleware, Callback, Reducer, ReducerResult, Store, StoreEvent, StoreRef,
+    };
     use std::{cell::RefCell, rc::Rc};
 
     #[derive(Debug, PartialEq)]
@@ -300,7 +281,7 @@ mod tests {
     impl Reducer<TestState, TestAction, TestEvent> for TestReducer {
         fn reduce(
             &self,
-            state: &Rc<TestState>,
+            state: Rc<TestState>,
             action: TestAction,
         ) -> ReducerResult<TestState, TestEvent> {
             let mut events = Vec::new();
@@ -323,6 +304,7 @@ mod tests {
             (Rc::new(new_state), events)
         }
     }
+    
     struct TestMiddleware {
         new_action: TestAction,
     }
@@ -330,7 +312,7 @@ mod tests {
     impl Middleware<TestState, TestAction, TestEvent> for TestMiddleware {
         fn on_reduce(
             &self,
-            store: &mut Store<TestState, TestAction, TestEvent>,
+            store: &Store<TestState, TestAction, TestEvent>,
             action: Option<TestAction>,
             reduce: crate::middleware::ReduceFn<TestState, TestAction, TestEvent>,
         ) -> Vec<TestEvent> {
@@ -387,7 +369,7 @@ mod tests {
     #[test]
     fn test_middleware() {
         let initial_state = TestState { counter: 0 };
-        let store = Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
+        let store = StoreRef::new(TestReducer, initial_state);
 
         let callback_test = Rc::new(RefCell::new(0));
         let callback_test_copy = callback_test.clone();
@@ -396,24 +378,22 @@ mod tests {
                 *callback_test_copy.borrow_mut() = state.counter;
             });
 
-        let mut store_mut = store.borrow_mut();
-
-        store_mut.subscribe(&callback);
-        store_mut.add_middleware(TestMiddleware {
+        store.subscribe(&callback);
+        store.add_middleware(TestMiddleware {
             new_action: TestAction::Decrement,
         });
-        store_mut.add_middleware(TestMiddleware {
+        store.add_middleware(TestMiddleware {
             new_action: TestAction::Decrement2,
         });
 
-        store_mut.dispatch(TestAction::Increment);
+        store.dispatch(TestAction::Increment);
         assert_eq!(-2, *callback_test.borrow());
     }
 
     #[test]
     fn test_middleware_reverse_order() {
         let initial_state = TestState { counter: 0 };
-        let store = Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
+        let store = StoreRef::new(TestReducer, initial_state);
 
         let callback_test = Rc::new(RefCell::new(0));
         let callback_test_copy = callback_test.clone();
@@ -422,25 +402,22 @@ mod tests {
                 *callback_test_copy.borrow_mut() = state.counter;
             });
 
-        let mut store_mut = store.borrow_mut();
-
-        store_mut.subscribe(&callback);
-        store_mut.add_middleware(TestMiddleware {
+        store.subscribe(&callback);
+        store.add_middleware(TestMiddleware {
             new_action: TestAction::Decrement2,
         });
-        store_mut.add_middleware(TestMiddleware {
+        store.add_middleware(TestMiddleware {
             new_action: TestAction::Decrement,
         });
 
-        store_mut.dispatch(TestAction::Increment);
+        store.dispatch(TestAction::Increment);
         assert_eq!(-1, *callback_test.borrow());
     }
 
     #[test]
     fn test_subscribe_event() {
         let initial_state = TestState { counter: -2 };
-        let store: Rc<RefCell<Store<TestState, TestAction, TestEvent>>> =
-            Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
+        let store = StoreRef::new(TestReducer, initial_state);
 
         let callback_test: Rc<RefCell<Option<TestEvent>>> = Rc::new(RefCell::new(None));
         let callback_test_copy = callback_test.clone();
@@ -451,11 +428,10 @@ mod tests {
                 *callback_test_copy.borrow_mut() = Some(TestEvent::IsZero);
             });
 
-        let mut store_mut = store.borrow_mut();
-        store_mut.subscribe_event(&callback_zero_subscription, TestEvent::IsZero);
-        store_mut.dispatch(TestAction::Increment);
+        store.subscribe_event(&callback_zero_subscription, TestEvent::IsZero);
+        store.dispatch(TestAction::Increment);
         assert_eq!(None, *callback_test.borrow());
-        store_mut.dispatch(TestAction::Increment);
+        store.dispatch(TestAction::Increment);
         assert_eq!(Some(TestEvent::IsZero), *callback_test.borrow());
     }
 }

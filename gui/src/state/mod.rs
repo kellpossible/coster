@@ -129,7 +129,7 @@ impl LocalizeState for CosterState {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum CosterAction {
     ChangeSelectedLanguage(Option<LanguageIdentifier>),
     ChangeRoute(RouteType),
@@ -208,7 +208,7 @@ impl RouteEvent<RouteType> for StateStoreEvent {
 impl Reducer<CosterState, CosterAction, StateStoreEvent> for CosterReducer {
     fn reduce(
         &self,
-        prev_state: &Rc<CosterState>,
+        prev_state: Rc<CosterState>,
         action: CosterAction,
     ) -> (Rc<CosterState>, Vec<StateStoreEvent>) {
         let mut events = Vec::new();

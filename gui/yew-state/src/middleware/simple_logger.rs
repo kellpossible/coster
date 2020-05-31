@@ -53,7 +53,7 @@ where
 {
     fn on_reduce(
         &self,
-        store: &mut Store<State, Action, Event>,
+        store: &Store<State, Action, Event>,
         action: Option<Action>,
         reduce: ReduceFn<State, Action, Event>,
     ) -> Vec<Event> {
@@ -82,7 +82,7 @@ where
 
     fn on_notify(
         &self,
-        store: &mut Store<State, Action, Event>,
+        store: &Store<State, Action, Event>,
         events: Vec<Event>,
         notify: super::NotifyFn<State, Action, Event>,
     ) -> Vec<Event> {

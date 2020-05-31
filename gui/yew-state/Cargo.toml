@@ -12,10 +12,9 @@ wasm-bindgen = { version = "0.2", optional = true }
 web-sys = { version = "0.3", optional = true }
 serde = { version = "1", optional = true }
 log = "0.4"
-wasm-bindgen-futures = { version = "0.4", optional = true }
 
 [features]
 default = ["yew-compat", "web"]
 web = ["web-sys", "wasm-bindgen", "web-json-log"]
-yew-compat = ["yew", "wasm-bindgen-futures"]
+yew-compat = ["yew"]
 web-json-log = ["serde", "wasm-bindgen/serde-serialize"]

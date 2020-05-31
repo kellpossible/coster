@@ -1,6 +1,17 @@
 use std::rc::Rc;
 
+/// Using the [reduce()](Reducer::reduce()) method, implementors of
+/// this trait take an `Action` submitted to a store via
+/// [Store::dispatch()](crate::Store::dispatch()) and modifies the
+/// `State` in the store, producing a new `State`, and also producing
+/// events associated with the `Action` and state modifications that
+/// occurred.
 pub trait Reducer<State, Action, Event> {
+    /// Take an `Action` submitted to a store via
+    /// [Store::dispatch()](crate::Store::dispatch()) and modifies the
+    /// `prev_state`, producing a new `State`, and also producing
+    /// events associated with the `Action` and state modifications
+    /// that occurred.
     fn reduce(&self, prev_state: Rc<State>, action: Action) -> ReducerResult<State, Event>;
 }
 

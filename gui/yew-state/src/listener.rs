@@ -1,12 +1,37 @@
 use std::rc::{Rc, Weak};
 
-#[derive(Clone)]
-pub struct Listener<State, Event>(Weak<dyn Fn(Rc<State>, Event)>);
-
+/// A trait to take a [Callback] or other custom callback type and
+/// produce a [Listener], a weak reference to that callback.
 pub trait AsListener<State, Event> {
+    /// Produce a [Listener], a weak reference to this callback.
     fn as_listener(&self) -> Listener<State, Event>;
 }
 
+/// A weak reference to a callback function (usually [Callback]) which
+/// is notified of changes to [Store](crate::Store) `State`, and
+/// `Event`s produced by the store.
+#[derive(Clone)]
+pub struct Listener<State, Event>(Weak<dyn Fn(Rc<State>, Event)>);
+
+impl<State, Event> Listener<State, Event> {
+    /// Attempt to upgrade the weak reference in this listener to a
+    /// [Callback], otherwise if unable to, returns `None`.
+    pub fn as_callback(&self) -> Option<Callback<State, Event>> {
+        match self.0.upgrade() {
+            Some(listener_rc) => Some(Callback(listener_rc)),
+            None => None,
+        }
+    }
+}
+
+impl<State, Event> AsListener<State, Event> for Listener<State, Event> {
+    fn as_listener(&self) -> Listener<State, Event> {
+        Listener(self.0.clone())
+    }
+}
+
+/// A wrapper for a callback which is notified of changes to
+/// [Store](crate::Store) `State`, and `Event`s produced by the store.
 #[derive(Clone)]
 pub struct Callback<State, Event>(Rc<dyn Fn(Rc<State>, Event)>);
 
@@ -31,21 +56,6 @@ where
 {
     fn from(closure: C) -> Self {
         Callback(Rc::new(closure))
-    }
-}
-
-impl<State, Event> Listener<State, Event> {
-    pub fn as_callback(&self) -> Option<Callback<State, Event>> {
-        match self.0.upgrade() {
-            Some(listener_rc) => Some(Callback(listener_rc)),
-            None => None,
-        }
-    }
-}
-
-impl<State, Event> AsListener<State, Event> for Listener<State, Event> {
-    fn as_listener(&self) -> Listener<State, Event> {
-        Listener(self.0.clone())
     }
 }
 

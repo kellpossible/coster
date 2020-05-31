@@ -10,6 +10,8 @@ use std::{
     rc::Rc,
 };
 
+/// A [Listener] associated with (listening to) a given set of
+/// `Events`s produced by a [Store::dispatch()].
 struct ListenerEventPair<State, Event> {
     pub listener: Listener<State, Event>,
     pub events: HashSet<Event>,
@@ -21,11 +23,20 @@ impl<State, Event> Debug for ListenerEventPair<State, Event> {
     }
 }
 
+/// An action to modify some aspect of the [Store], to be stored in a
+/// queue and executed at the start of a [Store::dispatch()] for a
+/// given `Action`.
 enum StoreModification<State, Action, Event> {
     AddListener(ListenerEventPair<State, Event>),
     AddMiddleware(Rc<dyn Middleware<State, Action, Event>>),
 }
 
+/// A wrapper for an [Rc] reference to a [Store].
+///
+/// This wrapper exists to provide a standard interface for re-useable
+/// middleware and other components which may require a long living
+/// reference to the store in order to dispatch actions or modify it
+/// in some manner that could not be handled by a simple `&Store`.
 #[derive(Clone)]
 pub struct StoreRef<State, Action, Event>(Rc<Store<State, Action, Event>>);
 
@@ -55,15 +66,46 @@ impl<State, Action, Event> PartialEq for StoreRef<State, Action, Event> {
     }
 }
 
+/// This struct is designed to operate as a central source of truth
+/// and global "immutable" state within your application. 
+///
+/// The current state of this store ([Store::state()]()) can only be
+/// modified by dispatching an `Action` via [Store::dispatch()] to the
+/// store. These actions are taken by a [Reducer] which you provided
+/// to the store (at construction) and a new current state is
+/// produced. The reducer also produces `Events` associated with the
+/// change. The previous state is never mutated, and remains as a
+/// reference for any element of your application which may rely upon
+/// it (ensure that it gets dropped when it is no longer required,
+/// lest it become a memory leak when large `State`s are involved).
+///
+/// Listeners can susbscribe to changes to the `State` in this store
+/// (and `Event`s produced) with [Store::subscribe()], or they can
+/// also subscribe to changes associated with specific `Event`s via
+/// [subscribe_event()](Store::subscribe_event())/[subscribe_events()](Store::subscribe_events()).
 pub struct Store<State, Action, Event> {
-    /// This lock is used to prevent dispatch recursion and a large stack.
+    /// This lock is used to prevent dispatch recursion.
     dispatch_lock: RefCell<()>,
+    /// Queue of actions to be dispatched by [Store::dispatch()].
     dispatch_queue: RefCell<VecDeque<Action>>,
+    /// Queue of [StoreModification]s to be executed by
+    /// [Store::dispatch()] before the next `Action` is dispatched.
     modification_queue: RefCell<VecDeque<StoreModification<State, Action, Event>>>,
+    /// The [Reducer] for this store, which takes `Actions`, modifies
+    /// the `State` stored in this store, and produces `Events` to be
+    /// sent to the store listeners.
     reducer: Box<dyn Reducer<State, Action, Event>>,
+    /// The current state of this store.
     state: RefCell<Rc<State>>,
+    /// The listeners which are notified of changes to the state of
+    /// this store, and events produced by this store during a
+    /// [Store::dispatch()].
     listeners: RefCell<Vec<ListenerEventPair<State, Event>>>,
+    /// Middleware which modifies the functionality of this store.
     middleware: RefCell<Vec<Rc<dyn Middleware<State, Action, Event>>>>,
+    /// Used during recursive execution of [Middleware] to keep track
+    /// of the middleware currently executing. It is an index into
+    /// [Store::middleware].
     prev_middleware: Cell<i32>,
     phantom_action: PhantomData<Action>,
     phantom_event: PhantomData<Event>,
@@ -73,6 +115,9 @@ impl<State, Action, Event> Store<State, Action, Event>
 where
     Event: StoreEvent + Clone + Hash + Eq,
 {
+    /// Create a new [Store], which uses the specified `reducer` to
+    /// handle `Action`s which mutate the state and produce `Event`s,
+    /// and with the `initial_state`.
     pub fn new<R: Reducer<State, Action, Event> + 'static>(
         reducer: R,
         initial_state: State,
@@ -91,29 +136,39 @@ where
         }
     }
 
+    /// Get the current `State` stored in this store. 
+    ///
+    /// Modifications to this state need to be performed by
+    /// dispatching an `Action` to the store using
+    /// [dispatch()](Store::dispatch()).
     pub fn state(&self) -> Rc<State> {
         self.state.borrow().clone()
     }
 
+    /// Dispatch an `Action` to the reducer on this `Store` without
+    /// invoking middleware.
     fn dispatch_reducer(&self, action: Action) -> Vec<Event> {
         let (state, events) = self.reducer.reduce(self.state(), action);
         *self.state.borrow_mut() = state;
         events
     }
 
+    /// Dispatch an `Action` to the reducer on this `Store`, invoking
+    /// all middleware's [reduce()][Middleware::reduce()] first.
     fn dispatch_middleware_reduce(&self, action: Action) -> Vec<Event> {
         self.prev_middleware.set(-1);
         self.dispatch_middleware_reduce_next(Some(action))
     }
 
+    /// A recursive function which executes each middleware for this
+    /// store, and invokes the next middleware, until all middleware
+    /// has been invoked, at which point the `Action` is sent to the
+    /// reducer.
     fn dispatch_middleware_reduce_next(&self, action: Option<Action>) -> Vec<Event> {
         let current_middleware = self.prev_middleware.get() + 1;
         self.prev_middleware.set(current_middleware);
         if current_middleware as usize == self.middleware.borrow().len() {
             return match action {
-                //TODO: move this outside the dispatch middleware because it could be
-                // a situation where a middleware decides not to call next and this will
-                // never be reached.
                 Some(action) => self.dispatch_reducer(action),
                 None => Vec::new(),
             };
@@ -126,12 +181,22 @@ where
         result
     }
 
-    fn dispatch_middleware_notify(&self, events: Vec<Event>) -> Vec<Event> {
+    /// Notify store listeners of events produced during a reduce as a
+    /// result of an `Action` being dispatched. Invokes all
+    /// middleware's [reduce()][Middleware::reduce()] first.
+    /// Notification occurs even if there are no events to report.
+    fn middleware_notify(&self, events: Vec<Event>) -> Vec<Event> {
         self.prev_middleware.set(-1);
-        self.dispatch_middleware_notify_next(events)
+        self.middleware_notify_next(events)
     }
 
-    fn dispatch_middleware_notify_next(&self, events: Vec<Event>) -> Vec<Event> {
+    /// A recursive function which executes each middleware for this
+    /// store, and invokes the next middleware, until all middleware
+    /// has been invoked, at which point the listeners are notified of
+    /// the envents produced during a reduce as a result of an
+    /// `Action` being dispatched. Notification occurs even if there
+    /// are no events to report.
+    fn middleware_notify_next(&self, events: Vec<Event>) -> Vec<Event> {
         let current_middleware = self.prev_middleware.get() + 1;
         self.prev_middleware.set(current_middleware);
 
@@ -141,9 +206,12 @@ where
 
         self.middleware.borrow()[current_middleware as usize]
             .clone()
-            .on_notify(self, events, Self::dispatch_middleware_notify_next)
+            .on_notify(self, events, Self::middleware_notify_next)
     }
 
+    /// Notify store listeners of events produced during a result of
+    /// an `Action` being dispatched. Notification occurs even if
+    /// there are no events to report.
     fn notify_listeners(&self, events: Vec<Event>) {
         let mut listeners_to_remove: Vec<usize> = Vec::new();
         for (i, pair) in self.listeners.borrow().iter().enumerate() {
@@ -188,6 +256,9 @@ where
         }
     }
 
+    /// Dispatch an `Action` to be passed to the [Reducer] in order to
+    /// modify the `State` in this store, and produce `Events` to be
+    /// sent to the store listeners.
     pub fn dispatch(&self, action: Action) {
         self.dispatch_queue.borrow_mut().push_back(action);
 
@@ -204,13 +275,28 @@ where
                     self.dispatch_middleware_reduce(action)
                 };
 
-                // TODO: if there was no action (after the middleware), then don't notify.
-                let middleware_events = self.dispatch_middleware_notify(events);
+                // TODO: if there was no action (after the
+                // middleware), then don't notify. (because the
+                // Reducer won't produce any events?)
+                let middleware_events = self.middleware_notify(events);
                 self.notify_listeners(middleware_events)
             }
         }
     }
 
+    /// Subscribe a [Listener] to changes in the store state and
+    /// events produced by the [Reducer] as a result of `Action`s
+    /// dispatched via [dispatch()][Store::dispatch()].
+    ///
+    /// The listener is a weak reference; when the strong reference
+    /// associated with it (usually [Callback](crate::Callback)) is
+    /// dropped, the listener will be removed from this store upon
+    /// [dispatch()](Store::dispatch()).
+    ///
+    /// If you want to subscribe to state changes associated with
+    /// specific `Event`s, see
+    /// [subscribe_event()][Store::subscribe_events()] or
+    /// [subscribe_event()][Store::subscribe_events()]
     pub fn subscribe<L: AsListener<State, Event>>(&self, listener: L) {
         self.modification_queue
             .borrow_mut()
@@ -220,6 +306,17 @@ where
             }));
     }
 
+    /// Subscribe a [Listener] to changes in the store state and
+    /// events produced by the [Reducer] as a result of `Action`s
+    /// being dispatched via [dispatch()][Store::dispatch()] and
+    /// reduced with the store's [Reducer]. This subscription is only
+    /// active changes which produce the specific matching `event`
+    /// from the [Reducer].
+    ///
+    /// The listener is a weak reference; when the strong reference
+    /// associated with it (usually [Callback](crate::Callback)) is
+    /// dropped, the listener will be removed from this store upon
+    /// [dispatch()](Store::dispatch()).
     pub fn subscribe_event<L: AsListener<State, Event>>(&self, listener: L, event: Event) {
         let mut events = HashSet::with_capacity(1);
         events.insert(event);
@@ -232,6 +329,17 @@ where
             }));
     }
 
+    /// Subscribe a [Listener] to changes in the store state and
+    /// events produced by the [Reducer] as a result of `Action`s
+    /// being dispatched via [dispatch()][Store::dispatch()] and
+    /// reduced with the store's [Reducer]. This subscription is only
+    /// active changes which produce any of the specific matching
+    /// `events` from the [Reducer].
+    ///
+    /// The listener is a weak reference; when the strong reference
+    /// associated with it (usually [Callback](crate::Callback)) is
+    /// dropped, the listener will be removed from this store upon
+    /// [dispatch()](Store::dispatch()).
     pub fn subscribe_events<L: AsListener<State, Event>, E: IntoIterator<Item = Event>>(
         &self,
         listener: L,
@@ -245,6 +353,8 @@ where
             }));
     }
 
+    /// Add [Middleware] to modify the behaviour of this [Store]
+    /// during a [dispatch()][Store::dispatch()].
     pub fn add_middleware<M: Middleware<State, Action, Event> + 'static>(&self, middleware: M) {
         self.modification_queue
             .borrow_mut()

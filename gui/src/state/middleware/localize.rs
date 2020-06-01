@@ -1,4 +1,5 @@
 use i18n_embed::LanguageRequester;
+use log::debug;
 use std::{cell::RefCell, hash::Hash, rc::Rc};
 use unic_langid::LanguageIdentifier;
 use yew::{Component, ComponentLink};
@@ -30,6 +31,10 @@ where
     ) -> Vec<Event> {
         if let Some(action) = &action {
             if let Some(selected_language) = action.get_change_selected_language() {
+                debug!(
+                    "LocalizeMiddleware::on_reduce Processing selected language: {:?}",
+                    selected_language
+                );
                 self.language_requester
                     .borrow_mut()
                     .set_language_override(selected_language.map(|l| l.clone()))

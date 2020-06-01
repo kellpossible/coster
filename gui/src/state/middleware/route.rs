@@ -1,4 +1,4 @@
-use log::{debug, error};
+use log::error;
 use std::{cell::RefCell, fmt::Debug, hash::Hash, marker::PhantomData};
 use switch_router::{SwitchRoute, SwitchRouteService};
 use yew_state::{
@@ -25,10 +25,6 @@ where
         let router = RefCell::new(SwitchRouteService::new());
         let callback: switch_router::Callback<SR> =
             switch_router::Callback::new(move |route: SR| {
-                debug!(
-                    "state::middleware::route::callback callback invoked for route: {}",
-                    route.path()
-                );
                 store.dispatch(Action::browser_change_route(route));
             });
 
@@ -79,17 +75,8 @@ where
         action: Option<Action>,
         reduce: ReduceFn<State, Action, Event>,
     ) -> Vec<Event> {
-        debug!(
-            "state::middleware::route::on_reduce started with action {:?}",
-            action
-        );
-
         if let Some(action) = &action {
             if let Some(route) = action.get_change_route() {
-                debug!(
-                    "state::middleware::route::on_reduce setting route: {}",
-                    route.path()
-                );
                 self.set_route_no_callback(route.clone());
             } else if action == &Action::poll_browser_route() {
                 match self.router.try_borrow_mut() {
@@ -103,7 +90,6 @@ where
                 }
             }
         }
-        debug!("state::middleware::route::on_reduce finished");
         reduce(store, action)
     }
 }

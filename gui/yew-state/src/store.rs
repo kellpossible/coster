@@ -67,7 +67,7 @@ impl<State, Action, Event> PartialEq for StoreRef<State, Action, Event> {
 }
 
 /// This struct is designed to operate as a central source of truth
-/// and global "immutable" state within your application. 
+/// and global "immutable" state within your application.
 ///
 /// The current state of this store ([Store::state()]()) can only be
 /// modified by dispatching an `Action` via [Store::dispatch()] to the
@@ -136,7 +136,7 @@ where
         }
     }
 
-    /// Get the current `State` stored in this store. 
+    /// Get the current `State` stored in this store.
     ///
     /// Modifications to this state need to be performed by
     /// dispatching an `Action` to the store using

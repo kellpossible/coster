@@ -33,9 +33,7 @@ use yew::{
     services::{storage, StorageService},
     Component, ComponentLink, Html, ShouldRender,
 };
-use yew_state::{
-    middleware::simple_logger::{LogLevel, SimpleLoggerMiddleware},
-};
+use yew_state::middleware::web_logger::{LogLevel, WebLoggerMiddleware};
 
 #[derive(RustEmbed, I18nEmbed)]
 #[folder = "i18n/mo"]
@@ -84,7 +82,8 @@ impl Component for Model {
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         let state_store: StateStoreRef = StateStoreRef::new(CosterReducer, CosterState::default());
-        let log_middleware = SimpleLoggerMiddleware::new().log_level(LogLevel::Debug);
+        // let log_middleware = SimpleLoggerMiddleware::new().log_level(LogLevel::Debug);
+        let log_middleware = WebLoggerMiddleware::new().log_level(LogLevel::Log);
         state_store.add_middleware(log_middleware);
 
         let route_middleware = RouteMiddleware::new(state_store.clone());
@@ -152,7 +151,6 @@ impl Component for Model {
     }
 
     fn update(&mut self, msg: Msg) -> ShouldRender {
-        debug!("Model::update invoked");
         match msg {
             Msg::StateChanged(_state, event) => match event {
                 StateStoreEvent::LanguageChanged => {
@@ -174,22 +172,14 @@ impl Component for Model {
     }
 
     fn view(&self) -> Html {
-        debug!("Rendering coster::lib");
-
         let state = self.state_store.state();
         let route_match_node = match &state.route {
-            RouteType::Valid(AppRoute::CostingTab) => {
-                debug!(target: "gui::router", "Detected CostingTab Route: {:?}", state.route);
-                self.page(centered(
-                    html! {<CostingTab state_store=self.state_store.clone()/>},
-                ))
-            }
-            RouteType::Valid(AppRoute::NewCostingTab) => {
-                debug!(target: "gui::router", "Detected NewCostingTab Route: {:?}", state.route);
-                self.page(centered(
-                    html! {<NewCostingTab state_store=self.state_store.clone()/>},
-                ))
-            }
+            RouteType::Valid(AppRoute::CostingTab) => self.page(centered(
+                html! {<CostingTab state_store=self.state_store.clone()/>},
+            )),
+            RouteType::Valid(AppRoute::NewCostingTab) => self.page(centered(
+                html! {<NewCostingTab state_store=self.state_store.clone()/>},
+            )),
             RouteType::Valid(AppRoute::Help) => {
                 self.page(html! { <h1 class="title is-1">{ tr!("Help for Coster") }</h1> })
             }
@@ -198,7 +188,6 @@ impl Component for Model {
             }
             RouteType::Valid(AppRoute::Index) => {
                 if state.route.path() == "/" {
-                    debug!(target: "gui::router", "Detected CostingTabListPage Route: {:?}", state.route);
                     self.page(centered(
                         html! {<CostingTabList state_store=self.state_store.clone()/>},
                     ))

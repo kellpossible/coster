@@ -4,7 +4,8 @@ use middleware::{
     localize::{LocalizeAction, LocalizeEvent, LocalizeState},
     route::{RouteAction, RouteEvent, RouteState},
 };
-use std::{fmt::Debug, rc::Rc};
+use serde::Serialize;
+use std::{fmt::{Display, Debug}, rc::Rc};
 use switch_router::SwitchRoute;
 use unic_langid::LanguageIdentifier;
 use yew_router::{route::Route, Switch};
@@ -12,7 +13,7 @@ use yew_state::{Reducer, StoreEvent, StoreRef};
 
 pub type StateCallback = yew_state::Callback<CosterState, StateStoreEvent>;
 
-#[derive(Switch, Clone, Hash, Eq, PartialEq)]
+#[derive(Switch, Clone, Hash, Eq, PartialEq, Serialize)]
 pub enum AppRoute {
     /// Matches the `/tab` route.
     #[to = "/tab"]
@@ -43,7 +44,7 @@ impl ToString for AppRoute {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub enum RouteType {
     Valid(AppRoute),
     Invalid(String),
@@ -86,7 +87,7 @@ impl Debug for AppRoute {
 
 pub type StateStoreRef = StoreRef<CosterState, CosterAction, StateStoreEvent>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct CosterState {
     pub selected_language: Option<LanguageIdentifier>,
     pub route: RouteType,
@@ -129,12 +130,40 @@ impl LocalizeState for CosterState {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum CosterAction {
     ChangeSelectedLanguage(Option<LanguageIdentifier>),
     ChangeRoute(RouteType),
     BrowserChangeRoute(RouteType),
     PollBrowserRoute,
+}
+
+impl Display for CosterAction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CosterAction::ChangeSelectedLanguage(selected_language) => {
+                let language_display = match selected_language {
+                    Some(language) => {
+                        language.to_string()
+                    }
+                    None => {
+                        "None".to_string()
+                    }
+                };
+                write!(f, "ChangeSelectedLanguage({})", language_display)
+            }
+            CosterAction::ChangeRoute(route) => {
+                write!(f, "ChangeRoute({:?})", route)
+            }
+            CosterAction::BrowserChangeRoute(route) => {
+                write!(f, "BrowserChangeRoute({:?})", route)
+            }
+            CosterAction::PollBrowserRoute => {
+                write!(f, "PollBrowserRoute")
+            }
+        }
+    }
+    
 }
 
 impl LocalizeAction for CosterAction {
@@ -177,7 +206,7 @@ impl RouteAction<RouteType> for CosterAction {
 
 pub struct CosterReducer;
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
 pub enum StateStoreEvent {
     LanguageChanged,
     RouteChanged,

@@ -17,6 +17,7 @@ pub struct Navbar {
     burger_menu_active: bool,
     props: Props,
     link: ComponentLink<Self>,
+    available_languages: Vec<LanguageIdentifier>,
     _language_changed_callback: StateCallback,
 }
 
@@ -48,6 +49,14 @@ impl Component for Navbar {
     type Properties = Props;
 
     fn create(props: Props, link: ComponentLink<Self>) -> Self {
+        let mut available_languages = props
+            .language_requester
+            .borrow()
+            .available_languages()
+            .unwrap();
+
+        available_languages.sort();
+
         let callback = props
             .state_store
             .subscribe_language_changed(&link, Msg::LanguageChanged);
@@ -56,6 +65,7 @@ impl Component for Navbar {
             burger_menu_active: false,
             props,
             link,
+            available_languages,
             _language_changed_callback: callback,
         }
     }
@@ -92,15 +102,6 @@ impl Component for Navbar {
     }
 
     fn view(&self) -> Html {
-        let mut languages = self
-            .props
-            .language_requester
-            .borrow()
-            .available_languages()
-            .unwrap();
-
-        languages.sort();
-
         let current_languages = self.props.language_requester.borrow().current_languages();
         let current_language = current_languages
             .get("gui")
@@ -156,7 +157,7 @@ impl Component for Navbar {
                             <Select<LanguageIdentifier>
                                 size=bulma::Size::Big
                                 selected=current_language
-                                options=languages
+                                options=self.available_languages.clone()
                                 onchange=on_language_change
                                 icon_props=select_icon_props
                                 />

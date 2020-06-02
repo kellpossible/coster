@@ -4,7 +4,8 @@ use middleware::{
     localize::{LocalizeAction, LocalizeEvent, LocalizeState},
     route::{RouteAction, RouteEvent, RouteState},
 };
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
+use serde_diff::SerdeDiff;
 use std::{fmt::{Display, Debug}, rc::Rc};
 use switch_router::SwitchRoute;
 use unic_langid::LanguageIdentifier;
@@ -13,7 +14,7 @@ use yew_state::{Reducer, StoreEvent, StoreRef};
 
 pub type StateCallback = yew_state::Callback<CosterState, StateStoreEvent>;
 
-#[derive(Switch, Clone, Hash, Eq, PartialEq, Serialize)]
+#[derive(Switch, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub enum AppRoute {
     /// Matches the `/tab` route.
     #[to = "/tab"]
@@ -44,7 +45,7 @@ impl ToString for AppRoute {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum RouteType {
     Valid(AppRoute),
     Invalid(String),
@@ -81,15 +82,34 @@ impl From<AppRoute> for RouteType {
 
 impl Debug for AppRoute {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Route({})", self.to_string())
+        let route_name = match self {
+            AppRoute::CostingTab => {
+                "CostingTab"
+            }
+            AppRoute::NewCostingTab => {
+                "NewCostingTab"
+            }
+            AppRoute::Help => {
+                "Help"
+            }
+            AppRoute::About => {
+                "About"
+            }
+            AppRoute::Index => {
+                "Index"
+            }
+        };
+        write!(f, "{}: \"{}\"", route_name, self.to_string())
     }
 }
 
 pub type StateStoreRef = StoreRef<CosterState, CosterAction, StateStoreEvent>;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, SerdeDiff, Serialize, Deserialize)]
 pub struct CosterState {
+    #[serde_diff(opaque)]
     pub selected_language: Option<LanguageIdentifier>,
+    #[serde_diff(opaque)]
     pub route: RouteType,
 }
 

@@ -9,7 +9,6 @@ use std::rc::Rc;
 
 use commodity::CommodityType;
 use costing::Tab;
-use log::debug;
 use tr::tr;
 use yew::MouseEvent;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
@@ -81,7 +80,6 @@ impl Component for CostingTabList {
         let tab = self.tab.borrow();
 
         let new_tab_handler = self.link.callback(|msg: MouseEvent| {
-            debug!("Clicked New Tab Button: {:?}", msg);
             Msg::NewCostingTab
         });
 

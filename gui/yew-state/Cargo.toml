@@ -12,6 +12,7 @@ wasm-bindgen = { version = "0.2", optional = true }
 web-sys = { version = "0.3", optional = true }
 serde = { version = "1", optional = true }
 log = "0.4"
+serde-diff = "0.3.0"
 
 [features]
 default = ["yew-compat", "web"]

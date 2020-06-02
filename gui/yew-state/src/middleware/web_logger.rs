@@ -1,6 +1,7 @@
 use super::Middleware;
 use crate::StoreEvent;
 use serde::Serialize;
+use serde_diff::{SerdeDiff, Diff};
 use std::{fmt::{Display, Debug}, hash::Hash};
 use wasm_bindgen::JsValue;
 use web_sys::console;
@@ -51,7 +52,7 @@ impl WebLoggerMiddleware {
 
 impl<State, Action, Event> Middleware<State, Action, Event> for WebLoggerMiddleware
 where
-    State: Serialize,
+    State: Serialize + SerdeDiff,
     Action: Serialize + Display,
     Event: StoreEvent + Clone + Hash + Eq + Serialize,
 {
@@ -62,6 +63,8 @@ where
         reduce: super::ReduceFn<State, Action, Event>,
     ) -> Vec<Event> {
         let prev_state_js = JsValue::from_serde(&(*store.state())).unwrap();
+        let prev_state = store.state();
+
         // TODO: what will happen when action is None?
         let action_js = JsValue::from_serde(&action).unwrap();
         let action_display = match &action {
@@ -75,6 +78,10 @@ where
 
         let result = reduce(store, action);
         let next_state_js = JsValue::from_serde(&(*store.state())).unwrap();
+        let next_state = store.state();
+
+        let state_diff = Diff::serializable(&*prev_state, &*next_state);
+        let state_diff_js = JsValue::from_serde(&state_diff).unwrap();
 
         console::group_collapsed_3(
             &JsValue::from_serde(&format!("%caction %c{}", action_display)).unwrap(),
@@ -100,6 +107,13 @@ where
             &JsValue::from_str("color: #4CAF50; font-weight: bold;"),
         );
         self.log_level.log(&next_state_js);
+        console::group_end();
+
+        console::group_collapsed_2(
+            &JsValue::from_str("%cstate diff"),
+            &JsValue::from_str("color: #4CAF50; font-weight: bold;"),
+        );
+        self.log_level.log(&state_diff_js);
         console::group_end();
 
         result

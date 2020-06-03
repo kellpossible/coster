@@ -79,9 +79,7 @@ impl Component for CostingTabList {
         // TODO: do something with this tab
         let tab = self.tab.borrow();
 
-        let new_tab_handler = self.link.callback(|msg: MouseEvent| {
-            Msg::NewCostingTab
-        });
+        let new_tab_handler = self.link.callback(|msg: MouseEvent| Msg::NewCostingTab);
 
         html! {
             <nav class="level">

@@ -20,7 +20,7 @@ use log;
 use log::debug;
 use rust_embed::RustEmbed;
 use state::{
-    middleware::{localize::LocalizeMiddleware, route::RouteMiddleware},
+    middleware::{localize::LocalizeMiddleware, route::{RouteAction, RouteMiddleware}},
     AppRoute, CosterAction, CosterReducer, CosterState, RouteType, StateStoreEvent, StateStoreRef,
 };
 use std::cell::RefCell;
@@ -138,7 +138,7 @@ impl Component for Model {
             ],
         );
 
-        state_store.dispatch(CosterAction::PollBrowserRoute);
+        state_store.dispatch(RouteAction::PollBrowserRoute);
 
         Model {
             language_requester: language_requester_ref,

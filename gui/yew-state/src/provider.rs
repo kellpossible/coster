@@ -6,7 +6,7 @@ use yew::{
 
 #[derive(Clone)]
 pub struct MapStateToProps<C: Component, State>(
-    fn(Rc<State>, &C::Properties) -> Option<C::Properties>,
+    fn(&Rc<State>, &C::Properties) -> Option<C::Properties>,
 );
 
 impl<C, State> PartialEq for MapStateToProps<C, State>
@@ -22,11 +22,11 @@ impl<C, State> MapStateToProps<C, State>
 where
     C: Component,
 {
-    pub fn new(function: fn(Rc<State>, &C::Properties) -> Option<C::Properties>) -> Self {
+    pub fn new(function: fn(&Rc<State>, &C::Properties) -> Option<C::Properties>) -> Self {
         Self(function)
     }
 
-    pub fn perform(&self, state: Rc<State>, props: &C::Properties) -> Option<C::Properties> {
+    pub fn perform(&self, state: &Rc<State>, props: &C::Properties) -> Option<C::Properties> {
         (self.0)(state, props)
     }
 }
@@ -77,7 +77,7 @@ where
         // TODO: this should also include the children, but it's not currently possible due to https://github.com/yewstack/yew/issues/1216
         Rc::ptr_eq(&self.store, &other.store)
             && self.map_state_to_props == other.map_state_to_props
-            && false //false for children not implemented.
+            && self.children == other.children
     }
 }
 
@@ -109,7 +109,7 @@ where
 {
     fn update_children_props(
         children: &ChildrenWithProps<C>,
-        state: Rc<State>,
+        state: &Rc<State>,
         map_state_to_props: &MapStateToProps<C, State>,
     ) -> Option<ChildrenWithProps<C>> {
         // TODO: only make the children vec if props changed
@@ -118,7 +118,7 @@ where
         let mut child_props_changed = false;
 
         for child in &mut children_vec {
-            match map_state_to_props.perform(state.clone(), &child.props) {
+            match map_state_to_props.perform(state, &child.props) {
                 Some(properties) => {
                     child.props = properties;
                     child_props_changed = true;
@@ -151,7 +151,7 @@ where
 
         let children = match Self::update_children_props(
             &props.children,
-            props.store.borrow().state(),
+            &props.store.borrow().state(),
             &props.map_state_to_props,
         ) {
             None => props.children.clone(),
@@ -171,7 +171,7 @@ where
             Msg::StateUpdate(state) => {
                 let result: Option<ChildrenWithProps<C>> = Self::update_children_props(
                     &self.props.children,
-                    state,
+                    &state,
                     &self.props.map_state_to_props,
                 );
                 match result {
@@ -187,18 +187,16 @@ where
 
     fn change(&mut self, props: Props<C, State, Action>) -> yew::ShouldRender {
         if self.props != props {
-            // TODO: not currently possible due to https://github.com/yewstack/yew/issues/1216
-            // workaround is to assume false.
-            // if self.props.children != props.children {
-            match Self::update_children_props(
-                &props.children,
-                props.store.borrow().state(),
-                &props.map_state_to_props,
-            ) {
-                None => self.children = props.children.clone(),
-                Some(children) => self.children = children,
-            };
-            // }
+            if self.props.children != props.children {
+                match Self::update_children_props(
+                    &props.children,
+                    &props.store.borrow().state(),
+                    &props.map_state_to_props,
+                ) {
+                    None => self.children = props.children.clone(),
+                    Some(children) => self.children = children,
+                };
+            }
 
             self.props = props;
             true

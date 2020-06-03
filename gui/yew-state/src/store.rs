@@ -145,12 +145,13 @@ where
         self.state.borrow().clone()
     }
 
+
     /// Dispatch an `Action` to the reducer on this `Store` without
     /// invoking middleware.
     fn dispatch_reducer(&self, action: Action) -> Vec<Event> {
-        let (state, events) = self.reducer.reduce(self.state(), action);
-        *self.state.borrow_mut() = state;
-        events
+        let result = self.reducer.reduce(self.state(), action);
+        *self.state.borrow_mut() = result.state;
+        result.events
     }
 
     /// Dispatch an `Action` to the reducer on this `Store`, invoking
@@ -259,7 +260,16 @@ where
     /// Dispatch an `Action` to be passed to the [Reducer] in order to
     /// modify the `State` in this store, and produce `Events` to be
     /// sent to the store listeners.
-    pub fn dispatch(&self, action: Action) {
+    pub fn dispatch<A: Into<Action>>(&self, action: A) {
+        self.dispatch_impl(action.into());
+    }
+
+    /// Concrete version of [Store::dispatch()], for code size
+    /// reduction purposes, to avoid generating multiple versions of
+    /// this complex function per action that implements
+    /// `Into<Action>`, it is expected that there will be many in a
+    /// typical application.
+    fn dispatch_impl(&self, action: Action) {
         self.dispatch_queue.borrow_mut().push_back(action);
 
         // If the lock fails to acquire, then the dispatch is already in progress.
@@ -275,11 +285,10 @@ where
                     self.dispatch_middleware_reduce(action)
                 };
 
-                // TODO: if there was no action (after the
-                // middleware), then don't notify. (because the
-                // Reducer won't produce any events?)
                 let middleware_events = self.middleware_notify(events);
-                self.notify_listeners(middleware_events)
+                if !middleware_events.is_empty() {
+                    self.notify_listeners(middleware_events);
+                }
             }
         }
     }
@@ -402,11 +411,17 @@ mod tests {
                 },
             };
 
+            // All actions change the counter.
+            events.push(TestEvent::CounterChanged);
+
             if new_state.counter != state.counter && new_state.counter == 0 {
-                events.push(TestEvent::IsZero);
+                events.push(TestEvent::CounterIsZero);
             }
 
-            (Rc::new(new_state), events)
+            ReducerResult {
+                state: Rc::new(new_state),
+                events,
+            }
         }
     }
 
@@ -427,8 +442,8 @@ mod tests {
 
     #[derive(Debug, PartialEq, Eq, Hash, Clone)]
     enum TestEvent {
-        Change(i32),
-        IsZero,
+        CounterIsZero,
+        CounterChanged,
         None,
     }
 
@@ -529,14 +544,14 @@ mod tests {
 
         let callback_zero_subscription: Callback<TestState, TestEvent> =
             Callback::new(move |_: Rc<TestState>, event| {
-                assert_eq!(TestEvent::IsZero, event);
-                *callback_test_copy.borrow_mut() = Some(TestEvent::IsZero);
+                assert_eq!(TestEvent::CounterIsZero, event);
+                *callback_test_copy.borrow_mut() = Some(TestEvent::CounterIsZero);
             });
 
-        store.subscribe_event(&callback_zero_subscription, TestEvent::IsZero);
+        store.subscribe_event(&callback_zero_subscription, TestEvent::CounterIsZero);
         store.dispatch(TestAction::Increment);
         assert_eq!(None, *callback_test.borrow());
         store.dispatch(TestAction::Increment);
-        assert_eq!(Some(TestEvent::IsZero), *callback_test.borrow());
+        assert_eq!(Some(TestEvent::CounterIsZero), *callback_test.borrow());
     }
 }

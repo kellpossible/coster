@@ -1,10 +1,11 @@
 use log::error;
-use std::{cell::RefCell, fmt::Debug, hash::Hash, marker::PhantomData};
+use std::{cell::RefCell, fmt::{Display, Debug}, hash::Hash, marker::PhantomData};
 use switch_router::{SwitchRoute, SwitchRouteService};
 use yew_state::{
     middleware::{Middleware, ReduceFn},
     Store, StoreEvent, StoreRef,
 };
+use serde::{Deserialize, Serialize};
 
 pub struct RouteMiddleware<SR, State, Action, Event> {
     pub router: RefCell<SwitchRouteService<SR>>,
@@ -18,14 +19,14 @@ impl<SR, State, Action, Event> RouteMiddleware<SR, State, Action, Event>
 where
     SR: SwitchRoute + 'static,
     State: 'static,
-    Action: RouteAction<SR> + 'static,
+    Action: IsRouteAction<SR> + 'static,
     Event: StoreEvent + Clone + Hash + Eq + 'static,
 {
     pub fn new(store: StoreRef<State, Action, Event>) -> Self {
         let router = RefCell::new(SwitchRouteService::new());
         let callback: switch_router::Callback<SR> =
             switch_router::Callback::new(move |route: SR| {
-                store.dispatch(Action::browser_change_route(route));
+                store.dispatch(RouteAction::BrowserChangeRoute(route));
             });
 
         // FIXME: there is multiple borrow error with this callback
@@ -65,7 +66,7 @@ impl<SR, State, Action, Event> Middleware<State, Action, Event>
     for RouteMiddleware<SR, State, Action, Event>
 where
     SR: SwitchRoute + 'static,
-    Action: RouteAction<SR> + PartialEq + Debug + 'static,
+    Action: IsRouteAction<SR> + PartialEq + Debug + 'static,
     State: RouteState<SR> + 'static,
     Event: RouteEvent<SR> + PartialEq + StoreEvent + Clone + Hash + Eq + 'static,
 {
@@ -76,17 +77,23 @@ where
         reduce: ReduceFn<State, Action, Event>,
     ) -> Vec<Event> {
         if let Some(action) = &action {
-            if let Some(route) = action.get_change_route() {
-                self.set_route_no_callback(route.clone());
-            } else if action == &Action::poll_browser_route() {
-                match self.router.try_borrow_mut() {
-                    Ok(router_mut) => {
-                        let route = router_mut.get_route();
-                        return reduce(store, Some(Action::browser_change_route(route)));
+            if let Some(route_action) = action.route_action() {
+                match route_action {
+                    RouteAction::ChangeRoute(route) => {
+                        self.set_route_no_callback(route.clone());
                     }
-                    Err(err) => {
-                        error!("Cannot borrow mut self.router: {}", err);
+                    RouteAction::PollBrowserRoute => {
+                        match self.router.try_borrow_mut() {
+                            Ok(router_mut) => {
+                                let route = router_mut.get_route();
+                                return reduce(store, Some(RouteAction::BrowserChangeRoute(route).into()));
+                            }
+                            Err(err) => {
+                                error!("Cannot borrow mut self.router: {}", err);
+                            }
+                        }
                     }
+                    _ => {}
                 }
             }
         }
@@ -105,15 +112,28 @@ where
     fn route_changed() -> Self;
 }
 
-pub trait RouteAction<SR>: Clone
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+pub enum RouteAction<SR> {
+    ChangeRoute(SR),
+    BrowserChangeRoute(SR),
+    PollBrowserRoute
+}
+
+impl <SR> Display for RouteAction<SR> where SR: Debug {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RouteAction::ChangeRoute(route) => write!(f, "ChangeRoute({:?})", route),
+            RouteAction::BrowserChangeRoute(route)  => write!(f, "BrowserChangeRoute({:?})", route),
+            RouteAction::PollBrowserRoute  => write!(f, "PollBrowserRoute"),
+        }
+    }
+}
+
+pub trait IsRouteAction<SR>: Clone + From<RouteAction<SR>>
 where
     SR: SwitchRoute + 'static,
 {
-    fn change_route<R: Into<SR>>(route: R) -> Self;
-    fn browser_change_route(route: SR) -> Self;
-    fn poll_browser_route() -> Self;
-    fn get_change_route(&self) -> Option<&SR>;
-    fn get_browser_change_route(&self) -> Option<&SR>;
+    fn route_action(&self) -> Option<&RouteAction<SR>>;
 }
 
 pub trait RouteStore<SR> {
@@ -123,11 +143,11 @@ pub trait RouteStore<SR> {
 impl<SR, State, Action, Event> RouteStore<SR> for Store<State, Action, Event>
 where
     SR: SwitchRoute + 'static,
-    Action: RouteAction<SR>,
+    Action: IsRouteAction<SR>,
     State: RouteState<SR>,
     Event: RouteEvent<SR> + PartialEq + StoreEvent + Clone + Hash + Eq,
 {
     fn change_route<R: Into<SR>>(&self, route: R) {
-        self.dispatch(Action::change_route(route));
+        self.dispatch(RouteAction::ChangeRoute(route.into()));
     }
 }

@@ -1,8 +1,11 @@
 use super::Middleware;
 use crate::StoreEvent;
 use serde::Serialize;
-use serde_diff::{SerdeDiff, Diff};
-use std::{fmt::{Display, Debug}, hash::Hash};
+use serde_diff::{Diff, SerdeDiff};
+use std::{
+    fmt::{Debug, Display},
+    hash::Hash,
+};
 use wasm_bindgen::JsValue;
 use web_sys::console;
 
@@ -68,12 +71,8 @@ where
         // TODO: what will happen when action is None?
         let action_js = JsValue::from_serde(&action).unwrap();
         let action_display = match &action {
-            Some(action) => {
-                format!("{}", action)
-            }
-            None => {
-                "None".to_string()
-            }
+            Some(action) => format!("{}", action),
+            None => "None".to_string(),
         };
 
         let result = reduce(store, action);

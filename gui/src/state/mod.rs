@@ -1,21 +1,23 @@
 pub mod middleware;
 
 use middleware::{
+    db::DatabaseEvent,
     localize::{LocalizeAction, LocalizeEvent, LocalizeState},
-    route::{RouteAction, RouteEvent, RouteState, IsRouteAction},
+    route::{IsRouteAction, RouteAction, RouteEvent, RouteState},
 };
 use serde::{Deserialize, Serialize};
 use serde_diff::SerdeDiff;
 use std::{
+    convert::TryInto,
     fmt::{Debug, Display},
-    rc::Rc, convert::TryInto,
+    rc::Rc,
 };
 use switch_router::SwitchRoute;
 use unic_langid::LanguageIdentifier;
 use yew_router::{route::Route, Switch};
-use yew_state::{Reducer, StoreEvent, StoreRef, ReducerResult};
+use yew_state::{Reducer, ReducerResult, StoreEvent, StoreRef};
 
-pub type StateCallback = yew_state::Callback<CosterState, StateStoreEvent>;
+pub type StateCallback = yew_state::Callback<CosterState, CosterEvent>;
 
 #[derive(Switch, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub enum AppRoute {
@@ -96,7 +98,7 @@ impl Debug for AppRoute {
     }
 }
 
-pub type StateStoreRef = StoreRef<CosterState, CosterAction, StateStoreEvent>;
+pub type StateStoreRef = StoreRef<CosterState, CosterAction, CosterEvent>;
 
 #[derive(Debug, Clone, SerdeDiff, Serialize, Deserialize)]
 pub struct CosterState {
@@ -159,9 +161,7 @@ impl Display for CosterAction {
                 };
                 write!(f, "ChangeSelectedLanguage({})", language_display)
             }
-            CosterAction::RouteAction(route_action) => {
-                write!(f, "RouteAction::{}", route_action)
-            }
+            CosterAction::RouteAction(route_action) => write!(f, "RouteAction::{}", route_action),
         }
     }
 }
@@ -222,64 +222,59 @@ impl IsRouteAction<RouteType> for CosterAction {
 pub struct CosterReducer;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
-pub enum StateStoreEvent {
+pub enum CosterEvent {
     LanguageChanged,
     RouteChanged,
     None,
 }
 
-impl StoreEvent for StateStoreEvent {
+impl StoreEvent for CosterEvent {
     fn none() -> Self {
-        StateStoreEvent::None
+        CosterEvent::None
     }
     fn is_none(&self) -> bool {
         self == &Self::none()
     }
 }
 
-impl LocalizeEvent for StateStoreEvent {
+impl LocalizeEvent for CosterEvent {
     fn language_changed() -> Self {
-        StateStoreEvent::LanguageChanged
+        CosterEvent::LanguageChanged
     }
 }
 
-impl RouteEvent<RouteType> for StateStoreEvent {
+impl RouteEvent<RouteType> for CosterEvent {
     fn route_changed() -> Self {
-        StateStoreEvent::RouteChanged
+        CosterEvent::RouteChanged
     }
 }
 
-impl Reducer<CosterState, CosterAction, StateStoreEvent> for CosterReducer {
+impl Reducer<CosterState, CosterAction, CosterEvent> for CosterReducer {
     fn reduce(
         &self,
         prev_state: Rc<CosterState>,
         action: CosterAction,
-    ) -> ReducerResult<CosterState, StateStoreEvent> {
+    ) -> ReducerResult<CosterState, CosterEvent> {
         let mut events = Vec::new();
 
         let state = match action {
             CosterAction::ChangeSelectedLanguage(language) => {
-                events.push(StateStoreEvent::LanguageChanged);
+                events.push(CosterEvent::LanguageChanged);
                 Rc::new(prev_state.change_selected_language(language))
             }
-            CosterAction::RouteAction(route_action) => {
-                match route_action {
-                    RouteAction::ChangeRoute(route) => {
-                        events.push(StateStoreEvent::RouteChanged);
-                        Rc::new(prev_state.change_route(route))
-                    }
-                    RouteAction::BrowserChangeRoute(route) => {
-                        events.push(StateStoreEvent::RouteChanged);
-                        Rc::new(prev_state.change_route(route))
-                    }
-                    RouteAction::PollBrowserRoute => prev_state.clone(),
+            CosterAction::RouteAction(route_action) => match route_action {
+                RouteAction::ChangeRoute(route) => {
+                    events.push(CosterEvent::RouteChanged);
+                    Rc::new(prev_state.change_route(route))
                 }
-            }
+                RouteAction::BrowserChangeRoute(route) => {
+                    events.push(CosterEvent::RouteChanged);
+                    Rc::new(prev_state.change_route(route))
+                }
+                RouteAction::PollBrowserRoute => prev_state.clone(),
+            },
         };
 
-        ReducerResult {
-            state,
-            events
-        }
+        ReducerResult { state, events }
     }
 }

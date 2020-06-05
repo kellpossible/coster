@@ -20,8 +20,11 @@ use log;
 use log::debug;
 use rust_embed::RustEmbed;
 use state::{
-    middleware::{localize::LocalizeMiddleware, route::{RouteAction, RouteMiddleware}},
-    AppRoute, CosterAction, CosterReducer, CosterState, RouteType, StateStoreEvent, StateStoreRef,
+    middleware::{
+        localize::LocalizeMiddleware,
+        route::{RouteAction, RouteMiddleware},
+    },
+    AppRoute, CosterEvent, CosterReducer, CosterState, RouteType, StateStoreRef,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -52,7 +55,7 @@ pub type LocalizerRef = Rc<dyn Localizer<'static>>;
 pub type LanguageRequesterRef = Rc<RefCell<dyn LanguageRequester<'static>>>;
 
 pub enum Msg {
-    StateChanged(Rc<CosterState>, StateStoreEvent),
+    StateChanged(Rc<CosterState>, CosterEvent),
 }
 
 pub struct Model {
@@ -61,7 +64,7 @@ pub struct Model {
     link: ComponentLink<Self>,
     state_store: StateStoreRef,
     storage: Option<StorageService>,
-    _state_callback: yew_state::Callback<CosterState, StateStoreEvent>,
+    _state_callback: yew_state::Callback<CosterState, CosterEvent>,
 }
 
 impl Model {
@@ -132,10 +135,7 @@ impl Component for Model {
 
         state_store.subscribe_events(
             &state_callback,
-            vec![
-                StateStoreEvent::LanguageChanged,
-                StateStoreEvent::RouteChanged,
-            ],
+            vec![CosterEvent::LanguageChanged, CosterEvent::RouteChanged],
         );
 
         state_store.dispatch(RouteAction::PollBrowserRoute);
@@ -153,7 +153,7 @@ impl Component for Model {
     fn update(&mut self, msg: Msg) -> ShouldRender {
         match msg {
             Msg::StateChanged(_state, event) => match event {
-                StateStoreEvent::LanguageChanged => {
+                CosterEvent::LanguageChanged => {
                     // if let Some(storage) = &mut self.storage {
                     //     debug!(
                     //         "Model::update storing user-selected-language: {:?}",
@@ -165,8 +165,8 @@ impl Component for Model {
                     // debug!("Language changed in coster::lib {:?}", state.selected_language);
                     true
                 }
-                StateStoreEvent::RouteChanged => true,
-                StateStoreEvent::None => false,
+                CosterEvent::RouteChanged => true,
+                CosterEvent::None => false,
             },
         }
     }

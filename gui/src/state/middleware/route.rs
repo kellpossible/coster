@@ -1,11 +1,16 @@
 use log::error;
-use std::{cell::RefCell, fmt::{Display, Debug}, hash::Hash, marker::PhantomData};
+use serde::{Deserialize, Serialize};
+use std::{
+    cell::RefCell,
+    fmt::{Debug, Display},
+    hash::Hash,
+    marker::PhantomData,
+};
 use switch_router::{SwitchRoute, SwitchRouteService};
 use yew_state::{
     middleware::{Middleware, ReduceFn},
     Store, StoreEvent, StoreRef,
 };
-use serde::{Deserialize, Serialize};
 
 pub struct RouteMiddleware<SR, State, Action, Event> {
     pub router: RefCell<SwitchRouteService<SR>>,
@@ -82,17 +87,18 @@ where
                     RouteAction::ChangeRoute(route) => {
                         self.set_route_no_callback(route.clone());
                     }
-                    RouteAction::PollBrowserRoute => {
-                        match self.router.try_borrow_mut() {
-                            Ok(router_mut) => {
-                                let route = router_mut.get_route();
-                                return reduce(store, Some(RouteAction::BrowserChangeRoute(route).into()));
-                            }
-                            Err(err) => {
-                                error!("Cannot borrow mut self.router: {}", err);
-                            }
+                    RouteAction::PollBrowserRoute => match self.router.try_borrow_mut() {
+                        Ok(router_mut) => {
+                            let route = router_mut.get_route();
+                            return reduce(
+                                store,
+                                Some(RouteAction::BrowserChangeRoute(route).into()),
+                            );
                         }
-                    }
+                        Err(err) => {
+                            error!("Cannot borrow mut self.router: {}", err);
+                        }
+                    },
                     _ => {}
                 }
             }
@@ -116,15 +122,18 @@ where
 pub enum RouteAction<SR> {
     ChangeRoute(SR),
     BrowserChangeRoute(SR),
-    PollBrowserRoute
+    PollBrowserRoute,
 }
 
-impl <SR> Display for RouteAction<SR> where SR: Debug {
+impl<SR> Display for RouteAction<SR>
+where
+    SR: Debug,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RouteAction::ChangeRoute(route) => write!(f, "ChangeRoute({:?})", route),
-            RouteAction::BrowserChangeRoute(route)  => write!(f, "BrowserChangeRoute({:?})", route),
-            RouteAction::PollBrowserRoute  => write!(f, "PollBrowserRoute"),
+            RouteAction::BrowserChangeRoute(route) => write!(f, "BrowserChangeRoute({:?})", route),
+            RouteAction::PollBrowserRoute => write!(f, "PollBrowserRoute"),
         }
     }
 }

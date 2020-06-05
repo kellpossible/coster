@@ -145,7 +145,6 @@ where
         self.state.borrow().clone()
     }
 
-
     /// Dispatch an `Action` to the reducer on this `Store` without
     /// invoking middleware.
     fn dispatch_reducer(&self, action: Action) -> Vec<Event> {

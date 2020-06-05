@@ -6,14 +6,14 @@
 pub mod simple_logger;
 pub mod web_logger;
 
-use crate::{ReducerResult, Store};
+use crate::Store;
 
 pub struct ReduceMiddlewareResult<Event, Effect> {
     pub events: Vec<Event>,
     pub effects: Vec<Effect>,
 }
 
-impl <Event, Effect> Default for ReduceMiddlewareResult<Event, Effect> {
+impl<Event, Effect> Default for ReduceMiddlewareResult<Event, Effect> {
     fn default() -> Self {
         ReduceMiddlewareResult {
             events: Vec::new(),
@@ -23,8 +23,10 @@ impl <Event, Effect> Default for ReduceMiddlewareResult<Event, Effect> {
 }
 
 /// Executes subsequent middleware and then runs the [Reducer](crate::Reducer).
-pub type ReduceFn<State, Action, Event, Effect> =
-    fn(&Store<State, Action, Event, Effect>, Option<Action>) -> ReduceMiddlewareResult<Event, Effect>;
+pub type ReduceFn<State, Action, Event, Effect> = fn(
+    &Store<State, Action, Event, Effect>,
+    Option<Action>,
+) -> ReduceMiddlewareResult<Event, Effect>;
 
 /// Executes subsequent middleware and then notifies the listeners.
 pub type NotifyFn<State, Action, Event, Effect> =

@@ -1,4 +1,7 @@
-use crate::{middleware::{ReduceMiddlewareResult, Middleware}, AsListener, Listener, Reducer, StoreEvent};
+use crate::{
+    middleware::{Middleware, ReduceMiddlewareResult},
+    AsListener, Listener, Reducer, StoreEvent,
+};
 use std::iter::FromIterator;
 use std::ops::Deref;
 use std::{
@@ -168,7 +171,10 @@ where
     /// store, and invokes the next middleware, until all middleware
     /// has been invoked, at which point the `Action` is sent to the
     /// reducer.
-    fn dispatch_middleware_reduce_next(&self, action: Option<Action>) -> ReduceMiddlewareResult<Event, Effect> {
+    fn dispatch_middleware_reduce_next(
+        &self,
+        action: Option<Action>,
+    ) -> ReduceMiddlewareResult<Event, Effect> {
         let current_middleware = self.prev_middleware.get() + 1;
         self.prev_middleware.set(current_middleware);
         if current_middleware as usize == self.middleware.borrow().len() {
@@ -367,7 +373,10 @@ where
 
     /// Add [Middleware] to modify the behaviour of this [Store]
     /// during a [dispatch()][Store::dispatch()].
-    pub fn add_middleware<M: Middleware<State, Action, Event, Effect> + 'static>(&self, middleware: M) {
+    pub fn add_middleware<M: Middleware<State, Action, Event, Effect> + 'static>(
+        &self,
+        middleware: M,
+    ) {
         self.modification_queue
             .borrow_mut()
             .push_back(StoreModification::AddMiddleware(Rc::new(middleware)));
@@ -377,7 +386,8 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
-        middleware::{ReduceMiddlewareResult, Middleware}, Callback, Reducer, ReducerResult, Store, StoreEvent, StoreRef,
+        middleware::{Middleware, ReduceMiddlewareResult},
+        Callback, Reducer, ReducerResult, Store, StoreEvent, StoreRef,
     };
     use std::{cell::RefCell, rc::Rc};
 
@@ -395,9 +405,7 @@ mod tests {
 
     struct TestReducer;
 
-    enum TestEffect {
-
-    }
+    enum TestEffect {}
 
     impl Reducer<TestState, TestAction, TestEvent, TestEffect> for TestReducer {
         fn reduce(

@@ -3,7 +3,10 @@ use log::debug;
 use std::{cell::RefCell, hash::Hash, rc::Rc};
 use unic_langid::LanguageIdentifier;
 use yew::{Component, ComponentLink};
-use yew_state::{middleware::{ReduceMiddlewareResult, Middleware}, Callback, Store, StoreEvent};
+use yew_state::{
+    middleware::{Middleware, ReduceMiddlewareResult},
+    Callback, Store, StoreEvent,
+};
 
 pub struct LocalizeMiddleware<LR> {
     pub language_requester: Rc<RefCell<LR>>,
@@ -18,7 +21,8 @@ where
     }
 }
 
-impl<'a, LR, State, Action, Event, Effect> Middleware<State, Action, Event, Effect> for LocalizeMiddleware<LR>
+impl<'a, LR, State, Action, Event, Effect> Middleware<State, Action, Event, Effect>
+    for LocalizeMiddleware<LR>
 where
     LR: LanguageRequester<'a>,
     Action: LocalizeAction,
@@ -71,7 +75,8 @@ pub trait LocalizeStore<State, Event> {
         COMP::Message: Clone;
 }
 
-impl<State, Action, Event, Effect> LocalizeStore<State, Event> for Store<State, Action, Event, Effect>
+impl<State, Action, Event, Effect> LocalizeStore<State, Event>
+    for Store<State, Action, Event, Effect>
 where
     Action: LocalizeAction,
     State: LocalizeState + 'static,

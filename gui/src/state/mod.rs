@@ -225,9 +225,7 @@ impl RouteEvent<RouteType> for CosterEvent {
 }
 
 #[derive(Debug, Clone)]
-pub enum CosterEffect {
-
-}
+pub enum CosterEffect {}
 
 impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterReducer {
     fn reduce(
@@ -256,6 +254,10 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
             },
         };
 
-        ReducerResult { state, events, effects }
+        ReducerResult {
+            state,
+            events,
+            effects,
+        }
     }
 }

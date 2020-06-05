@@ -35,8 +35,8 @@ trait IsDatabaseAction {
     fn database_action(&self) -> Option<DatabaseAction>;
 }
 
-
-impl<DB, State, Action, Event, Effect> Middleware<State, Action, Event, Effect> for DatabaseMiddleware<DB>
+impl<DB, State, Action, Event, Effect> Middleware<State, Action, Event, Effect>
+    for DatabaseMiddleware<DB>
 where
     Action: IsDatabaseAction,
 {

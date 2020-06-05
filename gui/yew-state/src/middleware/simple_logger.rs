@@ -1,9 +1,9 @@
+use super::ReduceMiddlewareResult;
 use crate::{
     middleware::{Middleware, ReduceFn},
     Store, StoreEvent,
 };
 use std::{fmt::Debug, hash::Hash};
-use super::ReduceMiddlewareResult;
 
 pub enum LogLevel {
     Trace,
@@ -46,7 +46,8 @@ impl SimpleLoggerMiddleware {
     }
 }
 
-impl<State, Action, Event, Effect> Middleware<State, Action, Event, Effect> for SimpleLoggerMiddleware
+impl<State, Action, Event, Effect> Middleware<State, Action, Event, Effect>
+    for SimpleLoggerMiddleware
 where
     Event: StoreEvent + Clone + Hash + Eq + Debug,
     State: Debug,

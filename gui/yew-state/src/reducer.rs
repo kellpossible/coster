@@ -29,7 +29,11 @@ impl<State, Action, Event, Effect> Reducer<State, Action, Event, Effect>
 {
     fn reduce(&self, prev_state: Rc<State>, action: Action) -> ReducerResult<State, Event, Effect> {
         let (state, events, effects) = self(prev_state, action);
-        ReducerResult { state, events, effects }
+        ReducerResult {
+            state,
+            events,
+            effects,
+        }
     }
 }
 

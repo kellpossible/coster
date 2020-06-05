@@ -1,11 +1,8 @@
-use super::{ReduceMiddlewareResult, Middleware};
+use super::{Middleware, ReduceMiddlewareResult};
 use crate::StoreEvent;
 use serde::Serialize;
 use serde_diff::{Diff, SerdeDiff};
-use std::{
-    fmt::Display,
-    hash::Hash,
-};
+use std::{fmt::Display, hash::Hash};
 use wasm_bindgen::JsValue;
 use web_sys::console;
 

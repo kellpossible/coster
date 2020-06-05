@@ -194,30 +194,6 @@ impl IsRouteAction<RouteType> for CosterAction {
     }
 }
 
-// impl RouteAction<RouteType> for CosterAction {
-//     fn change_route<R: Into<RouteType>>(route: R) -> Self {
-//         CosterAction::ChangeRoute(route.into())
-//     }
-//     fn browser_change_route(route: RouteType) -> Self {
-//         CosterAction::BrowserChangeRoute(route)
-//     }
-//     fn get_browser_change_route(&self) -> Option<&RouteType> {
-//         match self {
-//             CosterAction::BrowserChangeRoute(route) => Some(route),
-//             _ => None,
-//         }
-//     }
-//     fn get_change_route(&self) -> Option<&RouteType> {
-//         match self {
-//             CosterAction::ChangeRoute(route) => Some(route),
-//             _ => None,
-//         }
-//     }
-//     fn poll_browser_route() -> Self {
-//         CosterAction::PollBrowserRoute
-//     }
-// }
-
 pub struct CosterReducer;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]

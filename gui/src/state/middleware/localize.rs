@@ -3,7 +3,7 @@ use log::debug;
 use std::{cell::RefCell, hash::Hash, rc::Rc};
 use unic_langid::LanguageIdentifier;
 use yew::{Component, ComponentLink};
-use yew_state::{middleware::Middleware, Callback, Store, StoreEvent};
+use yew_state::{middleware::{ReduceMiddlewareResult, Middleware}, Callback, Store, StoreEvent};
 
 pub struct LocalizeMiddleware<LR> {
     pub language_requester: Rc<RefCell<LR>>,
@@ -18,17 +18,17 @@ where
     }
 }
 
-impl<'a, LR, State, Action, Event> Middleware<State, Action, Event> for LocalizeMiddleware<LR>
+impl<'a, LR, State, Action, Event, Effect> Middleware<State, Action, Event, Effect> for LocalizeMiddleware<LR>
 where
     LR: LanguageRequester<'a>,
     Action: LocalizeAction,
 {
     fn on_reduce(
         &self,
-        store: &Store<State, Action, Event>,
+        store: &Store<State, Action, Event, Effect>,
         action: Option<Action>,
-        reduce: yew_state::middleware::ReduceFn<State, Action, Event>,
-    ) -> Vec<Event> {
+        reduce: yew_state::middleware::ReduceFn<State, Action, Event, Effect>,
+    ) -> ReduceMiddlewareResult<Event, Effect> {
         if let Some(action) = &action {
             if let Some(selected_language) = action.get_change_selected_language() {
                 debug!(
@@ -71,7 +71,7 @@ pub trait LocalizeStore<State, Event> {
         COMP::Message: Clone;
 }
 
-impl<State, Action, Event> LocalizeStore<State, Event> for Store<State, Action, Event>
+impl<State, Action, Event, Effect> LocalizeStore<State, Event> for Store<State, Action, Event, Effect>
 where
     Action: LocalizeAction,
     State: LocalizeState + 'static,

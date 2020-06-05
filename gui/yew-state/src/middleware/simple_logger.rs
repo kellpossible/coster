@@ -3,6 +3,7 @@ use crate::{
     Store, StoreEvent,
 };
 use std::{fmt::Debug, hash::Hash};
+use super::ReduceMiddlewareResult;
 
 pub enum LogLevel {
     Trace,
@@ -45,7 +46,7 @@ impl SimpleLoggerMiddleware {
     }
 }
 
-impl<State, Action, Event> Middleware<State, Action, Event> for SimpleLoggerMiddleware
+impl<State, Action, Event, Effect> Middleware<State, Action, Event, Effect> for SimpleLoggerMiddleware
 where
     Event: StoreEvent + Clone + Hash + Eq + Debug,
     State: Debug,
@@ -53,10 +54,10 @@ where
 {
     fn on_reduce(
         &self,
-        store: &Store<State, Action, Event>,
+        store: &Store<State, Action, Event, Effect>,
         action: Option<Action>,
-        reduce: ReduceFn<State, Action, Event>,
-    ) -> Vec<Event> {
+        reduce: ReduceFn<State, Action, Event, Effect>,
+    ) -> ReduceMiddlewareResult<Event, Effect> {
         let was_action = match &action {
             Some(action) => {
                 self.log_level
@@ -82,9 +83,9 @@ where
 
     fn on_notify(
         &self,
-        store: &Store<State, Action, Event>,
+        store: &Store<State, Action, Event, Effect>,
         events: Vec<Event>,
-        notify: super::NotifyFn<State, Action, Event>,
+        notify: super::NotifyFn<State, Action, Event, Effect>,
     ) -> Vec<Event> {
         self.log_level.log("on_notify");
         for event in &events {

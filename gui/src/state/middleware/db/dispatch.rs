@@ -1,33 +1,26 @@
 use serde::Serialize;
-use std::{fmt::Debug, hash::Hash, rc::Rc};
+use std::{fmt::Debug};
 use yew_state::Store;
 
-#[derive(Clone, Serialize)]
-pub struct DatabaseDispatch<DB, State, Action, Event> {
+#[derive(Serialize)]
+pub struct DatabaseDispatch<DB, State, Action, Event, Effect> {
     #[serde(skip)]
-    closure: Rc<dyn Fn(&Store<State, Action, Event>, &DB)>,
+    closure: Box<dyn Fn(&Store<State, Action, Event, Effect>, &DB)>,
     ignore_during_read: bool,
 }
 
-impl<DB, State, Action, Event> PartialEq for DatabaseDispatch<DB, State, Action, Event> {
+impl<DB, State, Action, Event, Effect> PartialEq for DatabaseDispatch<DB, State, Action, Event, Effect> {
     fn eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.closure, &other.closure)
+        std::ptr::eq(&self.closure, &other.closure)
             && self.ignore_during_read == other.ignore_during_read
     }
 }
 
-impl<DB, State, Action, Event> Eq for DatabaseDispatch<DB, State, Action, Event> {}
+impl<DB, State, Action, Event, Effect> Eq for DatabaseDispatch<DB, State, Action, Event, Effect> {}
 
-impl<DB, State, Action, Event> Hash for DatabaseDispatch<DB, State, Action, Event> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let pointer = self.closure.as_ref() as *const (dyn Fn(&Store<State, Action, Event>, &DB))
-            as *const ();
-        state.write_usize(pointer as usize);
-        self.ignore_during_read.hash(state);
-    }
-}
 
-impl<DB, State, Action, Event> Debug for DatabaseDispatch<DB, State, Action, Event> {
+
+impl<DB, State, Action, Event, Effect> Debug for DatabaseDispatch<DB, State, Action, Event, Effect> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -37,21 +30,21 @@ impl<DB, State, Action, Event> Debug for DatabaseDispatch<DB, State, Action, Eve
     }
 }
 
-impl<DB, State, Action, Event> DatabaseDispatch<DB, State, Action, Event> {
-    pub fn run(&self, store: &Store<State, Action, Event>, database: &DB, reading_database: bool) {
+impl<DB, State, Action, Event, Effect> DatabaseDispatch<DB, State, Action, Event, Effect> {
+    pub fn run(&self, store: &Store<State, Action, Event, Effect>, database: &DB, reading_database: bool) {
         if !(self.ignore_during_read && reading_database) {
             (self.closure)(store, database)
         }
     }
 }
 
-impl<F, DB, State, Action, Event> From<F> for DatabaseDispatch<DB, State, Action, Event>
+impl<F, DB, State, Action, Event, Effect> From<F> for DatabaseDispatch<DB, State, Action, Event, Effect>
 where
-    F: Fn(&Store<State, Action, Event>, &DB) + 'static,
+    F: Fn(&Store<State, Action, Event, Effect>, &DB) + 'static,
 {
     fn from(f: F) -> Self {
         DatabaseDispatch {
-            closure: Rc::new(f),
+            closure: Box::new(f),
             ignore_during_read: true,
         }
     }

@@ -1,7 +1,6 @@
 pub mod middleware;
 
 use middleware::{
-    db::DatabaseEvent,
     localize::{LocalizeAction, LocalizeEvent, LocalizeState},
     route::{IsRouteAction, RouteAction, RouteEvent, RouteState},
 };
@@ -98,7 +97,7 @@ impl Debug for AppRoute {
     }
 }
 
-pub type StateStoreRef = StoreRef<CosterState, CosterAction, CosterEvent>;
+pub type StateStoreRef = StoreRef<CosterState, CosterAction, CosterEvent, CosterEffect>;
 
 #[derive(Debug, Clone, SerdeDiff, Serialize, Deserialize)]
 pub struct CosterState {
@@ -249,13 +248,19 @@ impl RouteEvent<RouteType> for CosterEvent {
     }
 }
 
-impl Reducer<CosterState, CosterAction, CosterEvent> for CosterReducer {
+#[derive(Debug, Clone)]
+pub enum CosterEffect {
+
+}
+
+impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterReducer {
     fn reduce(
         &self,
         prev_state: Rc<CosterState>,
         action: CosterAction,
-    ) -> ReducerResult<CosterState, CosterEvent> {
+    ) -> ReducerResult<CosterState, CosterEvent, CosterEffect> {
         let mut events = Vec::new();
+        let effects = Vec::new();
 
         let state = match action {
             CosterAction::ChangeSelectedLanguage(language) => {
@@ -275,6 +280,6 @@ impl Reducer<CosterState, CosterAction, CosterEvent> for CosterReducer {
             },
         };
 
-        ReducerResult { state, events }
+        ReducerResult { state, events, effects }
     }
 }

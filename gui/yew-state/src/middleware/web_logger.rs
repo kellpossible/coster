@@ -1,9 +1,9 @@
-use super::Middleware;
+use super::{ReduceMiddlewareResult, Middleware};
 use crate::StoreEvent;
 use serde::Serialize;
 use serde_diff::{Diff, SerdeDiff};
 use std::{
-    fmt::{Debug, Display},
+    fmt::Display,
     hash::Hash,
 };
 use wasm_bindgen::JsValue;
@@ -53,7 +53,7 @@ impl WebLoggerMiddleware {
     }
 }
 
-impl<State, Action, Event> Middleware<State, Action, Event> for WebLoggerMiddleware
+impl<State, Action, Event, Effect> Middleware<State, Action, Event, Effect> for WebLoggerMiddleware
 where
     State: Serialize + SerdeDiff,
     Action: Serialize + Display,
@@ -61,10 +61,10 @@ where
 {
     fn on_reduce(
         &self,
-        store: &crate::Store<State, Action, Event>,
+        store: &crate::Store<State, Action, Event, Effect>,
         action: Option<Action>,
-        reduce: super::ReduceFn<State, Action, Event>,
-    ) -> Vec<Event> {
+        reduce: super::ReduceFn<State, Action, Event, Effect>,
+    ) -> ReduceMiddlewareResult<Event, Effect> {
         let prev_state_js = JsValue::from_serde(&(*store.state())).unwrap();
         let prev_state = store.state();
 
@@ -119,9 +119,9 @@ where
     }
     fn on_notify(
         &self,
-        store: &crate::Store<State, Action, Event>,
+        store: &crate::Store<State, Action, Event, Effect>,
         events: Vec<Event>,
-        notify: super::NotifyFn<State, Action, Event>,
+        notify: super::NotifyFn<State, Action, Event, Effect>,
     ) -> Vec<Event> {
         let events_js = JsValue::from_serde(&events).unwrap();
         console::group_collapsed_2(

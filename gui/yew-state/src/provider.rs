@@ -46,7 +46,7 @@ where
     Action: Clone,
 {
     pub map_state_to_props: MapStateToProps<C, State>,
-    pub store: Rc<RefCell<Store<State, Action, ()>>>,
+    pub store: Rc<RefCell<Store<State, Action, (), ()>>>,
     pub children: ChildrenWithProps<C>,
 }
 

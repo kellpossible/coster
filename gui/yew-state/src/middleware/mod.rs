@@ -58,6 +58,14 @@ pub trait Middleware<State, Action, Event, Effect> {
         reduce(store, action)
     }
 
+    fn process_effect(
+        &self,
+        _store: &Store<State, Action, Event, Effect>,
+        effect: Effect,
+    ) -> Option<Effect> {
+        Some(effect)
+    }
+
     /// This method is invoked by the [Store] during a
     /// [Store::dispatch()] after the [Reducer](crate::Reducer) has
     /// processed the `Action` and all [Middleware::on_reduce()]

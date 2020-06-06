@@ -316,23 +316,35 @@ where
         // This prevents recursion, when a listener callback also triggers another
         // dispatch.
         if let Ok(_lock) = self.dispatch_lock.try_borrow_mut() {
-            while let Some(action) = self.dispatch_queue.borrow_mut().pop_front() {
-                self.process_pending_modifications();
+            // For some strange reason can't use a while let here because 
+            // it requires Action to implement Copy, and also it was maintaining
+            // the dispatch_queue borrow during the loop (even though it wasn't needed).
+            loop {
+                let dispatch_action = self.dispatch_queue.borrow_mut().pop_front();
 
-                let reduce_middleware_result = if self.middleware.borrow().is_empty() {
-                    self.dispatch_reducer(action)
-                } else {
-                    self.middleware_reduce(action)
-                };
+                match dispatch_action {
+                    Some(action) => {
+                        self.process_pending_modifications();
 
-                match reduce_middleware_result {
-                    ReduceMiddlewareResult { events, effects} => {
-                        self.middleware_process_effects(effects);
+                        let reduce_middleware_result = if self.middleware.borrow().is_empty() {
+                            self.dispatch_reducer(action)
+                        } else {
+                            self.middleware_reduce(action)
+                        };
 
-                        let middleware_events = self.middleware_notify(events);
-                        if !middleware_events.is_empty() {
-                            self.notify_listeners(middleware_events);
+                        match reduce_middleware_result {
+                            ReduceMiddlewareResult { events, effects} => {
+                                self.middleware_process_effects(effects);
+
+                                let middleware_events = self.middleware_notify(events);
+                                if !middleware_events.is_empty() {
+                                    self.notify_listeners(middleware_events);
+                                }
+                            }
                         }
+                    }
+                    None => {
+                        break;
                     }
                 }
             }

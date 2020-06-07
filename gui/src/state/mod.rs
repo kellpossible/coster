@@ -6,15 +6,13 @@ pub use reducer::*;
 pub use route::*;
 
 use middleware::{
-    db::{IsDatabaseEffect, DatabaseEffect},
+    db::{DatabaseEffect, IsDatabaseEffect},
     localize::{LocalizeAction, LocalizeEvent, LocalizeState},
     route::{IsRouteAction, RouteAction, RouteEvent, RouteState},
 };
 use serde::{Deserialize, Serialize};
 use serde_diff::SerdeDiff;
-use std::{
-    fmt::{Debug, Display},
-};
+use std::fmt::{Debug, Display};
 
 use unic_langid::LanguageIdentifier;
 use yew_state::{StoreEvent, StoreRef};
@@ -72,6 +70,7 @@ impl LocalizeState for CosterState {
 pub enum CosterAction {
     ChangeSelectedLanguage(Option<LanguageIdentifier>),
     RouteAction(RouteAction<RouteType>),
+    LoadDatabase,
 }
 
 impl Display for CosterAction {
@@ -85,6 +84,9 @@ impl Display for CosterAction {
                 write!(f, "ChangeSelectedLanguage({})", language_display)
             }
             CosterAction::RouteAction(route_action) => write!(f, "RouteAction::{}", route_action),
+            CosterAction::LoadDatabase => {
+                write!(f, "LoadDatabase")
+            }
         }
     }
 }
@@ -151,12 +153,18 @@ pub enum CosterEffect {
     Database(DatabaseEffect<CosterState, CosterAction, CosterEvent, CosterEffect>),
 }
 
+impl From<DatabaseEffect<CosterState, CosterAction, CosterEvent, CosterEffect>> for CosterEffect {
+    fn from(effect: DatabaseEffect<CosterState, CosterAction, CosterEvent, CosterEffect>) -> Self {
+        CosterEffect::Database(effect)
+    }
+}
+
 impl IsDatabaseEffect<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterEffect {
-    fn database_effect(&self) -> Option<&DatabaseEffect<CosterState, CosterAction, CosterEvent, CosterEffect>> {
+    fn database_effect(
+        &self,
+    ) -> Option<&DatabaseEffect<CosterState, CosterAction, CosterEvent, CosterEffect>> {
         match self {
-            CosterEffect::Database(effect) => {
-                Some(effect)
-            }
+            CosterEffect::Database(effect) => Some(effect),
         }
     }
 }

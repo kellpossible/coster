@@ -5,15 +5,15 @@
 mod dispatch;
 
 pub use dispatch::DatabaseDispatch;
-use kvdb::KeyValueDB;
-use std::rc::Rc;
+use kvdb::{DBTransaction, KeyValueDB};
+use serde::{de::DeserializeOwned, Serialize};
+use std::{io, rc::Rc, cell::RefCell};
 use yew_state::{middleware::Middleware, Store};
 
 pub struct DatabaseMiddleware<DB> {
     database: DB,
-    /// Whether or not the middleware is currently invoking an action
-    /// to write to the store the result of a read from the database.
-    reading_database: bool,
+    // whether or not the database is blocking effects from other actions.
+    blocked: RefCell<bool>,
 }
 
 impl<DB> DatabaseMiddleware<DB>
@@ -23,7 +23,7 @@ where
     pub fn new(database: DB) -> Self {
         Self {
             database,
-            reading_database: false,
+            blocked: RefCell::new(false),
         }
     }
 }
@@ -32,23 +32,61 @@ enum DatabaseAction {
     LoadStore,
 }
 
-#[derive(Clone)]
-pub struct DatabaseEffect<State, Action, Event, Effect>(
-    Rc<dyn Fn(&Store<State, Action, Event, Effect>, &dyn KeyValueDB)>,
-);
+pub trait KeyValueDBSerde {
+    fn get_deserialize<K: AsRef<str>, V: DeserializeOwned>(
+        &self,
+        col: u32,
+        key: K,
+    ) -> io::Result<Option<V>>;
+}
 
-impl<State, Action, Event, Effect> DatabaseEffect<State, Action, Event, Effect> {
-    pub fn run(&self, store: &Store<State, Action, Event, Effect>, db: &dyn KeyValueDB) {
-        (self.0)(store, db)
+pub trait DBTransactionSerde {
+    fn put_serialize<K: AsRef<str>, V: Serialize>(&mut self, col: u32, key: K, value: V);
+}
+
+impl KeyValueDBSerde for &dyn KeyValueDB
+{
+    fn get_deserialize<K: AsRef<str>, V: DeserializeOwned>(
+        &self,
+        col: u32,
+        key: K,
+    ) -> io::Result<Option<V>> {
+        self.get(col, key.as_ref().as_bytes()).map(|value_option| {
+            value_option.map(|value_bytes| {
+                serde_json::from_slice(&value_bytes).expect("unable to desrialize database value")
+            })
+        })
     }
 }
 
-impl<F, State, Action, Event, Effect> From<F> for DatabaseEffect<State, Action, Event, Effect>
-where
-    F: Fn(&Store<State, Action, Event, Effect>, &dyn KeyValueDB) + 'static,
-{
-    fn from(f: F) -> Self {
-        DatabaseEffect(Rc::new(f))
+impl DBTransactionSerde for DBTransaction {
+    fn put_serialize<K: AsRef<str>, V: Serialize>(&mut self, col: u32, key: K, value: V) {
+        let value_string =
+            serde_json::to_string(&value).expect("unable to serialize database value");
+
+        self.put(col, key.as_ref().as_bytes(), value_string.as_bytes())
+    }
+}
+
+#[derive(Clone)]
+pub struct DatabaseEffect<State, Action, Event, Effect>{
+    closure: Rc<dyn Fn(&Store<State, Action, Event, Effect>, &dyn KeyValueDB)>,
+    pub blocking: bool,
+}
+
+impl<State, Action, Event, Effect> DatabaseEffect<State, Action, Event, Effect> {
+    pub fn new<F>(f: F, blocking: bool) -> Self
+    where
+        F: Fn(&Store<State, Action, Event, Effect>, &dyn KeyValueDB) + 'static,
+    {
+        DatabaseEffect {
+            closure: Rc::new(f),
+            blocking
+        }
+    }
+
+    pub fn run(&self, store: &Store<State, Action, Event, Effect>, db: &dyn KeyValueDB) {
+        (self.closure)(store, db)
     }
 }
 
@@ -81,7 +119,21 @@ where
         effect: Effect,
     ) -> Option<Effect> {
         if let Some(db_effect) = effect.database_effect() {
-            db_effect.run(store, &self.database);
+            // TODO: there is a bug with this blocking code, it doesn't work with asynchronous actions, and actions
+            // executed later. Perhaps better not to do with blocking, and instead add a flag to the action to indicate
+            // whether or not it should trigger a database action.
+            let blocked = *self.blocked.borrow();
+            log::debug!("DatabaseMiddleware::process_effect blocked: {}", blocked);
+            if !blocked {
+                log::debug!("DatabaseMiddleware::process_effect effect.blocking: {}", db_effect.blocking);
+                *self.blocked.borrow_mut() = db_effect.blocking;
+                db_effect.run(store, &self.database);
+                log::debug!("DatabaseMiddleware::process_effect after run");
+                if db_effect.blocking {
+                    *self.blocked.borrow_mut() = false;
+                }
+            }
+            
             None
         } else {
             Some(effect)

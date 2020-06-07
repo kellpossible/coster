@@ -76,13 +76,7 @@ where
     SR: SwitchRoute + 'static,
     Action: IsRouteAction<SR> + PartialEq + Debug + 'static,
     State: RouteState<SR> + 'static,
-    Event: RouteEvent<SR>
-        + PartialEq
-        + Clone
-        + Hash
-        + Eq
-        + StoreEvent
-        + 'static,
+    Event: RouteEvent<SR> + PartialEq + Clone + Hash + Eq + StoreEvent + 'static,
     Effect: 'static,
 {
     fn on_reduce(

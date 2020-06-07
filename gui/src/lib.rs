@@ -17,14 +17,15 @@ use i18n_embed::{
 };
 use lazy_static::lazy_static;
 use log;
-use log::{error, debug};
+use log::{debug, error};
 use rust_embed::RustEmbed;
 use state::{
     middleware::{
+        db::DatabaseMiddleware,
         localize::LocalizeMiddleware,
-        route::{RouteAction, RouteMiddleware}, db::DatabaseMiddleware,
+        route::{RouteAction, RouteMiddleware},
     },
-    AppRoute, CosterEvent, CosterReducer, CosterState, RouteType, StateStoreRef,
+    AppRoute, CosterEvent, CosterReducer, CosterState, RouteType, StateStoreRef, CosterAction,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -129,16 +130,16 @@ impl Component for Model {
 
         let state_store_clone = state_store.clone();
         wasm_bindgen_futures::spawn_local(async move {
-            let database_result: Result<kvdb_web::Database, _> = kvdb_web::Database::open("CosterState".to_string(), 1).await;
+            let database_result: Result<kvdb_web::Database, _> =
+                kvdb_web::Database::open("CosterState".to_string(), 1).await;
             match database_result {
                 Ok(database) => {
                     let database_middleware = DatabaseMiddleware::new(database);
 
                     state_store_clone.add_middleware(database_middleware);
+                    state_store_clone.dispatch(CosterAction::LoadDatabase)
                 }
-                Err(error) => {
-                    error!("Error opening database: {}", error)
-                }
+                Err(error) => error!("Error opening database: {}", error),
             }
         });
 

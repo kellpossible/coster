@@ -68,6 +68,9 @@ impl DBTransactionSerde for DBTransaction {
     }
 }
 
+// TODO: this could be refactored into an enum, with effect for read, write, and then custom closure.
+// Would make it easier to debug this code with the logger, and more explicit about what is going on.
+// Custom closure could have a name too.
 #[derive(Clone)]
 pub struct DatabaseEffect<State, Action, Event, Effect>{
     closure: Rc<dyn Fn(&Store<State, Action, Event, Effect>, &dyn KeyValueDB)>,
@@ -122,6 +125,7 @@ where
             // TODO: there is a bug with this blocking code, it doesn't work with asynchronous actions, and actions
             // executed later. Perhaps better not to do with blocking, and instead add a flag to the action to indicate
             // whether or not it should trigger a database action.
+            // If I reformat the effect code logic to be seperated, it could be cleaner...
             let blocked = *self.blocked.borrow();
             log::debug!("DatabaseMiddleware::process_effect blocked: {}", blocked);
             if !blocked {

@@ -6,9 +6,10 @@ mod dispatch;
 
 pub use dispatch::DatabaseDispatch;
 use kvdb::KeyValueDB;
+use std::rc::Rc;
 use yew_state::{middleware::Middleware, Store};
 
-struct DatabaseMiddleware<DB> {
+pub struct DatabaseMiddleware<DB> {
     database: DB,
     /// Whether or not the middleware is currently invoking an action
     /// to write to the store the result of a read from the database.
@@ -31,22 +32,28 @@ enum DatabaseAction {
     LoadStore,
 }
 
-struct DatabaseEffect<DB, State, Action, Event, Effect>(
-    Box<dyn Fn(&Store<State, Action, Event, Effect>, &DB)>,
+#[derive(Clone)]
+pub struct DatabaseEffect<State, Action, Event, Effect>(
+    Rc<dyn Fn(&Store<State, Action, Event, Effect>, &dyn KeyValueDB)>,
 );
 
-impl<F, DB, State, Action, Event, Effect> From<F>
-    for DatabaseEffect<DB, State, Action, Event, Effect>
-where
-    F: Fn(&Store<State, Action, Event, Effect>, &DB) + 'static,
-{
-    fn from(f: F) -> Self {
-        DatabaseEffect(Box::new(f))
+impl<State, Action, Event, Effect> DatabaseEffect<State, Action, Event, Effect> {
+    pub fn run(&self, store: &Store<State, Action, Event, Effect>, db: &dyn KeyValueDB) {
+        (self.0)(store, db)
     }
 }
 
-trait IsDatabaseEffect<DB, State, Action, Event, Effect> {
-    fn database_effect(&self) -> Option<DatabaseEffect<DB, State, Action, Event, Effect>>;
+impl<F, State, Action, Event, Effect> From<F> for DatabaseEffect<State, Action, Event, Effect>
+where
+    F: Fn(&Store<State, Action, Event, Effect>, &dyn KeyValueDB) + 'static,
+{
+    fn from(f: F) -> Self {
+        DatabaseEffect(Rc::new(f))
+    }
+}
+
+pub trait IsDatabaseEffect<State, Action, Event, Effect> {
+    fn database_effect(&self) -> Option<&DatabaseEffect<State, Action, Event, Effect>>;
 }
 
 trait IsDatabaseAction {
@@ -56,6 +63,28 @@ trait IsDatabaseAction {
 impl<DB, State, Action, Event, Effect> Middleware<State, Action, Event, Effect>
     for DatabaseMiddleware<DB>
 where
-    Action: IsDatabaseAction,
+    DB: KeyValueDB,
+    Effect: IsDatabaseEffect<State, Action, Event, Effect>,
 {
+    fn on_reduce(
+        &self,
+        store: &Store<State, Action, Event, Effect>,
+        action: Option<&Action>,
+        reduce: yew_state::middleware::ReduceFn<State, Action, Event, Effect>,
+    ) -> yew_state::middleware::ReduceMiddlewareResult<Event, Effect> {
+        reduce(store, action)
+    }
+
+    fn process_effect(
+        &self,
+        store: &Store<State, Action, Event, Effect>,
+        effect: Effect,
+    ) -> Option<Effect> {
+        if let Some(db_effect) = effect.database_effect() {
+            db_effect.run(store, &self.database);
+            None
+        } else {
+            Some(effect)
+        }
+    }
 }

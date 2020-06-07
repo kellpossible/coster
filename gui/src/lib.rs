@@ -17,12 +17,12 @@ use i18n_embed::{
 };
 use lazy_static::lazy_static;
 use log;
-use log::debug;
+use log::{error, debug};
 use rust_embed::RustEmbed;
 use state::{
     middleware::{
         localize::LocalizeMiddleware,
-        route::{RouteAction, RouteMiddleware},
+        route::{RouteAction, RouteMiddleware}, db::DatabaseMiddleware,
     },
     AppRoute, CosterEvent, CosterReducer, CosterState, RouteType, StateStoreRef,
 };
@@ -63,7 +63,6 @@ pub struct Model {
     localizer: LocalizerRef,
     link: ComponentLink<Self>,
     state_store: StateStoreRef,
-    storage: Option<StorageService>,
     _state_callback: yew_state::Callback<CosterState, CosterEvent>,
 }
 
@@ -97,7 +96,6 @@ impl Component for Model {
         let localizer_ref: Rc<dyn Localizer<'static>> = Rc::new(localizer);
         language_requester.add_listener(Rc::downgrade(&localizer_ref));
 
-        let storage = StorageService::new(storage::Area::Local).ok();
         // if let Some(storage) = &storage {
         //     let selected_language_result: Result<String, anyhow::Error> =
         //         storage.restore("user-selected-language");
@@ -129,6 +127,21 @@ impl Component for Model {
         let localize_middleware = LocalizeMiddleware::new(language_requester_ref.clone());
         state_store.add_middleware(localize_middleware);
 
+        let state_store_clone = state_store.clone();
+        wasm_bindgen_futures::spawn_local(async move {
+            let database_result: Result<kvdb_web::Database, _> = kvdb_web::Database::open("CosterState".to_string(), 1).await;
+            match database_result {
+                Ok(database) => {
+                    let database_middleware = DatabaseMiddleware::new(database);
+
+                    state_store_clone.add_middleware(database_middleware);
+                }
+                Err(error) => {
+                    error!("Error opening database: {}", error)
+                }
+            }
+        });
+
         let state_callback = link
             .callback(|(state, event)| Msg::StateChanged(state, event))
             .into();
@@ -145,7 +158,6 @@ impl Component for Model {
             localizer: localizer_ref,
             link,
             state_store,
-            storage,
             _state_callback: state_callback,
         }
     }

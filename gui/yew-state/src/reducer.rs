@@ -21,7 +21,11 @@ pub trait Reducer<State, Action, Event, Effect> {
     /// If no `Event`s are returned then it is assumed that the state
     /// has not changed, and store listeners do not need to be
     /// notified.
-    fn reduce(&self, prev_state: &Rc<State>, action: &Action) -> ReducerResult<State, Event, Effect>;
+    fn reduce(
+        &self,
+        prev_state: &Rc<State>,
+        action: &Action,
+    ) -> ReducerResult<State, Event, Effect>;
 }
 
 /// The result of a [Reducer::reduce()] function.
@@ -36,20 +40,25 @@ pub struct ReducerResult<State, Event, Effect> {
     pub effects: Vec<Effect>,
 }
 
-pub struct CompositeReducer<State, Action, Event, Effect>  {
-    reducers: Vec<Box<dyn Reducer<State, Action, Event, Effect>>>
+// TODO: create a zero cost macro version of this #17
+pub struct CompositeReducer<State, Action, Event, Effect> {
+    reducers: Vec<Box<dyn Reducer<State, Action, Event, Effect>>>,
 }
 
-impl <State, Action, Event, Effect>  CompositeReducer<State, Action, Event, Effect> {
+impl<State, Action, Event, Effect> CompositeReducer<State, Action, Event, Effect> {
     pub fn new(reducers: Vec<Box<dyn Reducer<State, Action, Event, Effect>>>) -> Self {
-        CompositeReducer {
-            reducers
-        }
+        CompositeReducer { reducers }
     }
 }
 
-impl <State, Action, Event, Effect> Reducer<State, Action, Event, Effect> for CompositeReducer<State, Action, Event, Effect> {
-    fn reduce(&self, prev_state: &Rc<State>, action: &Action) -> ReducerResult<State, Event, Effect> {
+impl<State, Action, Event, Effect> Reducer<State, Action, Event, Effect>
+    for CompositeReducer<State, Action, Event, Effect>
+{
+    fn reduce(
+        &self,
+        prev_state: &Rc<State>,
+        action: &Action,
+    ) -> ReducerResult<State, Event, Effect> {
         let mut sum_result: ReducerResult<State, Event, Effect> = ReducerResult {
             state: prev_state.clone(),
             events: Vec::new(),
@@ -69,8 +78,8 @@ impl <State, Action, Event, Effect> Reducer<State, Action, Event, Effect> for Co
 
 #[cfg(test)]
 mod tests {
+    use crate::{CompositeReducer, Reducer, ReducerResult};
     use std::rc::Rc;
-    use crate::{ReducerResult, Reducer, CompositeReducer};
 
     struct TestState {
         emitted_events: Vec<TestEvent>,
@@ -89,7 +98,7 @@ mod tests {
     #[derive(Debug, Clone, PartialEq)]
     enum TestEvent {
         Event1,
-        Event2
+        Event2,
     }
 
     #[derive(Debug, PartialEq)]
@@ -101,12 +110,14 @@ mod tests {
     struct Reducer1;
 
     impl Reducer<TestState, TestAction, TestEvent, TestEffect> for Reducer1 {
-        fn reduce(&self, prev_state: &Rc<TestState>, _action: &TestAction) -> crate::ReducerResult<TestState, TestEvent, TestEffect> {
+        fn reduce(
+            &self,
+            prev_state: &Rc<TestState>,
+            _action: &TestAction,
+        ) -> crate::ReducerResult<TestState, TestEvent, TestEffect> {
             let mut emitted_events = prev_state.emitted_events.clone();
             emitted_events.push(TestEvent::Event1);
-            let state = Rc::new(TestState {
-                emitted_events
-            });
+            let state = Rc::new(TestState { emitted_events });
 
             ReducerResult {
                 state,
@@ -119,12 +130,14 @@ mod tests {
     struct Reducer2;
 
     impl Reducer<TestState, TestAction, TestEvent, TestEffect> for Reducer2 {
-        fn reduce(&self, prev_state: &Rc<TestState>, _action: &TestAction) -> crate::ReducerResult<TestState, TestEvent, TestEffect> {
+        fn reduce(
+            &self,
+            prev_state: &Rc<TestState>,
+            _action: &TestAction,
+        ) -> crate::ReducerResult<TestState, TestEvent, TestEffect> {
             let mut emitted_events = prev_state.emitted_events.clone();
             emitted_events.push(TestEvent::Event2);
-            let state = Rc::new(TestState {
-                emitted_events
-            });
+            let state = Rc::new(TestState { emitted_events });
 
             ReducerResult {
                 state,
@@ -136,14 +149,17 @@ mod tests {
 
     #[test]
     fn composite_reducer() {
-        let reducer = CompositeReducer::new(vec![
-            Box::new(Reducer1),
-            Box::new(Reducer2),
-        ]);
+        let reducer = CompositeReducer::new(vec![Box::new(Reducer1), Box::new(Reducer2)]);
 
         let result = reducer.reduce(&Rc::new(TestState::default()), &TestAction);
-        assert_eq!(result.state.emitted_events, vec![TestEvent::Event1, TestEvent::Event2]);
+        assert_eq!(
+            result.state.emitted_events,
+            vec![TestEvent::Event1, TestEvent::Event2]
+        );
         assert_eq!(result.events, vec![TestEvent::Event1, TestEvent::Event2]);
-        assert_eq!(result.effects, vec![TestEffect::Effect1, TestEffect::Effect2]);
+        assert_eq!(
+            result.effects,
+            vec![TestEffect::Effect1, TestEffect::Effect2]
+        );
     }
 }

@@ -1,101 +1,25 @@
 pub mod middleware;
+mod reducer;
+mod route;
+
+pub use reducer::*;
+pub use route::*;
 
 use middleware::{
+    db::{IsDatabaseEffect, DatabaseEffect},
     localize::{LocalizeAction, LocalizeEvent, LocalizeState},
     route::{IsRouteAction, RouteAction, RouteEvent, RouteState},
 };
 use serde::{Deserialize, Serialize};
 use serde_diff::SerdeDiff;
 use std::{
-    convert::TryInto,
     fmt::{Debug, Display},
-    rc::Rc,
 };
-use switch_router::SwitchRoute;
+
 use unic_langid::LanguageIdentifier;
-use yew_router::{route::Route, Switch};
-use yew_state::{Reducer, ReducerResult, StoreEvent, StoreRef};
+use yew_state::{StoreEvent, StoreRef};
 
 pub type StateCallback = yew_state::Callback<CosterState, CosterEvent>;
-
-#[derive(Switch, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub enum AppRoute {
-    /// Matches the `/tab` route.
-    #[to = "/tab"]
-    CostingTab,
-    /// Matches the `/new` route.
-    #[to = "/new"]
-    NewCostingTab,
-    /// Matches the `/help` route.
-    #[to = "/help"]
-    Help,
-    /// Matches the `/about` route.
-    #[to = "/about"]
-    About,
-    /// Matches the `/` route.
-    #[to = "/"]
-    Index, // Order is important here, the index needs to be last.
-}
-
-impl ToString for AppRoute {
-    fn to_string(&self) -> String {
-        match self {
-            AppRoute::CostingTab => "/tab".to_string(),
-            AppRoute::NewCostingTab => "/new".to_string(),
-            AppRoute::Help => "/help".to_string(),
-            AppRoute::About => "/about".to_string(),
-            AppRoute::Index => "/".to_string(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum RouteType {
-    Valid(AppRoute),
-    Invalid(String),
-}
-
-impl SwitchRoute for RouteType {
-    fn path(&self) -> String {
-        match self {
-            RouteType::Valid(app_route) => app_route.to_string(),
-            RouteType::Invalid(route) => route.clone(),
-        }
-    }
-
-    fn is_invalid(&self) -> bool {
-        match self {
-            RouteType::Invalid(_) => true,
-            _ => false,
-        }
-    }
-
-    fn switch(route: &str) -> Self {
-        match AppRoute::switch(Route::new_no_state(route)) {
-            Some(app_route) => RouteType::Valid(app_route),
-            None => RouteType::Invalid(route.to_string()),
-        }
-    }
-}
-
-impl From<AppRoute> for RouteType {
-    fn from(route: AppRoute) -> Self {
-        RouteType::Valid(route)
-    }
-}
-
-impl Debug for AppRoute {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let route_name = match self {
-            AppRoute::CostingTab => "CostingTab",
-            AppRoute::NewCostingTab => "NewCostingTab",
-            AppRoute::Help => "Help",
-            AppRoute::About => "About",
-            AppRoute::Index => "Index",
-        };
-        write!(f, "{}: \"{}\"", route_name, self.to_string())
-    }
-}
 
 pub type StateStoreRef = StoreRef<CosterState, CosterAction, CosterEvent, CosterEffect>;
 
@@ -194,8 +118,6 @@ impl IsRouteAction<RouteType> for CosterAction {
     }
 }
 
-pub struct CosterReducer;
-
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
 pub enum CosterEvent {
     LanguageChanged,
@@ -224,40 +146,17 @@ impl RouteEvent<RouteType> for CosterEvent {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum CosterEffect {}
+#[derive(Clone)]
+pub enum CosterEffect {
+    Database(DatabaseEffect<CosterState, CosterAction, CosterEvent, CosterEffect>),
+}
 
-impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterReducer {
-    fn reduce(
-        &self,
-        prev_state: &Rc<CosterState>,
-        action: &CosterAction,
-    ) -> ReducerResult<CosterState, CosterEvent, CosterEffect> {
-        let mut events = Vec::new();
-        let effects = Vec::new();
-
-        let state = match action {
-            CosterAction::ChangeSelectedLanguage(language) => {
-                events.push(CosterEvent::LanguageChanged);
-                Rc::new(prev_state.change_selected_language(language.clone()))
+impl IsDatabaseEffect<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterEffect {
+    fn database_effect(&self) -> Option<&DatabaseEffect<CosterState, CosterAction, CosterEvent, CosterEffect>> {
+        match self {
+            CosterEffect::Database(effect) => {
+                Some(effect)
             }
-            CosterAction::RouteAction(route_action) => match route_action {
-                RouteAction::ChangeRoute(route) => {
-                    events.push(CosterEvent::RouteChanged);
-                    Rc::new(prev_state.change_route(route.clone()))
-                }
-                RouteAction::BrowserChangeRoute(route) => {
-                    events.push(CosterEvent::RouteChanged);
-                    Rc::new(prev_state.change_route(route.clone()))
-                }
-                RouteAction::PollBrowserRoute => prev_state.clone(),
-            },
-        };
-
-        ReducerResult {
-            state,
-            events,
-            effects,
         }
     }
 }

@@ -26,7 +26,7 @@ where
     SR: SwitchRoute + 'static,
     State: 'static,
     Action: IsRouteAction<SR> + 'static,
-    Event: StoreEvent + Clone + Hash + Eq + 'static,
+    Event: Clone + Hash + Eq + StoreEvent + 'static,
     Effect: 'static,
 {
     pub fn new(store: StoreRef<State, Action, Event, Effect>) -> Self {
@@ -76,7 +76,13 @@ where
     SR: SwitchRoute + 'static,
     Action: IsRouteAction<SR> + PartialEq + Debug + 'static,
     State: RouteState<SR> + 'static,
-    Event: RouteEvent<SR> + PartialEq + StoreEvent + Clone + Hash + Eq + 'static,
+    Event: RouteEvent<SR>
+        + PartialEq
+        + Clone
+        + Hash
+        + Eq
+        + StoreEvent
+        + 'static,
     Effect: 'static,
 {
     fn on_reduce(

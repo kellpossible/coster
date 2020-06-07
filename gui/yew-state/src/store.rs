@@ -150,8 +150,8 @@ where
 
     /// Dispatch an `Action` to the reducer on this `Store` without
     /// invoking middleware.
-    fn dispatch_reducer(&self, action: Action) -> ReduceMiddlewareResult<Event, Effect> {
-        let result = self.reducer.reduce(self.state(), action);
+    fn dispatch_reducer(&self, action: &Action) -> ReduceMiddlewareResult<Event, Effect> {
+        let result = self.reducer.reduce(&self.state(), action);
         *self.state.borrow_mut() = result.state;
 
         ReduceMiddlewareResult {
@@ -162,7 +162,7 @@ where
 
     /// Dispatch an `Action` to the reducer on this `Store`, invoking
     /// all middleware's [reduce()][Middleware::reduce()] first.
-    fn middleware_reduce(&self, action: Action) -> ReduceMiddlewareResult<Event, Effect> {
+    fn middleware_reduce(&self, action: &Action) -> ReduceMiddlewareResult<Event, Effect> {
         self.prev_middleware.set(-1);
         self.middleware_reduce_next(Some(action))
     }
@@ -173,7 +173,7 @@ where
     /// reducer.
     fn middleware_reduce_next(
         &self,
-        action: Option<Action>,
+        action: Option<&Action>,
     ) -> ReduceMiddlewareResult<Event, Effect> {
         let current_middleware = self.prev_middleware.get() + 1;
         self.prev_middleware.set(current_middleware);
@@ -215,9 +215,7 @@ where
             .clone()
             .process_effect(self, effect)
         {
-            Some(effect) => {
-                self.middleware_process_effects_next(effect)
-            }
+            Some(effect) => self.middleware_process_effects_next(effect),
             None => {}
         }
     }
@@ -316,7 +314,7 @@ where
         // This prevents recursion, when a listener callback also triggers another
         // dispatch.
         if let Ok(_lock) = self.dispatch_lock.try_borrow_mut() {
-            // For some strange reason can't use a while let here because 
+            // For some strange reason can't use a while let here because
             // it requires Action to implement Copy, and also it was maintaining
             // the dispatch_queue borrow during the loop (even though it wasn't needed).
             loop {
@@ -327,13 +325,13 @@ where
                         self.process_pending_modifications();
 
                         let reduce_middleware_result = if self.middleware.borrow().is_empty() {
-                            self.dispatch_reducer(action)
+                            self.dispatch_reducer(&action)
                         } else {
-                            self.middleware_reduce(action)
+                            self.middleware_reduce(&action)
                         };
 
                         match reduce_middleware_result {
-                            ReduceMiddlewareResult { events, effects} => {
+                            ReduceMiddlewareResult { events, effects } => {
                                 self.middleware_process_effects(effects);
 
                                 let middleware_events = self.middleware_notify(events);
@@ -454,7 +452,7 @@ mod tests {
     }
 
     enum TestEffect {
-        ChainAction(TestAction)
+        ChainAction(TestAction),
     }
 
     struct TestReducer;
@@ -462,8 +460,8 @@ mod tests {
     impl Reducer<TestState, TestAction, TestEvent, TestEffect> for TestReducer {
         fn reduce(
             &self,
-            state: Rc<TestState>,
-            action: TestAction,
+            state: &Rc<TestState>,
+            action: &TestAction,
         ) -> ReducerResult<TestState, TestEvent, TestEffect> {
             let mut events = Vec::new();
             let mut effects = Vec::new();
@@ -510,10 +508,10 @@ mod tests {
         fn on_reduce(
             &self,
             store: &Store<TestState, TestAction, TestEvent, TestEffect>,
-            action: Option<TestAction>,
+            action: Option<&TestAction>,
             reduce: crate::middleware::ReduceFn<TestState, TestAction, TestEvent, TestEffect>,
         ) -> ReduceMiddlewareResult<TestEvent, TestEffect> {
-            reduce(store, action.map(|_| self.new_action))
+            reduce(store, action.map(|_| &self.new_action))
         }
     }
 
@@ -634,7 +632,7 @@ mod tests {
         let initial_state = TestState { counter: 0 };
         let store = StoreRef::new(TestReducer, initial_state);
         store.add_middleware(TestEffectMiddleware);
-        
+
         assert_eq!(store.state().counter, 0);
         store.dispatch(TestAction::Decrent2Then1);
         assert_eq!(store.state().counter, -3);

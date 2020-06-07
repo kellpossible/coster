@@ -25,7 +25,7 @@ impl<Event, Effect> Default for ReduceMiddlewareResult<Event, Effect> {
 /// Executes subsequent middleware and then runs the [Reducer](crate::Reducer).
 pub type ReduceFn<State, Action, Event, Effect> = fn(
     &Store<State, Action, Event, Effect>,
-    Option<Action>,
+    Option<&Action>,
 ) -> ReduceMiddlewareResult<Event, Effect>;
 
 /// Executes subsequent middleware and then notifies the listeners.
@@ -52,7 +52,7 @@ pub trait Middleware<State, Action, Event, Effect> {
     fn on_reduce(
         &self,
         store: &Store<State, Action, Event, Effect>,
-        action: Option<Action>,
+        action: Option<&Action>,
         reduce: ReduceFn<State, Action, Event, Effect>,
     ) -> ReduceMiddlewareResult<Event, Effect> {
         reduce(store, action)

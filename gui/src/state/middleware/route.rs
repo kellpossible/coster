@@ -82,7 +82,7 @@ where
     fn on_reduce(
         &self,
         store: &Store<State, Action, Event, Effect>,
-        action: Option<Action>,
+        action: Option<&Action>,
         reduce: ReduceFn<State, Action, Event, Effect>,
     ) -> yew_state::middleware::ReduceMiddlewareResult<Event, Effect> {
         if let Some(action) = &action {
@@ -96,7 +96,7 @@ where
                             let route = router_mut.get_route();
                             return reduce(
                                 store,
-                                Some(RouteAction::BrowserChangeRoute(route).into()),
+                                Some(&RouteAction::BrowserChangeRoute(route).into()),
                             );
                         }
                         Err(err) => {

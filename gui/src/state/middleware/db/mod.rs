@@ -6,7 +6,7 @@ mod dispatch;
 
 pub use dispatch::DatabaseDispatch;
 use kvdb::KeyValueDB;
-use yew_state::middleware::Middleware;
+use yew_state::{middleware::Middleware, Store};
 
 struct DatabaseMiddleware<DB> {
     database: DB,
@@ -29,6 +29,24 @@ where
 
 enum DatabaseAction {
     LoadStore,
+}
+
+struct DatabaseEffect<DB, State, Action, Event, Effect>(
+    Box<dyn Fn(&Store<State, Action, Event, Effect>, &DB)>,
+);
+
+impl<F, DB, State, Action, Event, Effect> From<F>
+    for DatabaseEffect<DB, State, Action, Event, Effect>
+where
+    F: Fn(&Store<State, Action, Event, Effect>, &DB) + 'static,
+{
+    fn from(f: F) -> Self {
+        DatabaseEffect(Box::new(f))
+    }
+}
+
+trait IsDatabaseEffect<DB, State, Action, Event, Effect> {
+    fn database_effect(&self) -> Option<DatabaseEffect<DB, State, Action, Event, Effect>>;
 }
 
 trait IsDatabaseAction {

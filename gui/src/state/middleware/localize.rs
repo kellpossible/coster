@@ -30,10 +30,10 @@ where
     fn on_reduce(
         &self,
         store: &Store<State, Action, Event, Effect>,
-        action: Option<Action>,
+        action: Option<&Action>,
         reduce: yew_state::middleware::ReduceFn<State, Action, Event, Effect>,
     ) -> ReduceMiddlewareResult<Event, Effect> {
-        if let Some(action) = &action {
+        if let Some(action) = action {
             if let Some(selected_language) = action.get_change_selected_language() {
                 debug!(
                     "LocalizeMiddleware::on_reduce Processing selected language: {:?}",

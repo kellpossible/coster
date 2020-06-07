@@ -56,7 +56,7 @@ where
     fn on_reduce(
         &self,
         store: &Store<State, Action, Event, Effect>,
-        action: Option<Action>,
+        action: Option<&Action>,
         reduce: ReduceFn<State, Action, Event, Effect>,
     ) -> ReduceMiddlewareResult<Event, Effect> {
         let was_action = match &action {

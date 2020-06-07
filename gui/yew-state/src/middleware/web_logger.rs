@@ -59,7 +59,7 @@ where
     fn on_reduce(
         &self,
         store: &crate::Store<State, Action, Event, Effect>,
-        action: Option<Action>,
+        action: Option<&Action>,
         reduce: super::ReduceFn<State, Action, Event, Effect>,
     ) -> ReduceMiddlewareResult<Event, Effect> {
         let prev_state_js = JsValue::from_serde(&(*store.state())).unwrap();

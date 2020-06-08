@@ -1,13 +1,13 @@
 use i18n_embed::LanguageRequester;
 use log::debug;
-use std::{cell::RefCell, hash::Hash, rc::Rc, fmt::Display};
+use serde::Serialize;
+use std::{cell::RefCell, fmt::Display, hash::Hash, rc::Rc};
 use unic_langid::LanguageIdentifier;
 use yew::{Component, ComponentLink};
 use yew_state::{
     middleware::{Middleware, ReduceMiddlewareResult},
     Callback, Store, StoreEvent,
 };
-use serde::Serialize;
 
 pub struct LocalizeMiddleware<LR> {
     pub language_requester: Rc<RefCell<LR>>,
@@ -69,8 +69,12 @@ impl Display for ChangeSelectedLanguage {
             Some(language) => language.to_string(),
             None => "None".to_string(),
         };
-        write!(f, "ChangeSelectedLanguage({}, write: {:?})", language_display, self.write_to_database)
-    }   
+        write!(
+            f,
+            "ChangeSelectedLanguage({}, write: {:?})",
+            language_display, self.write_to_database
+        )
+    }
 }
 
 pub trait LocalizeAction {
@@ -83,7 +87,11 @@ pub trait LocalizeState {
 }
 
 pub trait LocalizeStore<State, Event> {
-    fn change_selected_language(&self, selected_language: Option<LanguageIdentifier>, write_to_database: bool);
+    fn change_selected_language(
+        &self,
+        selected_language: Option<LanguageIdentifier>,
+        write_to_database: bool,
+    );
     fn subscribe_language_changed<COMP: Component>(
         &self,
         link: &ComponentLink<COMP>,
@@ -100,9 +108,13 @@ where
     State: LocalizeState + 'static,
     Event: LocalizeEvent + PartialEq + StoreEvent + Clone + Hash + Eq + 'static,
 {
-    fn change_selected_language(&self, selected_language: Option<LanguageIdentifier>, write_to_database: bool) {
+    fn change_selected_language(
+        &self,
+        selected_language: Option<LanguageIdentifier>,
+        write_to_database: bool,
+    ) {
         self.dispatch(Action::change_selected_language(ChangeSelectedLanguage {
-            selected_language, 
+            selected_language,
             write_to_database,
         }))
     }

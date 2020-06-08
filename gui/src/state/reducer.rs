@@ -1,5 +1,8 @@
 use super::{
-    middleware::{db::DBTransactionSerde, db::DatabaseEffect, db::KeyValueDBSerde, route::RouteAction, localize::LocalizeStore},
+    middleware::{
+        db::DBTransactionSerde, db::DatabaseEffect, db::KeyValueDBSerde, localize::LocalizeStore,
+        route::RouteAction,
+    },
     CosterAction, CosterEffect, CosterEvent, CosterState,
 };
 use std::rc::Rc;
@@ -25,14 +28,15 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                 let effect_language = action.selected_language.clone();
 
                 if action.write_to_database {
-                    let effect = DatabaseEffect::new("write selected_language", move |_store, database| {
-                        let mut transaction = database.transaction();
-                        transaction.put_serialize(0, "selected_language", &effect_language);
-                        database
-                            .write(transaction)
-                            .expect("there was a problem executing a database transaction");
-                    });
-    
+                    let effect =
+                        DatabaseEffect::new("write selected_language", move |_store, database| {
+                            let mut transaction = database.transaction();
+                            transaction.put_serialize(0, "selected_language", &effect_language);
+                            database
+                                .write(transaction)
+                                .expect("there was a problem executing a database transaction");
+                        });
+
                     effects.push(effect.into());
                 }
 
@@ -52,7 +56,10 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
             CosterAction::LoadDatabase => {
                 let effect = DatabaseEffect::new("load database", move |store, database| {
                     log::debug!("DatabaseEffect load database");
-                    let selected_language_option: Option<Option<unic_langid::LanguageIdentifier>> = database.get_deserialize(0, "selected_language").expect("unable to read from database");
+                    let selected_language_option: Option<Option<unic_langid::LanguageIdentifier>> =
+                        database
+                            .get_deserialize(0, "selected_language")
+                            .expect("unable to read from database");
                     if let Some(selected_language) = selected_language_option {
                         store.change_selected_language(selected_language, false);
                     }

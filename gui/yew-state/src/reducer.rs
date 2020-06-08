@@ -40,7 +40,7 @@ pub trait Reducer<State, Action, Event, Effect> {
 /// that some subset of the state has been modified, such that
 /// playing the events and state transitions in reverse will
 /// result in the same application behaviour.
-/// 
+///
 /// `Effect`s are side effects invoked as a result of the action,
 /// these may involve dispatching further actions, or modifying
 /// some other part of the system that the store is involved with.

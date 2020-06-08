@@ -7,7 +7,7 @@ pub use route::*;
 
 use middleware::{
     db::{DatabaseEffect, IsDatabaseEffect},
-    localize::{LocalizeAction, LocalizeEvent, LocalizeState, ChangeSelectedLanguage},
+    localize::{ChangeSelectedLanguage, LocalizeAction, LocalizeEvent, LocalizeState},
     route::{IsRouteAction, RouteAction, RouteEvent, RouteState},
 };
 use serde::{Deserialize, Serialize};
@@ -77,13 +77,9 @@ pub enum CosterAction {
 impl Display for CosterAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CosterAction::ChangeSelectedLanguage(action) => {
-                write!(f, "{}", action)
-            }
+            CosterAction::ChangeSelectedLanguage(action) => write!(f, "{}", action),
             CosterAction::RouteAction(route_action) => write!(f, "RouteAction::{}", route_action),
-            CosterAction::LoadDatabase => {
-                write!(f, "LoadDatabase")
-            }
+            CosterAction::LoadDatabase => write!(f, "LoadDatabase"),
         }
     }
 }
@@ -94,9 +90,7 @@ impl LocalizeAction for CosterAction {
     }
     fn get_change_selected_language(&self) -> Option<&ChangeSelectedLanguage> {
         match self {
-            CosterAction::ChangeSelectedLanguage(action) => {
-                Some(action)
-            }
+            CosterAction::ChangeSelectedLanguage(action) => Some(action),
             _ => None,
         }
     }

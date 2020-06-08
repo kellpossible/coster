@@ -83,7 +83,7 @@ where
         let effects_js = JsValue::from_serde(&result.effects).unwrap();
         let effects_display = match &result.effects.len() {
             0 => "None".to_string(),
-            _ => format!("({})", result.effects.len())
+            _ => format!("({})", result.effects.len()),
         };
 
         console::group_collapsed_3(
@@ -119,7 +119,7 @@ where
         );
         self.log_level.log(&state_diff_js);
         console::group_end();
-        
+
         console::group_collapsed_3(
             &JsValue::from_str(&format!("%ceffects: %c{}", effects_display)),
             &JsValue::from_str("color: #C210C2; font-weight: bold;"),
@@ -136,7 +136,6 @@ where
         _store: &crate::Store<State, Action, Event, Effect>,
         effect: Effect,
     ) -> Option<Effect> {
-        
         Some(effect)
     }
 

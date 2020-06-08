@@ -25,7 +25,7 @@ use state::{
         localize::LocalizeMiddleware,
         route::{RouteAction, RouteMiddleware},
     },
-    AppRoute, CosterEvent, CosterReducer, CosterState, RouteType, StateStoreRef, CosterAction,
+    AppRoute, CosterAction, CosterEvent, CosterReducer, CosterState, RouteType, StateStoreRef,
 };
 use std::cell::RefCell;
 use std::rc::Rc;

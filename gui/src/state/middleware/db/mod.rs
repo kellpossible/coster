@@ -7,7 +7,7 @@ mod dispatch;
 pub use dispatch::DatabaseDispatch;
 use kvdb::{DBTransaction, KeyValueDB};
 use serde::{de::DeserializeOwned, Serialize};
-use std::{io, rc::Rc, fmt::Debug};
+use std::{fmt::Debug, io, rc::Rc};
 use yew_state::{middleware::Middleware, Store};
 
 pub struct DatabaseMiddleware<DB> {
@@ -19,9 +19,7 @@ where
     DB: KeyValueDB,
 {
     pub fn new(database: DB) -> Self {
-        Self {
-            database,
-        }
+        Self { database }
     }
 }
 
@@ -41,8 +39,7 @@ pub trait DBTransactionSerde {
     fn put_serialize<K: AsRef<str>, V: Serialize>(&mut self, col: u32, key: K, value: V);
 }
 
-impl KeyValueDBSerde for &dyn KeyValueDB
-{
+impl KeyValueDBSerde for &dyn KeyValueDB {
     fn get_deserialize<K: AsRef<str>, V: DeserializeOwned>(
         &self,
         col: u32,
@@ -69,7 +66,7 @@ impl DBTransactionSerde for DBTransaction {
 // Would make it easier to debug this code with the logger, and more explicit about what is going on.
 // Custom closure could have a name too.
 #[derive(Clone, Serialize)]
-pub struct DatabaseEffect<State, Action, Event, Effect>{
+pub struct DatabaseEffect<State, Action, Event, Effect> {
     debug: String,
     #[serde(skip)]
     closure: Rc<dyn Fn(&Store<State, Action, Event, Effect>, &dyn KeyValueDB)>,

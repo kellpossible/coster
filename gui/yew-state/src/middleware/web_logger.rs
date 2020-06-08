@@ -80,7 +80,11 @@ where
         let state_diff = Diff::serializable(&*prev_state, &*next_state);
         let state_diff_js = JsValue::from_serde(&state_diff).unwrap();
 
-        let effect_js = JsValue::from_serde(&result.effects).unwrap();
+        let effects_js = JsValue::from_serde(&result.effects).unwrap();
+        let effects_display = match &result.effects.len() {
+            0 => "None".to_string(),
+            _ => format!("({})", result.effects.len())
+        };
 
         console::group_collapsed_3(
             &JsValue::from_serde(&format!("%caction %c{}", action_display)).unwrap(),
@@ -94,9 +98,10 @@ where
         self.log_level.log(&prev_state_js);
         console::group_end();
 
-        console::group_collapsed_2(
-            &JsValue::from_str("%caction"),
+        console::group_collapsed_3(
+            &JsValue::from_str(&format!("%caction: %c{}", action_display)),
             &JsValue::from_str("color: #03A9F4; font-weight: bold;"),
+            &JsValue::from_str("color: gray; font-weight: lighter;"),
         );
         self.log_level.log(&action_js);
         console::group_end();
@@ -115,11 +120,12 @@ where
         self.log_level.log(&state_diff_js);
         console::group_end();
         
-        console::group_collapsed_2(
-            &JsValue::from_str("%ceffects"),
+        console::group_collapsed_3(
+            &JsValue::from_str(&format!("%ceffects: %c{}", effects_display)),
             &JsValue::from_str("color: #C210C2; font-weight: bold;"),
+            &JsValue::from_str("color: gray; font-weight: lighter;"),
         );
-        self.log_level.log(&effect_js);
+        self.log_level.log(&effects_js);
         console::group_end();
 
         result
@@ -141,9 +147,14 @@ where
         notify: super::NotifyFn<State, Action, Event, Effect>,
     ) -> Vec<Event> {
         let events_js = JsValue::from_serde(&events).unwrap();
-        console::group_collapsed_2(
-            &JsValue::from_str("%cevents"),
+        let events_display = match events.len() {
+            0 => "None".to_string(),
+            _ => format!("({})", events.len()),
+        };
+        console::group_collapsed_3(
+            &JsValue::from_str(&format!("%cevents: %c{}", events_display)),
             &JsValue::from_str("color: #FCBA03; font-weight: bold;"),
+            &JsValue::from_str("color: gray; font-weight: lighter;"),
         );
         self.log_level.log(&events_js);
         console::group_end();

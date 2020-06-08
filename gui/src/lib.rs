@@ -97,28 +97,6 @@ impl Component for Model {
         let localizer_ref: Rc<dyn Localizer<'static>> = Rc::new(localizer);
         language_requester.add_listener(Rc::downgrade(&localizer_ref));
 
-        // if let Some(storage) = &storage {
-        //     let selected_language_result: Result<String, anyhow::Error> =
-        //         storage.restore("user-selected-language");
-
-        //     match selected_language_result {
-        //         Ok(selected_language_id) => {
-        //             let selected_language: unic_langid::LanguageIdentifier =
-        //                 selected_language_id.parse().unwrap();
-        //             debug!(
-        //                 "Model::update restoring user-selected-language: {}",
-        //                 selected_language.to_string()
-        //             );
-        //             language_requester
-        //                 .set_languge_override(Some(selected_language))
-        //                 .unwrap();
-        //         }
-        //         Err(error) => {
-        //             error!("{}", error);
-        //         }
-        //     }
-        // }
-
         // Manually check the currently requested system language,
         // and update the listeners. When the system language changes,
         // this will automatically be triggered.
@@ -129,6 +107,11 @@ impl Component for Model {
         state_store.add_middleware(localize_middleware);
 
         let state_store_clone = state_store.clone();
+
+        // TODO: this has a problem where if the user changes
+        // something before the database loads (or any other event
+        // attempts to change something), it will be overridden, and
+        // the change will be lost. #18
         wasm_bindgen_futures::spawn_local(async move {
             let database_result: Result<kvdb_web::Database, _> =
                 kvdb_web::Database::open("CosterState".to_string(), 1).await;

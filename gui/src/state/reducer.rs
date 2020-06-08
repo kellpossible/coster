@@ -21,7 +21,7 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                 events.push(CosterEvent::LanguageChanged);
 
                 // TODO: There is a problem here if the database middleware hasn't been added yet (because it's added in an async),
-                // this event may miss being fired.
+                // this event may miss being fired. #18
                 let effect_language = action.selected_language.clone();
 
                 if action.write_to_database {

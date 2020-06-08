@@ -81,12 +81,18 @@ impl LocalizeState for CosterState {
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
+pub struct ChangeLastSelectedCurrency {
+    pub last_selected_currency: Option<CommodityType>,
+    pub write_to_database: bool,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum CosterAction {
     /// Selected language, and whether or not to write the value to the database.
     ChangeSelectedLanguage(ChangeSelectedLanguage),
     RouteAction(RouteAction<RouteType>),
     LoadDatabase,
-    ChangeLastSelectedCurrency(Option<CommodityType>),
+    ChangeLastSelectedCurrency(ChangeLastSelectedCurrency),
 }
 
 impl Display for CosterAction {
@@ -95,7 +101,8 @@ impl Display for CosterAction {
             CosterAction::ChangeSelectedLanguage(action) => write!(f, "{}", action),
             CosterAction::RouteAction(route_action) => write!(f, "RouteAction::{}", route_action),
             CosterAction::LoadDatabase => write!(f, "LoadDatabase"),
-            CosterAction::ChangeLastSelectedCurrency(currency) => {
+            CosterAction::ChangeLastSelectedCurrency(action) => {
+                let currency = &action.last_selected_currency;
                 let currency_display = match currency {
                     Some(currency) => format!("{}", currency),
                     None => "None".to_string(),
@@ -133,11 +140,18 @@ impl IsRouteAction<RouteType> for CosterAction {
     }
 }
 
+impl From<ChangeLastSelectedCurrency> for CosterAction {
+    fn from(action: ChangeLastSelectedCurrency) -> Self {
+        CosterAction::ChangeLastSelectedCurrency(action)
+    }
+}
+
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
 pub enum CosterEvent {
     StateChanged,
     LanguageChanged,
     RouteChanged,
+    LastSelectedCurrencyChanged,
     None,
 }
 

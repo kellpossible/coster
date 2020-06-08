@@ -12,6 +12,7 @@ use costing::Tab;
 use tr::tr;
 use yew::MouseEvent;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
+use uuid::Uuid;
 
 pub struct CostingTabList {
     tab: RefCell<Tab>,
@@ -41,7 +42,7 @@ impl Component for CostingTabList {
             .subscribe_language_changed(&link, Msg::LanguageChanged);
 
         let tab = RefCell::new(Tab::new(
-            0,
+            Uuid::new_v4(),
             "Test Tab",
             Rc::new(CommodityType::from_currency_alpha3("AUD").unwrap()),
             vec![],

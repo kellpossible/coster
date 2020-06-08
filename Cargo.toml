@@ -12,7 +12,7 @@ warp = "0.2"
 serde_derive = "1.0"
 serde_json = "1.0"
 rust_decimal = "1.5.0"
-rusqlite = { version = "0.21", features = ["chrono", "bundled"] }
+rusqlite = { version = "0.23", features = ["chrono", "bundled"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 costing = { path = "./costing" }

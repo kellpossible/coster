@@ -6,15 +6,18 @@ use crate::validation::{ValidationError, Validator};
 use crate::{
     state::{
         middleware::{localize::LocalizeStore, route::RouteStore},
-        StateCallback, StateStoreRef, CosterAction,
+        StateCallback, StateStoreRef, CosterAction, ChangeLastSelectedCurrency,
     },
     AppRoute,
 };
 use commodity::CommodityType;
-use log::info;
-use std::fmt::Display;
+use log::{info, error};
+use std::{rc::Rc, fmt::Display};
 use tr::tr;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
+use costing::Tab;
+use anyhow::anyhow;
+use uuid::Uuid;
 
 #[derive(PartialEq, Clone, Copy, Hash, Eq, Debug)]
 enum FormFields {
@@ -35,6 +38,16 @@ impl Display for FormFields {
 pub struct FormData {
     name: String,
     working_currency: Option<CommodityType>,
+}
+
+impl FormData {
+    pub fn create_tab(&self) -> Result<Tab, anyhow::Error> {
+        let working_currency = match &self.working_currency {
+            Some(working_currency) => Rc::new(working_currency.clone()),
+            None => return Err(anyhow!("empty working_currency in FormData"))
+        };
+        Ok(Tab::new(Uuid::new_v4(), self.name.clone(), working_currency, Vec::new(), Vec::new()))
+    }
 }
 
 impl Default for FormData {
@@ -102,10 +115,21 @@ impl Component for NewCostingTab {
                 true
             }
             Msg::Create => {
-                self.props.state_store.dispatch(CosterAction::ChangeLastSelectedCurrency(self.form_data.working_currency.clone()));
+                self.props.state_store.dispatch(ChangeLastSelectedCurrency {
+                    last_selected_currency: self.form_data.working_currency.clone(),
+                    write_to_database: true,
+                });
                 info!("Creating Tab with data: {:?}", self.form_data);
+                let tab = match self.form_data.create_tab() {
+                    Ok(tab) => tab,
+                    Err(err) => {
+                        error!("{}", err);
+                        return false;
+                    },
+                };
+                info!("Tab: {:?}", tab);
+                self.props.state_store.change_route(AppRoute::Index);
                 true
-                // self.props.router.borrow_mut().set_route(AppRoute::Index);
             }
             Msg::Cancel => {
                 self.props.state_store.change_route(AppRoute::Index);
@@ -133,6 +157,7 @@ impl Component for NewCostingTab {
             .link
             .callback(|name_value: InputValue| Msg::UpdateName(name_value.into_string()));
 
+            
         let name_validator: Validator<InputValue, FormFields> =
             Validator::new().validation(|name_value: &InputValue, _| {
                 if name_value.as_string().trim().is_empty() {
@@ -196,4 +221,5 @@ impl Component for NewCostingTab {
             </>
         }
     }
+    fn rendered(&mut self, _first_render: bool) {}
 }

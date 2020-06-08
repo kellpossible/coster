@@ -6,6 +6,7 @@ use commodity::CommodityType;
 use costing::Tab;
 use tr::tr;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
+use uuid::Uuid;
 
 pub struct CostingTab {
     tab: RefCell<Tab>,
@@ -23,7 +24,7 @@ impl Component for CostingTab {
 
     fn create(props: Self::Properties, _link: ComponentLink<Self>) -> Self {
         let tab = RefCell::new(Tab::new(
-            0,
+            Uuid::new_v4(),
             "Test Tab",
             Rc::new(CommodityType::from_currency_alpha3("AUD").unwrap()),
             vec![],

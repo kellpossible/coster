@@ -12,15 +12,14 @@ use doublecount::{
 use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::rc::Rc;
-
-pub type TabID = i32;
+use uuid::Uuid;
 
 /// A collection of expenses, and users who are responsible
 /// for/associated with those expenses.
 #[derive(Debug)]
 pub struct Tab {
     /// The id of this tab
-    pub id: TabID,
+    pub id: Uuid,
     /// The name of this tab
     pub name: String,
     /// The working currency of this tab
@@ -39,9 +38,9 @@ pub struct Tab {
 
 impl Tab {
     /// Construct a new [Tab](Tab).
-    pub fn new(
-        id: TabID,
-        name: &str,
+    pub fn new<S: Into<String>>(
+        id: Uuid,
+        name: S,
         working_currency: Rc<CommodityType>,
         users: Vec<Rc<User>>,
         expenses: Vec<Expense>,
@@ -72,7 +71,7 @@ impl Tab {
 
         Tab {
             id,
-            name: String::from(name),
+            name: name.into(),
             working_currency,
             users,
             user_accounts,

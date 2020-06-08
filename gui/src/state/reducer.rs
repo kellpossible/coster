@@ -3,10 +3,11 @@ use super::{
         db::DBTransactionSerde, db::DatabaseEffect, db::KeyValueDBSerde, localize::LocalizeStore,
         route::RouteAction,
     },
-    CosterAction, CosterEffect, CosterEvent, CosterState,
+    CosterAction, CosterEffect, CosterEvent, CosterState, ChangeLastSelectedCurrency,
 };
 use std::rc::Rc;
 use yew_state::{Reducer, ReducerResult};
+use commodity::CommodityType;
 
 pub struct CosterReducer;
 
@@ -25,9 +26,8 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
 
                 // TODO: There is a problem here if the database middleware hasn't been added yet (because it's added in an async),
                 // this event may miss being fired. #18
-                let effect_language = action.selected_language.clone();
-
                 if action.write_to_database {
+                    let effect_language = action.selected_language.clone();
                     let effect =
                         DatabaseEffect::new("write selected_language", move |_store, database| {
                             let mut transaction = database.transaction();
@@ -63,12 +63,39 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                     if let Some(selected_language) = selected_language_option {
                         store.change_selected_language(selected_language, false);
                     }
+                    let last_selected_currency_option: Option<Option<CommodityType>> =
+                        database
+                            .get_deserialize(0, "last_selected_currency")
+                            .expect("unable to read from database");
+                    if let Some(last_selected_currency) = last_selected_currency_option {
+                        store.dispatch(ChangeLastSelectedCurrency {
+                           last_selected_currency,
+                           write_to_database: false, 
+                        });
+                    }
                 });
 
                 effects.push(effect.into());
                 prev_state.clone()
             }
-            CosterAction::ChangeLastSelectedCurrency(last_selected_currency) => {
+            CosterAction::ChangeLastSelectedCurrency(action) => {
+                let last_selected_currency = &action.last_selected_currency;
+
+                if action.write_to_database {
+                    let effect_currency = last_selected_currency.clone();
+                    let effect =
+                        DatabaseEffect::new("write last_selected_currency", move |_store, database| {
+                            let mut transaction = database.transaction();
+                            transaction.put_serialize(0, "last_selected_currency", &effect_currency);
+                            database
+                                .write(transaction)
+                                .expect("there was a problem executing a database transaction");
+                        });
+
+                    effects.push(effect.into());
+                }
+
+                events.push(CosterEvent::LastSelectedCurrencyChanged);
                 Rc::new(prev_state.change_last_selected_currency(last_selected_currency.clone()))
             }
         };

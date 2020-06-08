@@ -68,6 +68,9 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                 effects.push(effect.into());
                 prev_state.clone()
             }
+            CosterAction::ChangeLastSelectedCurrency(last_selected_currency) => {
+                Rc::new(prev_state.change_last_selected_currency(last_selected_currency.clone()))
+            }
         };
 
         ReducerResult {

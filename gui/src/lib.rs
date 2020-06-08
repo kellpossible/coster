@@ -162,7 +162,7 @@ impl Component for Model {
                     true
                 }
                 CosterEvent::RouteChanged => true,
-                CosterEvent::None => false,
+                _ => false,
             },
         }
     }

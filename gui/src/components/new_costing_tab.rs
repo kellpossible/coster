@@ -6,7 +6,7 @@ use crate::validation::{ValidationError, Validator};
 use crate::{
     state::{
         middleware::{localize::LocalizeStore, route::RouteStore},
-        StateCallback, StateStoreRef,
+        StateCallback, StateStoreRef, CosterAction,
     },
     AppRoute,
 };
@@ -102,6 +102,7 @@ impl Component for NewCostingTab {
                 true
             }
             Msg::Create => {
+                self.props.state_store.dispatch(CosterAction::ChangeLastSelectedCurrency(self.form_data.working_currency.clone()));
                 info!("Creating Tab with data: {:?}", self.form_data);
                 true
                 // self.props.router.borrow_mut().set_route(AppRoute::Index);
@@ -124,6 +125,7 @@ impl Component for NewCostingTab {
     }
 
     fn view(&self) -> Html {
+        let state = self.props.state_store.state();
         let oncancel = self.link.callback(|_| Msg::Cancel);
         let onsubmit = self.link.callback(|_| Msg::Create);
         let onchange_working_currency = self.link.callback(Msg::UpdateWorkingCurrency);
@@ -152,6 +154,8 @@ impl Component for NewCostingTab {
             });
 
         let tab_name_label = tr!("Tab Name");
+
+        let last_selected_currency = state.last_selected_currency.clone();
 
         html! {
             <>
@@ -185,6 +189,7 @@ impl Component for NewCostingTab {
                             options = self.currencies.clone()
                             validator = working_currency_validator
                             onchange = onchange_working_currency
+                            selected = last_selected_currency
                             />
                     </Form<FormFields>>
                 </div>

@@ -16,6 +16,7 @@ use std::fmt::{Debug, Display};
 
 use unic_langid::LanguageIdentifier;
 use yew_state::{StoreEvent, StoreRef};
+use commodity::CommodityType;
 
 pub type StateCallback = yew_state::Callback<CosterState, CosterEvent>;
 
@@ -27,6 +28,8 @@ pub struct CosterState {
     pub selected_language: Option<LanguageIdentifier>,
     #[serde_diff(opaque)]
     pub route: RouteType,
+    #[serde_diff(opaque)]
+    pub last_selected_currency: Option<CommodityType>,
 }
 
 impl Default for CosterState {
@@ -34,6 +37,7 @@ impl Default for CosterState {
         Self {
             selected_language: None,
             route: RouteType::Valid(AppRoute::Index),
+            last_selected_currency: None,
         }
     }
 }
@@ -43,6 +47,7 @@ impl CosterState {
         Self {
             selected_language: self.selected_language.clone(),
             route,
+            last_selected_currency: self.last_selected_currency.clone(),
         }
     }
 
@@ -50,6 +55,15 @@ impl CosterState {
         Self {
             selected_language,
             route: self.route.clone(),
+            last_selected_currency: self.last_selected_currency.clone(),
+        }
+    }
+
+    pub fn change_last_selected_currency(&self, last_selected_currency: Option<CommodityType>) -> Self {
+        Self {
+            selected_language: self.selected_language.clone(),
+            route: self.route.clone(),
+            last_selected_currency,
         }
     }
 }
@@ -72,6 +86,7 @@ pub enum CosterAction {
     ChangeSelectedLanguage(ChangeSelectedLanguage),
     RouteAction(RouteAction<RouteType>),
     LoadDatabase,
+    ChangeLastSelectedCurrency(Option<CommodityType>),
 }
 
 impl Display for CosterAction {
@@ -80,6 +95,13 @@ impl Display for CosterAction {
             CosterAction::ChangeSelectedLanguage(action) => write!(f, "{}", action),
             CosterAction::RouteAction(route_action) => write!(f, "RouteAction::{}", route_action),
             CosterAction::LoadDatabase => write!(f, "LoadDatabase"),
+            CosterAction::ChangeLastSelectedCurrency(currency) => {
+                let currency_display = match currency {
+                    Some(currency) => format!("{}", currency),
+                    None => "None".to_string(),
+                };
+                write!(f, "ChangeLastSelectedCurrency({})", currency_display)
+            }
         }
     }
 }
@@ -113,6 +135,7 @@ impl IsRouteAction<RouteType> for CosterAction {
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
 pub enum CosterEvent {
+    StateChanged,
     LanguageChanged,
     RouteChanged,
     None,

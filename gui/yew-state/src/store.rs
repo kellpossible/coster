@@ -192,17 +192,27 @@ where
         result
     }
 
+    /// Process all the `Effect`s returned by the [Reducer::reduce()]
+    /// by invoking the middleware on this store to perform the
+    /// processing using [Middleware::process_effect()].q
     fn middleware_process_effects(&self, effects: Vec<Effect>) {
         for effect in effects {
             self.middleware_process_effect(effect);
         }
     }
 
+    /// Process the specified `Effect`, invoking all middleware in this
+    /// store to perform the processing using
+    /// [Middleware::process_effect()].
     fn middleware_process_effect(&self, effect: Effect) {
         self.prev_middleware.set(-1);
         self.middleware_process_effects_next(effect);
     }
 
+    /// A recursive function which executes each middleware for this
+    /// store to process the specified `Effect` with
+    /// [Middleware::process_effect()], and invokes the next
+    /// middleware, until all middleware has been invoked.
     fn middleware_process_effects_next(&self, effect: Effect) {
         let current_middleware = self.prev_middleware.get() + 1;
         self.prev_middleware.set(current_middleware);

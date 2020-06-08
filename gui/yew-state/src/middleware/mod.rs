@@ -58,6 +58,9 @@ pub trait Middleware<State, Action, Event, Effect> {
         reduce(store, action)
     }
 
+    /// Process an `Effect`. Returns `None` if the effect was
+    /// processed/consumed by this handler, otherwise returns
+    /// `Some(effect)`.
     fn process_effect(
         &self,
         _store: &Store<State, Action, Event, Effect>,

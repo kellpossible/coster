@@ -4,8 +4,8 @@ use std::rc::Rc;
 /// this trait take an `Action` submitted to a store via
 /// [Store::dispatch()](crate::Store::dispatch()) and modifies the
 /// `State` in the store, producing a new `State`, and also producing
-/// events associated with the `Action` and state modifications that
-/// occurred.
+/// events and effects associated with the `Action` and state
+/// modifications that occurred.
 pub trait Reducer<State, Action, Event, Effect> {
     /// Take an `Action` submitted to a store via
     /// [Store::dispatch()](crate::Store::dispatch()) and modifies the
@@ -21,6 +21,12 @@ pub trait Reducer<State, Action, Event, Effect> {
     /// If no `Event`s are returned then it is assumed that the state
     /// has not changed, and store listeners do not need to be
     /// notified.
+    ///
+    /// `Effect`s are side effects invoked as a result of the action,
+    /// these may involve dispatching further actions, or modifying
+    /// some other part of the system that the store is involved with.
+    /// `Effect`s are processed using [Middleware](crate::Middleware)
+    /// which has been added to the [Store](crate::Store).
     fn reduce(
         &self,
         prev_state: &Rc<State>,
@@ -34,6 +40,12 @@ pub trait Reducer<State, Action, Event, Effect> {
 /// that some subset of the state has been modified, such that
 /// playing the events and state transitions in reverse will
 /// result in the same application behaviour.
+/// 
+/// `Effect`s are side effects invoked as a result of the action,
+/// these may involve dispatching further actions, or modifying
+/// some other part of the system that the store is involved with.
+/// `Effect`s are processed using [Middleware](crate::Middleware)
+/// which has been added to the [Store](crate::Store).
 pub struct ReducerResult<State, Event, Effect> {
     pub state: Rc<State>,
     pub events: Vec<Event>,
@@ -41,11 +53,13 @@ pub struct ReducerResult<State, Event, Effect> {
 }
 
 // TODO: create a zero cost macro version of this #17
+/// A [Reducer] composed of multiple reducers.
 pub struct CompositeReducer<State, Action, Event, Effect> {
     reducers: Vec<Box<dyn Reducer<State, Action, Event, Effect>>>,
 }
 
 impl<State, Action, Event, Effect> CompositeReducer<State, Action, Event, Effect> {
+    /// Create a new [CompositeReducer].
     pub fn new(reducers: Vec<Box<dyn Reducer<State, Action, Event, Effect>>>) -> Self {
         CompositeReducer { reducers }
     }

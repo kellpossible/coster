@@ -13,13 +13,16 @@ use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::rc::Rc;
 use uuid::Uuid;
+use serde::{Serialize, Deserialize};
+
+pub type TabID = Uuid;
 
 /// A collection of expenses, and users who are responsible
 /// for/associated with those expenses.
 #[derive(Debug)]
 pub struct Tab {
     /// The id of this tab
-    pub id: Uuid,
+    pub id: TabID,
     /// The name of this tab
     pub name: String,
     /// The working currency of this tab
@@ -39,7 +42,7 @@ pub struct Tab {
 impl Tab {
     /// Construct a new [Tab](Tab).
     pub fn new<S: Into<String>>(
-        id: Uuid,
+        id: TabID,
         name: S,
         working_currency: Rc<CommodityType>,
         users: Vec<Rc<User>>,

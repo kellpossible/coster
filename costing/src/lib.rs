@@ -22,6 +22,7 @@ mod tests {
     use commodity::{Commodity, CommodityType};
     use std::rc::Rc;
     use std::str::FromStr;
+    use uuid::Uuid;
 
     #[test]
     fn balance_simple() {
@@ -43,7 +44,7 @@ mod tests {
         );
 
         let tab = Tab::new(
-            1,
+            Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap(),
             "Test",
             aud.clone(),
             vec![user1.clone(), user2.clone(), user3.clone()],
@@ -127,7 +128,7 @@ mod tests {
         ];
 
         let tab = Tab::new(
-            1,
+            Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap(),
             "Test",
             aud.clone(),
             vec![user1.clone(), user2.clone(), user3.clone()],

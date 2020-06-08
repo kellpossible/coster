@@ -96,6 +96,7 @@ impl Expense {
     /// use std::rc::Rc;
     /// use chrono::NaiveDate;
     /// use std::str::FromStr;
+    /// use uuid::Uuid;
     ///
     /// let aud = Rc::from(CommodityType::from_currency_alpha3("AUD").unwrap());
     /// let user1 = Rc::from(User::new(1, "User 1", None));
@@ -116,7 +117,7 @@ impl Expense {
     /// );
     ///
     /// let tab = Tab::new(
-    ///     1,
+    ///     Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap(),
     ///     "Test Tab",
     ///     aud.clone(),
     ///     vec![user1.clone(), user2.clone(), user3.clone()],
@@ -167,6 +168,7 @@ impl Expense {
     /// use std::rc::Rc;
     /// use chrono::NaiveDate;
     /// use std::str::FromStr;
+    /// use uuid::Uuid;
     ///
     /// let aud = Rc::from(CommodityType::from_currency_alpha3("AUD").unwrap());
     /// let user1 = Rc::from(User::new(1, "User 1", None));
@@ -187,7 +189,7 @@ impl Expense {
     /// );
     ///
     /// let tab = Tab::new(
-    ///     1,
+    ///     Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap(),
     ///     "Test Tab",
     ///     aud.clone(),
     ///     vec![user1.clone(), user2.clone(), user3.clone()],

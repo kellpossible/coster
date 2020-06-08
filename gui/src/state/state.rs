@@ -4,6 +4,7 @@ use yew_state::StoreRef;
 use super::{CosterEvent, CosterAction, CosterEffect, RouteType, AppRoute, middleware::{route::RouteState, localize::LocalizeState}};
 use unic_langid::LanguageIdentifier;
 use commodity::CommodityType;
+use costing::Tab;
 
 pub type StateCallback = yew_state::Callback<CosterState, CosterEvent>;
 
@@ -17,6 +18,8 @@ pub struct CosterState {
     pub route: RouteType,
     #[serde_diff(opaque)]
     pub last_selected_currency: Option<CommodityType>,
+    // #[serde_diff(opaque)]
+    // pub tabs: Vec<Tab>,
 }
 
 impl Default for CosterState {

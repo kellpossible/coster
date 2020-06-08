@@ -190,13 +190,14 @@ pub mod tests {
     use commodity::{Commodity, CommodityType};
     use rust_decimal::Decimal;
     use std::rc::Rc;
+    use uuid::Uuid;
 
     fn create_test_commodity() -> Rc<CommodityType> {
         Rc::from(CommodityType::from_currency_alpha3("USD").unwrap())
     }
 
     fn create_test_tab() -> Tab {
-        Tab::new(0, "Test Tab", create_test_commodity(), vec![], vec![])
+        Tab::new(Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap(), "Test Tab", create_test_commodity(), vec![], vec![])
     }
 
     fn create_test_user(id: UserID, name: &str) -> Rc<User> {

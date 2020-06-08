@@ -2,11 +2,11 @@ use crate::bulma::{
     components::{Form, FormFieldLink, InputField, SelectField},
     FieldKey, InputValue,
 };
-use crate::validation::{ValidationError, Validator};
+use crate::validation::{ValidationError, Validator, Validatable, ValidationErrors, Validation, concat_results};
 use crate::{
     state::{
         middleware::{localize::LocalizeStore, route::RouteStore},
-        StateCallback, StateStoreRef, CosterAction, ChangeLastSelectedCurrency,
+        StateCallback, StateStoreRef, ChangeLastSelectedCurrency,
     },
     AppRoute,
 };
@@ -36,17 +36,51 @@ impl Display for FormFields {
 
 #[derive(Debug)]
 pub struct FormData {
-    name: String,
-    working_currency: Option<CommodityType>,
+    pub name: String,
+    pub working_currency: Option<CommodityType>,
 }
 
 impl FormData {
     pub fn create_tab(&self) -> Result<Tab, anyhow::Error> {
+        self.validate().map_err(|e| anyhow!("error validating FormData: {}", e))?;
         let working_currency = match &self.working_currency {
             Some(working_currency) => Rc::new(working_currency.clone()),
             None => return Err(anyhow!("empty working_currency in FormData"))
         };
         Ok(Tab::new(Uuid::new_v4(), self.name.clone(), working_currency, Vec::new(), Vec::new()))
+    }
+}
+
+impl FormData {
+    fn name_validator() -> Validator<InputValue, FormFields> {
+        Validator::new().validation(|name_value: &InputValue, _| {
+            if name_value.as_string().trim().is_empty() {
+                Err(ValidationError::new(FormFields::Name)
+                    .with_message(|_| tr!("This field cannot be empty")))
+            } else {
+                Ok(())
+            }
+        })
+    }
+
+    fn working_currency_validator() -> Validator<Option<CommodityType>, FormFields> {
+        Validator::new().validation(|working_currency: &Option<CommodityType>, _| {
+            if working_currency.is_none() {
+                Err(ValidationError::new(FormFields::WorkingCurrency)
+                    .with_message(|_| tr!("Please select a working currency")))
+            } else {
+                Ok(())
+            }
+        })
+    }
+}
+
+impl Validatable<FormFields> for FormData {
+    fn validate(&self) -> Result<(), ValidationErrors<FormFields>> {
+        concat_results(vec![
+            Self::name_validator().validate_value(&InputValue::String(self.name.clone()), &FormFields::Name),
+            Self::working_currency_validator().validate_value(&self.working_currency, &FormFields::WorkingCurrency)
+        ])
     }
 }
 
@@ -157,27 +191,6 @@ impl Component for NewCostingTab {
             .link
             .callback(|name_value: InputValue| Msg::UpdateName(name_value.into_string()));
 
-            
-        let name_validator: Validator<InputValue, FormFields> =
-            Validator::new().validation(|name_value: &InputValue, _| {
-                if name_value.as_string().trim().is_empty() {
-                    Err(ValidationError::new(FormFields::Name)
-                        .with_message(|_| tr!("This field cannot be empty")))
-                } else {
-                    Ok(())
-                }
-            });
-
-        let working_currency_validator: Validator<Option<CommodityType>, FormFields> =
-            Validator::new().validation(|working_currency: &Option<CommodityType>, _| {
-                if working_currency.is_none() {
-                    Err(ValidationError::new(FormFields::WorkingCurrency)
-                        .with_message(|_| tr!("Please select a working currency")))
-                } else {
-                    Ok(())
-                }
-            });
-
         let tab_name_label = tr!("Tab Name");
 
         let last_selected_currency = state.last_selected_currency.clone();
@@ -204,7 +217,7 @@ impl Component for NewCostingTab {
                             field_key = FormFields::Name
                             form_link = self.form_field_link.clone()
                             placeholder = tab_name_label
-                            validator = name_validator
+                            validator = FormData::name_validator()
                             onchange = onchange_name
                             />
                         <SelectField<CommodityType, FormFields>
@@ -212,7 +225,7 @@ impl Component for NewCostingTab {
                             field_key = FormFields::WorkingCurrency
                             form_link = self.form_field_link.clone()
                             options = self.currencies.clone()
-                            validator = working_currency_validator
+                            validator = FormData::working_currency_validator()
                             onchange = onchange_working_currency
                             selected = last_selected_currency
                             />

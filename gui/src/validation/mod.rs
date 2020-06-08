@@ -1,5 +1,4 @@
 use std::{
-    error::Error,
     fmt::{Debug, Display},
     rc::Rc,
 };
@@ -65,7 +64,7 @@ where
     }
 }
 
-impl<Key> Error for ValidationError<Key> where Key: Debug {}
+impl<Key> std::error::Error for ValidationError<Key> where Key: Debug {}
 
 #[derive(Debug, Clone)]
 pub struct ValidationErrors<Key> {
@@ -121,6 +120,8 @@ impl<Key> Display for ValidationErrors<Key> {
     }
 }
 
+impl <Key> std::error::Error for ValidationErrors<Key> where Key: std::fmt::Debug {}
+
 pub type ValidatorFn<Value, Key> = dyn Fn(&Value, &Key) -> Result<(), ValidationError<Key>>;
 
 pub trait Validatable<Key> {
@@ -146,6 +147,7 @@ where
     }
 }
 
+/// Validates a particular type of value, can be relevant for many keys.
 #[derive(Clone)]
 pub struct Validator<Value, Key> {
     pub validations: Vec<Rc<ValidatorFn<Value, Key>>>,
@@ -220,5 +222,24 @@ where
 impl<Value, Key> Default for Validator<Value, Key> {
     fn default() -> Self {
         Validator::new()
+    }
+}
+
+pub fn concat_results<Key>(results: Vec<Result<(), ValidationErrors<Key>>>) -> Result<(), ValidationErrors<Key>> 
+where
+    Key: PartialEq + Clone
+{
+    let mut all_errors: ValidationErrors<Key> = ValidationErrors::default();
+
+    for result in results {
+        if let Err(errors) = result {
+            all_errors.extend(errors);
+        }
+    }
+
+    if all_errors.len() > 0 {
+        Err(all_errors)
+    } else {
+        Ok(())
     }
 }

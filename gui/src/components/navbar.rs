@@ -94,7 +94,7 @@ impl Component for Navbar {
             Msg::SelectLanguage(language) => {
                 self.props
                     .state_store
-                    .change_selected_language(Some(language));
+                    .change_selected_language(Some(language), true);
                 true
             }
             Msg::LanguageChanged => true,

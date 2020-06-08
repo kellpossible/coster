@@ -7,13 +7,11 @@ mod dispatch;
 pub use dispatch::DatabaseDispatch;
 use kvdb::{DBTransaction, KeyValueDB};
 use serde::{de::DeserializeOwned, Serialize};
-use std::{io, rc::Rc, cell::RefCell};
+use std::{io, rc::Rc, fmt::Debug};
 use yew_state::{middleware::Middleware, Store};
 
 pub struct DatabaseMiddleware<DB> {
     database: DB,
-    // whether or not the database is blocking effects from other actions.
-    blocked: RefCell<bool>,
 }
 
 impl<DB> DatabaseMiddleware<DB>
@@ -23,7 +21,6 @@ where
     pub fn new(database: DB) -> Self {
         Self {
             database,
-            blocked: RefCell::new(false),
         }
     }
 }
@@ -71,25 +68,33 @@ impl DBTransactionSerde for DBTransaction {
 // TODO: this could be refactored into an enum, with effect for read, write, and then custom closure.
 // Would make it easier to debug this code with the logger, and more explicit about what is going on.
 // Custom closure could have a name too.
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct DatabaseEffect<State, Action, Event, Effect>{
+    debug: String,
+    #[serde(skip)]
     closure: Rc<dyn Fn(&Store<State, Action, Event, Effect>, &dyn KeyValueDB)>,
-    pub blocking: bool,
 }
 
 impl<State, Action, Event, Effect> DatabaseEffect<State, Action, Event, Effect> {
-    pub fn new<F>(f: F, blocking: bool) -> Self
+    pub fn new<F, S>(debug: S, f: F) -> Self
     where
         F: Fn(&Store<State, Action, Event, Effect>, &dyn KeyValueDB) + 'static,
+        S: Into<String>,
     {
         DatabaseEffect {
+            debug: debug.into(),
             closure: Rc::new(f),
-            blocking
         }
     }
 
     pub fn run(&self, store: &Store<State, Action, Event, Effect>, db: &dyn KeyValueDB) {
         (self.closure)(store, db)
+    }
+}
+
+impl<State, Action, Event, Effect> Debug for DatabaseEffect<State, Action, Event, Effect> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "DatabaseEffect(\"{}\")", self.debug)
     }
 }
 
@@ -122,22 +127,7 @@ where
         effect: Effect,
     ) -> Option<Effect> {
         if let Some(db_effect) = effect.database_effect() {
-            // TODO: there is a bug with this blocking code, it doesn't work with asynchronous actions, and actions
-            // executed later. Perhaps better not to do with blocking, and instead add a flag to the action to indicate
-            // whether or not it should trigger a database action.
-            // If I reformat the effect code logic to be seperated, it could be cleaner...
-            let blocked = *self.blocked.borrow();
-            log::debug!("DatabaseMiddleware::process_effect blocked: {}", blocked);
-            if !blocked {
-                log::debug!("DatabaseMiddleware::process_effect effect.blocking: {}", db_effect.blocking);
-                *self.blocked.borrow_mut() = db_effect.blocking;
-                db_effect.run(store, &self.database);
-                log::debug!("DatabaseMiddleware::process_effect after run");
-                if db_effect.blocking {
-                    *self.blocked.borrow_mut() = false;
-                }
-            }
-            
+            db_effect.run(store, &self.database);
             None
         } else {
             Some(effect)

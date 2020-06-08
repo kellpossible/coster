@@ -55,6 +55,7 @@ where
     State: Serialize + SerdeDiff,
     Action: Serialize + Display,
     Event: StoreEvent + Clone + Hash + Eq + Serialize,
+    Effect: Serialize,
 {
     fn on_reduce(
         &self,
@@ -78,6 +79,8 @@ where
 
         let state_diff = Diff::serializable(&*prev_state, &*next_state);
         let state_diff_js = JsValue::from_serde(&state_diff).unwrap();
+
+        let effect_js = JsValue::from_serde(&result.effects).unwrap();
 
         console::group_collapsed_3(
             &JsValue::from_serde(&format!("%caction %c{}", action_display)).unwrap(),
@@ -111,9 +114,26 @@ where
         );
         self.log_level.log(&state_diff_js);
         console::group_end();
+        
+        console::group_collapsed_2(
+            &JsValue::from_str("%ceffects"),
+            &JsValue::from_str("color: #C210C2; font-weight: bold;"),
+        );
+        self.log_level.log(&effect_js);
+        console::group_end();
 
         result
     }
+
+    fn process_effect(
+        &self,
+        _store: &crate::Store<State, Action, Event, Effect>,
+        effect: Effect,
+    ) -> Option<Effect> {
+        
+        Some(effect)
+    }
+
     fn on_notify(
         &self,
         store: &crate::Store<State, Action, Event, Effect>,

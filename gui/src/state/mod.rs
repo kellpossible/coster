@@ -7,7 +7,7 @@ pub use route::*;
 
 use middleware::{
     db::{DatabaseEffect, IsDatabaseEffect},
-    localize::{LocalizeAction, LocalizeEvent, LocalizeState},
+    localize::{LocalizeAction, LocalizeEvent, LocalizeState, ChangeSelectedLanguage},
     route::{IsRouteAction, RouteAction, RouteEvent, RouteState},
 };
 use serde::{Deserialize, Serialize};
@@ -68,7 +68,8 @@ impl LocalizeState for CosterState {
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum CosterAction {
-    ChangeSelectedLanguage(Option<LanguageIdentifier>),
+    /// Selected language, and whether or not to write the value to the database.
+    ChangeSelectedLanguage(ChangeSelectedLanguage),
     RouteAction(RouteAction<RouteType>),
     LoadDatabase,
 }
@@ -76,12 +77,8 @@ pub enum CosterAction {
 impl Display for CosterAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CosterAction::ChangeSelectedLanguage(selected_language) => {
-                let language_display = match selected_language {
-                    Some(language) => language.to_string(),
-                    None => "None".to_string(),
-                };
-                write!(f, "ChangeSelectedLanguage({})", language_display)
+            CosterAction::ChangeSelectedLanguage(action) => {
+                write!(f, "{}", action)
             }
             CosterAction::RouteAction(route_action) => write!(f, "RouteAction::{}", route_action),
             CosterAction::LoadDatabase => {
@@ -92,13 +89,13 @@ impl Display for CosterAction {
 }
 
 impl LocalizeAction for CosterAction {
-    fn change_selected_language(selected_language: Option<LanguageIdentifier>) -> Self {
-        CosterAction::ChangeSelectedLanguage(selected_language)
+    fn change_selected_language(action: ChangeSelectedLanguage) -> Self {
+        CosterAction::ChangeSelectedLanguage(action)
     }
-    fn get_change_selected_language(&self) -> Option<Option<&LanguageIdentifier>> {
+    fn get_change_selected_language(&self) -> Option<&ChangeSelectedLanguage> {
         match self {
-            CosterAction::ChangeSelectedLanguage(selected_language) => {
-                Some(selected_language.as_ref())
+            CosterAction::ChangeSelectedLanguage(action) => {
+                Some(action)
             }
             _ => None,
         }
@@ -148,7 +145,7 @@ impl RouteEvent<RouteType> for CosterEvent {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize)]
 pub enum CosterEffect {
     Database(DatabaseEffect<CosterState, CosterAction, CosterEvent, CosterEffect>),
 }

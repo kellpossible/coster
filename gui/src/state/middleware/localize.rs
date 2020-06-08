@@ -1,12 +1,13 @@
 use i18n_embed::LanguageRequester;
 use log::debug;
-use std::{cell::RefCell, hash::Hash, rc::Rc};
+use std::{cell::RefCell, hash::Hash, rc::Rc, fmt::Display};
 use unic_langid::LanguageIdentifier;
 use yew::{Component, ComponentLink};
 use yew_state::{
     middleware::{Middleware, ReduceMiddlewareResult},
     Callback, Store, StoreEvent,
 };
+use serde::Serialize;
 
 pub struct LocalizeMiddleware<LR> {
     pub language_requester: Rc<RefCell<LR>>,
@@ -34,10 +35,11 @@ where
         reduce: yew_state::middleware::ReduceFn<State, Action, Event, Effect>,
     ) -> ReduceMiddlewareResult<Event, Effect> {
         if let Some(action) = action {
-            if let Some(selected_language) = action.get_change_selected_language() {
+            if let Some(action) = action.get_change_selected_language() {
+                let selected_language = action.selected_language.clone();
                 debug!(
                     "LocalizeMiddleware::on_reduce Processing selected language: {:?}",
-                    selected_language
+                    &selected_language
                 );
                 self.language_requester
                     .borrow_mut()
@@ -55,9 +57,25 @@ pub trait LocalizeEvent {
     fn language_changed() -> Self;
 }
 
+#[derive(Debug, Serialize, PartialEq, Clone)]
+pub struct ChangeSelectedLanguage {
+    pub selected_language: Option<LanguageIdentifier>,
+    pub write_to_database: bool,
+}
+
+impl Display for ChangeSelectedLanguage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let language_display = match &self.selected_language {
+            Some(language) => language.to_string(),
+            None => "None".to_string(),
+        };
+        write!(f, "ChangeSelectedLanguage({}, write: {:?})", language_display, self.write_to_database)
+    }   
+}
+
 pub trait LocalizeAction {
-    fn change_selected_language(selected_language: Option<LanguageIdentifier>) -> Self;
-    fn get_change_selected_language(&self) -> Option<Option<&LanguageIdentifier>>;
+    fn change_selected_language(action: ChangeSelectedLanguage) -> Self;
+    fn get_change_selected_language(&self) -> Option<&ChangeSelectedLanguage>;
 }
 
 pub trait LocalizeState {
@@ -65,7 +83,7 @@ pub trait LocalizeState {
 }
 
 pub trait LocalizeStore<State, Event> {
-    fn change_selected_language(&self, selected_language: Option<LanguageIdentifier>);
+    fn change_selected_language(&self, selected_language: Option<LanguageIdentifier>, write_to_database: bool);
     fn subscribe_language_changed<COMP: Component>(
         &self,
         link: &ComponentLink<COMP>,
@@ -82,8 +100,11 @@ where
     State: LocalizeState + 'static,
     Event: LocalizeEvent + PartialEq + StoreEvent + Clone + Hash + Eq + 'static,
 {
-    fn change_selected_language(&self, selected_language: Option<LanguageIdentifier>) {
-        self.dispatch(Action::change_selected_language(selected_language))
+    fn change_selected_language(&self, selected_language: Option<LanguageIdentifier>, write_to_database: bool) {
+        self.dispatch(Action::change_selected_language(ChangeSelectedLanguage {
+            selected_language, 
+            write_to_database,
+        }))
     }
 
     fn subscribe_language_changed<COMP: Component>(

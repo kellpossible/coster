@@ -52,6 +52,7 @@ where
     Event: StoreEvent + Clone + Hash + Eq + Debug,
     State: Debug,
     Action: Debug,
+    Effect: Debug,
 {
     fn on_reduce(
         &self,
@@ -82,15 +83,23 @@ where
         events
     }
 
+    fn process_effect(
+        &self,
+        _store: &Store<State, Action, Event, Effect>,
+        effect: Effect,
+    ) -> Option<Effect> {
+        self.log_level.log(format!("effect: {:?}", effect));
+        Some(effect)
+    }
+
     fn on_notify(
         &self,
         store: &Store<State, Action, Event, Effect>,
         events: Vec<Event>,
         notify: super::NotifyFn<State, Action, Event, Effect>,
     ) -> Vec<Event> {
-        self.log_level.log("on_notify");
         for event in &events {
-            self.log_level.log(format!("event {:?} dispatched", event));
+            self.log_level.log(format!("event: {:?}", event));
         }
 
         notify(store, events)

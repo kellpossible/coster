@@ -1,5 +1,5 @@
 use super::{
-    middleware::{db::DBTransactionSerde, db::DatabaseEffect, db::KeyValueDBSerde, route::RouteAction},
+    middleware::{db::DBTransactionSerde, db::DatabaseEffect, db::KeyValueDBSerde, route::RouteAction, localize::LocalizeStore},
     CosterAction, CosterEffect, CosterEvent, CosterState,
 };
 use std::rc::Rc;
@@ -17,24 +17,26 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
         let mut effects = Vec::new();
 
         let state = match action {
-            CosterAction::ChangeSelectedLanguage(language) => {
+            CosterAction::ChangeSelectedLanguage(action) => {
                 events.push(CosterEvent::LanguageChanged);
 
                 // TODO: There is a problem here if the database middleware hasn't been added yet (because it's added in an async),
                 // this event may miss being fired.
-                let effect_language = language.clone();
-                let effect = DatabaseEffect::new(move |_store, database| {
-                    log::debug!("DatabaseEffect write selected_language");
-                    let mut transaction = database.transaction();
-                    transaction.put_serialize(0, "selected_language", &effect_language);
-                    database
-                        .write(transaction)
-                        .expect("there was a problem executing a database transaction");
-                }, false);
+                let effect_language = action.selected_language.clone();
 
-                effects.push(effect.into());
+                if action.write_to_database {
+                    let effect = DatabaseEffect::new("write selected_language", move |_store, database| {
+                        let mut transaction = database.transaction();
+                        transaction.put_serialize(0, "selected_language", &effect_language);
+                        database
+                            .write(transaction)
+                            .expect("there was a problem executing a database transaction");
+                    });
+    
+                    effects.push(effect.into());
+                }
 
-                Rc::new(prev_state.change_selected_language(language.clone()))
+                Rc::new(prev_state.change_selected_language(action.selected_language.clone()))
             }
             CosterAction::RouteAction(route_action) => match route_action {
                 RouteAction::ChangeRoute(route) => {
@@ -48,13 +50,13 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                 RouteAction::PollBrowserRoute => prev_state.clone(),
             },
             CosterAction::LoadDatabase => {
-                let effect = DatabaseEffect::new(move |store, database| {
+                let effect = DatabaseEffect::new("load database", move |store, database| {
                     log::debug!("DatabaseEffect load database");
                     let selected_language_option: Option<Option<unic_langid::LanguageIdentifier>> = database.get_deserialize(0, "selected_language").expect("unable to read from database");
                     if let Some(selected_language) = selected_language_option {
-                        store.dispatch(CosterAction::ChangeSelectedLanguage(selected_language));
+                        store.change_selected_language(selected_language, false);
                     }
-                }, true);
+                });
 
                 effects.push(effect.into());
                 prev_state.clone()

@@ -2,7 +2,7 @@ use crate::actions::UserAction;
 use crate::error::CostingError;
 use crate::expense::{Expense, ExpenseCategory};
 use crate::settlement::Settlement;
-use crate::user::{User, UserID};
+use crate::{UserActionType, user::{User, UserID}};
 use chrono::{Local, NaiveDate};
 use commodity::{Commodity, CommodityType, CommodityTypeID};
 use doublecount::{
@@ -19,24 +19,26 @@ pub type TabID = Uuid;
 
 /// A collection of expenses, and users who are responsible
 /// for/associated with those expenses.
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Tab {
     /// The id of this tab
     pub id: TabID,
     /// The name of this tab
     pub name: String,
     /// The working currency of this tab
-    pub working_currency: Rc<CommodityType>,
+    pub working_currency: CommodityTypeID,
     /// The users involved with this tab
-    users: Vec<Rc<User>>,
+    pub users: Vec<Rc<User>>,
+    #[serde(skip)]
     /// [Accounts](Account) associated with [Users](User).
     user_accounts: HashMap<UserID, Rc<Account>>,
     /// The expenses recorded on this tab
     pub expenses: Vec<Expense>,
+    #[serde(skip)]
     /// [Accounts](Account) associated with [ExpenseCategories](ExpenseCategory).
     expense_category_accounts: HashMap<ExpenseCategory, Rc<Account>>,
     /// Actions performed by the users of this tab
-    pub user_actions: Vec<Box<dyn UserAction>>,
+    pub user_actions: Vec<UserActionType>,
 }
 
 impl Tab {
@@ -44,14 +46,14 @@ impl Tab {
     pub fn new<S: Into<String>>(
         id: TabID,
         name: S,
-        working_currency: Rc<CommodityType>,
+        working_currency: CommodityTypeID,
         users: Vec<Rc<User>>,
         expenses: Vec<Expense>,
     ) -> Tab {
         let mut user_accounts = HashMap::with_capacity(users.len());
 
         for user in &users {
-            let account = Rc::from(Tab::new_account_for_user(&user, working_currency.id));
+            let account = Rc::from(Tab::new_account_for_user(&user, working_currency));
 
             match user_accounts.insert(user.id, account) {
                 Some(_) => panic!("There are duplicate users with id {0}", user.id),
@@ -66,7 +68,7 @@ impl Tab {
             if !expense_category_accounts.get(&expense.category).is_some() {
                 let account = Rc::from(Tab::new_account_for_expense_category(
                     &expense,
-                    working_currency.id,
+                    working_currency,
                 ));
                 expense_category_accounts.insert(expense.category.clone(), account);
             }
@@ -84,7 +86,7 @@ impl Tab {
         }
     }
 
-    fn new_account_for_user(user: &Rc<User>, working_currency: CommodityTypeID) -> Account {
+    fn new_account_for_user(user: &User, working_currency: CommodityTypeID) -> Account {
         Account::new_with_id(
             Some(format!("User-{}-{}", user.id.to_string(), user.name)),
             working_currency,

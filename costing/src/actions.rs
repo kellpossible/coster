@@ -7,6 +7,12 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::Hash;
 
+#[derive(Debug, Serialize, Deserialize)]
+pub enum UserActionType {
+    AddExpense(AddExpense),
+    AddUser(AddUser),
+}
+
 /// Represents an action that a [User](crate::user::User) can perform to modify a [Tab](Tab).
 pub trait UserAction: fmt::Debug {
     /// Get metadata about the action.

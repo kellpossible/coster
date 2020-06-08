@@ -1,11 +1,8 @@
-use super::Middleware;
+use super::{Middleware, ReduceMiddlewareResult};
 use crate::StoreEvent;
 use serde::Serialize;
 use serde_diff::{Diff, SerdeDiff};
-use std::{
-    fmt::{Debug, Display},
-    hash::Hash,
-};
+use std::{fmt::Display, hash::Hash};
 use wasm_bindgen::JsValue;
 use web_sys::console;
 
@@ -53,18 +50,19 @@ impl WebLoggerMiddleware {
     }
 }
 
-impl<State, Action, Event> Middleware<State, Action, Event> for WebLoggerMiddleware
+impl<State, Action, Event, Effect> Middleware<State, Action, Event, Effect> for WebLoggerMiddleware
 where
     State: Serialize + SerdeDiff,
     Action: Serialize + Display,
     Event: StoreEvent + Clone + Hash + Eq + Serialize,
+    Effect: Serialize,
 {
     fn on_reduce(
         &self,
-        store: &crate::Store<State, Action, Event>,
-        action: Option<Action>,
-        reduce: super::ReduceFn<State, Action, Event>,
-    ) -> Vec<Event> {
+        store: &crate::Store<State, Action, Event, Effect>,
+        action: Option<&Action>,
+        reduce: super::ReduceFn<State, Action, Event, Effect>,
+    ) -> ReduceMiddlewareResult<Event, Effect> {
         let prev_state_js = JsValue::from_serde(&(*store.state())).unwrap();
         let prev_state = store.state();
 
@@ -82,6 +80,12 @@ where
         let state_diff = Diff::serializable(&*prev_state, &*next_state);
         let state_diff_js = JsValue::from_serde(&state_diff).unwrap();
 
+        let effects_js = JsValue::from_serde(&result.effects).unwrap();
+        let effects_display = match &result.effects.len() {
+            0 => "None".to_string(),
+            _ => format!("({})", result.effects.len())
+        };
+
         console::group_collapsed_3(
             &JsValue::from_serde(&format!("%caction %c{}", action_display)).unwrap(),
             &JsValue::from_str("color: gray; font-weight: lighter;"),
@@ -94,9 +98,10 @@ where
         self.log_level.log(&prev_state_js);
         console::group_end();
 
-        console::group_collapsed_2(
-            &JsValue::from_str("%caction"),
+        console::group_collapsed_3(
+            &JsValue::from_str(&format!("%caction: %c{}", action_display)),
             &JsValue::from_str("color: #03A9F4; font-weight: bold;"),
+            &JsValue::from_str("color: gray; font-weight: lighter;"),
         );
         self.log_level.log(&action_js);
         console::group_end();
@@ -114,19 +119,42 @@ where
         );
         self.log_level.log(&state_diff_js);
         console::group_end();
+        
+        console::group_collapsed_3(
+            &JsValue::from_str(&format!("%ceffects: %c{}", effects_display)),
+            &JsValue::from_str("color: #C210C2; font-weight: bold;"),
+            &JsValue::from_str("color: gray; font-weight: lighter;"),
+        );
+        self.log_level.log(&effects_js);
+        console::group_end();
 
         result
     }
+
+    fn process_effect(
+        &self,
+        _store: &crate::Store<State, Action, Event, Effect>,
+        effect: Effect,
+    ) -> Option<Effect> {
+        
+        Some(effect)
+    }
+
     fn on_notify(
         &self,
-        store: &crate::Store<State, Action, Event>,
+        store: &crate::Store<State, Action, Event, Effect>,
         events: Vec<Event>,
-        notify: super::NotifyFn<State, Action, Event>,
+        notify: super::NotifyFn<State, Action, Event, Effect>,
     ) -> Vec<Event> {
         let events_js = JsValue::from_serde(&events).unwrap();
-        console::group_collapsed_2(
-            &JsValue::from_str("%cevents"),
+        let events_display = match events.len() {
+            0 => "None".to_string(),
+            _ => format!("({})", events.len()),
+        };
+        console::group_collapsed_3(
+            &JsValue::from_str(&format!("%cevents: %c{}", events_display)),
             &JsValue::from_str("color: #FCBA03; font-weight: bold;"),
+            &JsValue::from_str("color: gray; font-weight: lighter;"),
         );
         self.log_level.log(&events_js);
         console::group_end();

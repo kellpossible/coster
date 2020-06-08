@@ -17,11 +17,15 @@ use i18n_embed::{
 };
 use lazy_static::lazy_static;
 use log;
-use log::debug;
+use log::{debug, error};
 use rust_embed::RustEmbed;
 use state::{
-    middleware::{localize::LocalizeMiddleware, route::{RouteAction, RouteMiddleware}},
-    AppRoute, CosterAction, CosterReducer, CosterState, RouteType, StateStoreEvent, StateStoreRef,
+    middleware::{
+        db::DatabaseMiddleware,
+        localize::LocalizeMiddleware,
+        route::{RouteAction, RouteMiddleware},
+    },
+    AppRoute, CosterEvent, CosterReducer, CosterState, RouteType, StateStoreRef, CosterAction,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -52,7 +56,7 @@ pub type LocalizerRef = Rc<dyn Localizer<'static>>;
 pub type LanguageRequesterRef = Rc<RefCell<dyn LanguageRequester<'static>>>;
 
 pub enum Msg {
-    StateChanged(Rc<CosterState>, StateStoreEvent),
+    StateChanged(Rc<CosterState>, CosterEvent),
 }
 
 pub struct Model {
@@ -60,8 +64,7 @@ pub struct Model {
     localizer: LocalizerRef,
     link: ComponentLink<Self>,
     state_store: StateStoreRef,
-    storage: Option<StorageService>,
-    _state_callback: yew_state::Callback<CosterState, StateStoreEvent>,
+    _state_callback: yew_state::Callback<CosterState, CosterEvent>,
 }
 
 impl Model {
@@ -94,29 +97,6 @@ impl Component for Model {
         let localizer_ref: Rc<dyn Localizer<'static>> = Rc::new(localizer);
         language_requester.add_listener(Rc::downgrade(&localizer_ref));
 
-        let storage = StorageService::new(storage::Area::Local).ok();
-        // if let Some(storage) = &storage {
-        //     let selected_language_result: Result<String, anyhow::Error> =
-        //         storage.restore("user-selected-language");
-
-        //     match selected_language_result {
-        //         Ok(selected_language_id) => {
-        //             let selected_language: unic_langid::LanguageIdentifier =
-        //                 selected_language_id.parse().unwrap();
-        //             debug!(
-        //                 "Model::update restoring user-selected-language: {}",
-        //                 selected_language.to_string()
-        //             );
-        //             language_requester
-        //                 .set_languge_override(Some(selected_language))
-        //                 .unwrap();
-        //         }
-        //         Err(error) => {
-        //             error!("{}", error);
-        //         }
-        //     }
-        // }
-
         // Manually check the currently requested system language,
         // and update the listeners. When the system language changes,
         // this will automatically be triggered.
@@ -126,16 +106,33 @@ impl Component for Model {
         let localize_middleware = LocalizeMiddleware::new(language_requester_ref.clone());
         state_store.add_middleware(localize_middleware);
 
+        let state_store_clone = state_store.clone();
+
+        // TODO: this has a problem where if the user changes
+        // something before the database loads (or any other event
+        // attempts to change something), it will be overridden, and
+        // the change will be lost. #18
+        wasm_bindgen_futures::spawn_local(async move {
+            let database_result: Result<kvdb_web::Database, _> =
+                kvdb_web::Database::open("CosterState".to_string(), 1).await;
+            match database_result {
+                Ok(database) => {
+                    let database_middleware = DatabaseMiddleware::new(database);
+
+                    state_store_clone.add_middleware(database_middleware);
+                    state_store_clone.dispatch(CosterAction::LoadDatabase)
+                }
+                Err(error) => error!("Error opening database: {}", error),
+            }
+        });
+
         let state_callback = link
             .callback(|(state, event)| Msg::StateChanged(state, event))
             .into();
 
         state_store.subscribe_events(
             &state_callback,
-            vec![
-                StateStoreEvent::LanguageChanged,
-                StateStoreEvent::RouteChanged,
-            ],
+            vec![CosterEvent::LanguageChanged, CosterEvent::RouteChanged],
         );
 
         state_store.dispatch(RouteAction::PollBrowserRoute);
@@ -145,7 +142,6 @@ impl Component for Model {
             localizer: localizer_ref,
             link,
             state_store,
-            storage,
             _state_callback: state_callback,
         }
     }
@@ -153,7 +149,7 @@ impl Component for Model {
     fn update(&mut self, msg: Msg) -> ShouldRender {
         match msg {
             Msg::StateChanged(_state, event) => match event {
-                StateStoreEvent::LanguageChanged => {
+                CosterEvent::LanguageChanged => {
                     // if let Some(storage) = &mut self.storage {
                     //     debug!(
                     //         "Model::update storing user-selected-language: {:?}",
@@ -165,8 +161,8 @@ impl Component for Model {
                     // debug!("Language changed in coster::lib {:?}", state.selected_language);
                     true
                 }
-                StateStoreEvent::RouteChanged => true,
-                StateStoreEvent::None => false,
+                CosterEvent::RouteChanged => true,
+                CosterEvent::None => false,
             },
         }
     }

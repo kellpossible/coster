@@ -1,4 +1,7 @@
-use crate::{middleware::Middleware, AsListener, Listener, Reducer, StoreEvent};
+use crate::{
+    middleware::{Middleware, ReduceMiddlewareResult},
+    AsListener, Listener, Reducer, StoreEvent,
+};
 use std::iter::FromIterator;
 use std::ops::Deref;
 use std::{
@@ -26,9 +29,9 @@ impl<State, Event> Debug for ListenerEventPair<State, Event> {
 /// An action to modify some aspect of the [Store], to be stored in a
 /// queue and executed at the start of a [Store::dispatch()] for a
 /// given `Action`.
-enum StoreModification<State, Action, Event> {
+enum StoreModification<State, Action, Event, Effect> {
     AddListener(ListenerEventPair<State, Event>),
-    AddMiddleware(Rc<dyn Middleware<State, Action, Event>>),
+    AddMiddleware(Rc<dyn Middleware<State, Action, Event, Effect>>),
 }
 
 /// A wrapper for an [Rc] reference to a [Store].
@@ -38,13 +41,13 @@ enum StoreModification<State, Action, Event> {
 /// reference to the store in order to dispatch actions or modify it
 /// in some manner that could not be handled by a simple `&Store`.
 #[derive(Clone)]
-pub struct StoreRef<State, Action, Event>(Rc<Store<State, Action, Event>>);
+pub struct StoreRef<State, Action, Event, Effect>(Rc<Store<State, Action, Event, Effect>>);
 
-impl<State, Action, Event> StoreRef<State, Action, Event>
+impl<State, Action, Event, Effect> StoreRef<State, Action, Event, Effect>
 where
     Event: StoreEvent + Clone + Hash + Eq,
 {
-    pub fn new<R: Reducer<State, Action, Event> + 'static>(
+    pub fn new<R: Reducer<State, Action, Event, Effect> + 'static>(
         reducer: R,
         initial_state: State,
     ) -> Self {
@@ -52,15 +55,15 @@ where
     }
 }
 
-impl<State, Action, Event> Deref for StoreRef<State, Action, Event> {
-    type Target = Store<State, Action, Event>;
+impl<State, Action, Event, Effect> Deref for StoreRef<State, Action, Event, Effect> {
+    type Target = Store<State, Action, Event, Effect>;
 
     fn deref(&self) -> &Self::Target {
         &*self.0
     }
 }
 
-impl<State, Action, Event> PartialEq for StoreRef<State, Action, Event> {
+impl<State, Action, Event, Effect> PartialEq for StoreRef<State, Action, Event, Effect> {
     fn eq(&self, other: &Self) -> bool {
         Rc::ptr_eq(&self.0, &other.0)
     }
@@ -83,18 +86,18 @@ impl<State, Action, Event> PartialEq for StoreRef<State, Action, Event> {
 /// (and `Event`s produced) with [Store::subscribe()], or they can
 /// also subscribe to changes associated with specific `Event`s via
 /// [subscribe_event()](Store::subscribe_event())/[subscribe_events()](Store::subscribe_events()).
-pub struct Store<State, Action, Event> {
+pub struct Store<State, Action, Event, Effect> {
     /// This lock is used to prevent dispatch recursion.
     dispatch_lock: RefCell<()>,
     /// Queue of actions to be dispatched by [Store::dispatch()].
     dispatch_queue: RefCell<VecDeque<Action>>,
     /// Queue of [StoreModification]s to be executed by
     /// [Store::dispatch()] before the next `Action` is dispatched.
-    modification_queue: RefCell<VecDeque<StoreModification<State, Action, Event>>>,
+    modification_queue: RefCell<VecDeque<StoreModification<State, Action, Event, Effect>>>,
     /// The [Reducer] for this store, which takes `Actions`, modifies
     /// the `State` stored in this store, and produces `Events` to be
     /// sent to the store listeners.
-    reducer: Box<dyn Reducer<State, Action, Event>>,
+    reducer: Box<dyn Reducer<State, Action, Event, Effect>>,
     /// The current state of this store.
     state: RefCell<Rc<State>>,
     /// The listeners which are notified of changes to the state of
@@ -102,7 +105,7 @@ pub struct Store<State, Action, Event> {
     /// [Store::dispatch()].
     listeners: RefCell<Vec<ListenerEventPair<State, Event>>>,
     /// Middleware which modifies the functionality of this store.
-    middleware: RefCell<Vec<Rc<dyn Middleware<State, Action, Event>>>>,
+    middleware: RefCell<Vec<Rc<dyn Middleware<State, Action, Event, Effect>>>>,
     /// Used during recursive execution of [Middleware] to keep track
     /// of the middleware currently executing. It is an index into
     /// [Store::middleware].
@@ -111,14 +114,14 @@ pub struct Store<State, Action, Event> {
     phantom_event: PhantomData<Event>,
 }
 
-impl<State, Action, Event> Store<State, Action, Event>
+impl<State, Action, Event, Effect> Store<State, Action, Event, Effect>
 where
     Event: StoreEvent + Clone + Hash + Eq,
 {
     /// Create a new [Store], which uses the specified `reducer` to
     /// handle `Action`s which mutate the state and produce `Event`s,
     /// and with the `initial_state`.
-    pub fn new<R: Reducer<State, Action, Event> + 'static>(
+    pub fn new<R: Reducer<State, Action, Event, Effect> + 'static>(
         reducer: R,
         initial_state: State,
     ) -> Self {
@@ -145,41 +148,86 @@ where
         self.state.borrow().clone()
     }
 
-
     /// Dispatch an `Action` to the reducer on this `Store` without
     /// invoking middleware.
-    fn dispatch_reducer(&self, action: Action) -> Vec<Event> {
-        let result = self.reducer.reduce(self.state(), action);
+    fn dispatch_reducer(&self, action: &Action) -> ReduceMiddlewareResult<Event, Effect> {
+        let result = self.reducer.reduce(&self.state(), action);
         *self.state.borrow_mut() = result.state;
-        result.events
+
+        ReduceMiddlewareResult {
+            events: result.events,
+            effects: result.effects,
+        }
     }
 
     /// Dispatch an `Action` to the reducer on this `Store`, invoking
     /// all middleware's [reduce()][Middleware::reduce()] first.
-    fn dispatch_middleware_reduce(&self, action: Action) -> Vec<Event> {
+    fn middleware_reduce(&self, action: &Action) -> ReduceMiddlewareResult<Event, Effect> {
         self.prev_middleware.set(-1);
-        self.dispatch_middleware_reduce_next(Some(action))
+        self.middleware_reduce_next(Some(action))
     }
 
     /// A recursive function which executes each middleware for this
     /// store, and invokes the next middleware, until all middleware
     /// has been invoked, at which point the `Action` is sent to the
     /// reducer.
-    fn dispatch_middleware_reduce_next(&self, action: Option<Action>) -> Vec<Event> {
+    fn middleware_reduce_next(
+        &self,
+        action: Option<&Action>,
+    ) -> ReduceMiddlewareResult<Event, Effect> {
         let current_middleware = self.prev_middleware.get() + 1;
         self.prev_middleware.set(current_middleware);
-        if current_middleware as usize == self.middleware.borrow().len() {
+
+        if current_middleware == self.middleware.borrow().len() as i32 {
             return match action {
                 Some(action) => self.dispatch_reducer(action),
-                None => Vec::new(),
+                None => ReduceMiddlewareResult::default(),
             };
         }
 
         let result = self.middleware.borrow()[current_middleware as usize]
             .clone()
-            .on_reduce(self, action, Self::dispatch_middleware_reduce_next);
+            .on_reduce(self, action, Self::middleware_reduce_next);
 
         result
+    }
+
+    /// Process all the `Effect`s returned by the [Reducer::reduce()]
+    /// by invoking the middleware on this store to perform the
+    /// processing using [Middleware::process_effect()].q
+    fn middleware_process_effects(&self, effects: Vec<Effect>) {
+        for effect in effects {
+            self.middleware_process_effect(effect);
+        }
+    }
+
+    /// Process the specified `Effect`, invoking all middleware in this
+    /// store to perform the processing using
+    /// [Middleware::process_effect()].
+    fn middleware_process_effect(&self, effect: Effect) {
+        self.prev_middleware.set(-1);
+        self.middleware_process_effects_next(effect);
+    }
+
+    /// A recursive function which executes each middleware for this
+    /// store to process the specified `Effect` with
+    /// [Middleware::process_effect()], and invokes the next
+    /// middleware, until all middleware has been invoked.
+    fn middleware_process_effects_next(&self, effect: Effect) {
+        let current_middleware = self.prev_middleware.get() + 1;
+        self.prev_middleware.set(current_middleware);
+
+        if current_middleware == self.middleware.borrow().len() as i32 {
+            return;
+        }
+
+        match self.middleware.borrow()[current_middleware as usize]
+            .clone()
+            .process_effect(self, effect)
+        {
+            Some(effect) => self.middleware_process_effects_next(effect),
+            None => {}
+        }
     }
 
     /// Notify store listeners of events produced during a reduce as a
@@ -201,7 +249,7 @@ where
         let current_middleware = self.prev_middleware.get() + 1;
         self.prev_middleware.set(current_middleware);
 
-        if current_middleware as usize == self.middleware.borrow().len() {
+        if current_middleware == self.middleware.borrow().len() as i32 {
             return events;
         }
 
@@ -276,18 +324,36 @@ where
         // This prevents recursion, when a listener callback also triggers another
         // dispatch.
         if let Ok(_lock) = self.dispatch_lock.try_borrow_mut() {
-            while let Some(action) = self.dispatch_queue.borrow_mut().pop_front() {
-                self.process_pending_modifications();
+            // For some strange reason can't use a while let here because
+            // it requires Action to implement Copy, and also it was maintaining
+            // the dispatch_queue borrow during the loop (even though it wasn't needed).
+            loop {
+                let dispatch_action = self.dispatch_queue.borrow_mut().pop_front();
 
-                let events = if self.middleware.borrow().is_empty() {
-                    self.dispatch_reducer(action)
-                } else {
-                    self.dispatch_middleware_reduce(action)
-                };
+                match dispatch_action {
+                    Some(action) => {
+                        self.process_pending_modifications();
 
-                let middleware_events = self.middleware_notify(events);
-                if !middleware_events.is_empty() {
-                    self.notify_listeners(middleware_events);
+                        let reduce_middleware_result = if self.middleware.borrow().is_empty() {
+                            self.dispatch_reducer(&action)
+                        } else {
+                            self.middleware_reduce(&action)
+                        };
+
+                        match reduce_middleware_result {
+                            ReduceMiddlewareResult { events, effects } => {
+                                self.middleware_process_effects(effects);
+
+                                let middleware_events = self.middleware_notify(events);
+                                if !middleware_events.is_empty() {
+                                    self.notify_listeners(middleware_events);
+                                }
+                            }
+                        }
+                    }
+                    None => {
+                        break;
+                    }
                 }
             }
         }
@@ -364,7 +430,10 @@ where
 
     /// Add [Middleware] to modify the behaviour of this [Store]
     /// during a [dispatch()][Store::dispatch()].
-    pub fn add_middleware<M: Middleware<State, Action, Event> + 'static>(&self, middleware: M) {
+    pub fn add_middleware<M: Middleware<State, Action, Event, Effect> + 'static>(
+        &self,
+        middleware: M,
+    ) {
         self.modification_queue
             .borrow_mut()
             .push_back(StoreModification::AddMiddleware(Rc::new(middleware)));
@@ -374,7 +443,8 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
-        middleware::Middleware, Callback, Reducer, ReducerResult, Store, StoreEvent, StoreRef,
+        middleware::{Middleware, ReduceMiddlewareResult},
+        Callback, Reducer, ReducerResult, Store, StoreEvent, StoreRef,
     };
     use std::{cell::RefCell, rc::Rc};
 
@@ -388,17 +458,24 @@ mod tests {
         Increment,
         Decrement,
         Decrement2,
+        Decrent2Then1,
+    }
+
+    enum TestEffect {
+        ChainAction(TestAction),
     }
 
     struct TestReducer;
 
-    impl Reducer<TestState, TestAction, TestEvent> for TestReducer {
+    impl Reducer<TestState, TestAction, TestEvent, TestEffect> for TestReducer {
         fn reduce(
             &self,
-            state: Rc<TestState>,
-            action: TestAction,
-        ) -> ReducerResult<TestState, TestEvent> {
+            state: &Rc<TestState>,
+            action: &TestAction,
+        ) -> ReducerResult<TestState, TestEvent, TestEffect> {
             let mut events = Vec::new();
+            let mut effects = Vec::new();
+
             let new_state = match action {
                 TestAction::Increment => TestState {
                     counter: state.counter + 1,
@@ -409,6 +486,13 @@ mod tests {
                 TestAction::Decrement2 => TestState {
                     counter: state.counter - 2,
                 },
+                TestAction::Decrent2Then1 => {
+                    effects.push(TestEffect::ChainAction(TestAction::Decrement));
+
+                    TestState {
+                        counter: state.counter - 2,
+                    }
+                }
             };
 
             // All actions change the counter.
@@ -421,22 +505,41 @@ mod tests {
             ReducerResult {
                 state: Rc::new(new_state),
                 events,
+                effects,
             }
         }
     }
 
-    struct TestMiddleware {
+    struct TestReduceMiddleware {
         new_action: TestAction,
     }
 
-    impl Middleware<TestState, TestAction, TestEvent> for TestMiddleware {
+    impl Middleware<TestState, TestAction, TestEvent, TestEffect> for TestReduceMiddleware {
         fn on_reduce(
             &self,
-            store: &Store<TestState, TestAction, TestEvent>,
-            action: Option<TestAction>,
-            reduce: crate::middleware::ReduceFn<TestState, TestAction, TestEvent>,
-        ) -> Vec<TestEvent> {
-            reduce(store, action.map(|_| self.new_action))
+            store: &Store<TestState, TestAction, TestEvent, TestEffect>,
+            action: Option<&TestAction>,
+            reduce: crate::middleware::ReduceFn<TestState, TestAction, TestEvent, TestEffect>,
+        ) -> ReduceMiddlewareResult<TestEvent, TestEffect> {
+            reduce(store, action.map(|_| &self.new_action))
+        }
+    }
+
+    struct TestEffectMiddleware;
+
+    impl Middleware<TestState, TestAction, TestEvent, TestEffect> for TestEffectMiddleware {
+        fn process_effect(
+            &self,
+            store: &Store<TestState, TestAction, TestEvent, TestEffect>,
+            effect: TestEffect,
+        ) -> Option<TestEffect> {
+            match effect {
+                TestEffect::ChainAction(action) => {
+                    store.dispatch(action);
+                }
+            }
+
+            None
         }
     }
 
@@ -463,7 +566,7 @@ mod tests {
     #[test]
     fn test_notify() {
         let initial_state = TestState { counter: 0 };
-        let store: Rc<RefCell<Store<TestState, TestAction, TestEvent>>> =
+        let store: Rc<RefCell<Store<TestState, TestAction, TestEvent, TestEffect>>> =
             Rc::new(RefCell::new(Store::new(TestReducer, initial_state)));
 
         let callback_test = Rc::new(RefCell::new(0));
@@ -487,7 +590,7 @@ mod tests {
     }
 
     #[test]
-    fn test_middleware() {
+    fn test_reduce_middleware() {
         let initial_state = TestState { counter: 0 };
         let store = StoreRef::new(TestReducer, initial_state);
 
@@ -499,10 +602,10 @@ mod tests {
             });
 
         store.subscribe(&callback);
-        store.add_middleware(TestMiddleware {
+        store.add_middleware(TestReduceMiddleware {
             new_action: TestAction::Decrement,
         });
-        store.add_middleware(TestMiddleware {
+        store.add_middleware(TestReduceMiddleware {
             new_action: TestAction::Decrement2,
         });
 
@@ -511,7 +614,7 @@ mod tests {
     }
 
     #[test]
-    fn test_middleware_reverse_order() {
+    fn test_reduce_middleware_reverse_order() {
         let initial_state = TestState { counter: 0 };
         let store = StoreRef::new(TestReducer, initial_state);
 
@@ -523,15 +626,26 @@ mod tests {
             });
 
         store.subscribe(&callback);
-        store.add_middleware(TestMiddleware {
+        store.add_middleware(TestReduceMiddleware {
             new_action: TestAction::Decrement2,
         });
-        store.add_middleware(TestMiddleware {
+        store.add_middleware(TestReduceMiddleware {
             new_action: TestAction::Decrement,
         });
 
         store.dispatch(TestAction::Increment);
         assert_eq!(-1, *callback_test.borrow());
+    }
+
+    #[test]
+    fn test_effect_middleware() {
+        let initial_state = TestState { counter: 0 };
+        let store = StoreRef::new(TestReducer, initial_state);
+        store.add_middleware(TestEffectMiddleware);
+
+        assert_eq!(store.state().counter, 0);
+        store.dispatch(TestAction::Decrent2Then1);
+        assert_eq!(store.state().counter, -3);
     }
 
     #[test]

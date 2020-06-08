@@ -1,3 +1,4 @@
+use super::ReduceMiddlewareResult;
 use crate::{
     middleware::{Middleware, ReduceFn},
     Store, StoreEvent,
@@ -45,18 +46,20 @@ impl SimpleLoggerMiddleware {
     }
 }
 
-impl<State, Action, Event> Middleware<State, Action, Event> for SimpleLoggerMiddleware
+impl<State, Action, Event, Effect> Middleware<State, Action, Event, Effect>
+    for SimpleLoggerMiddleware
 where
     Event: StoreEvent + Clone + Hash + Eq + Debug,
     State: Debug,
     Action: Debug,
+    Effect: Debug,
 {
     fn on_reduce(
         &self,
-        store: &Store<State, Action, Event>,
-        action: Option<Action>,
-        reduce: ReduceFn<State, Action, Event>,
-    ) -> Vec<Event> {
+        store: &Store<State, Action, Event, Effect>,
+        action: Option<&Action>,
+        reduce: ReduceFn<State, Action, Event, Effect>,
+    ) -> ReduceMiddlewareResult<Event, Effect> {
         let was_action = match &action {
             Some(action) => {
                 self.log_level
@@ -80,15 +83,23 @@ where
         events
     }
 
+    fn process_effect(
+        &self,
+        _store: &Store<State, Action, Event, Effect>,
+        effect: Effect,
+    ) -> Option<Effect> {
+        self.log_level.log(format!("effect: {:?}", effect));
+        Some(effect)
+    }
+
     fn on_notify(
         &self,
-        store: &Store<State, Action, Event>,
+        store: &Store<State, Action, Event, Effect>,
         events: Vec<Event>,
-        notify: super::NotifyFn<State, Action, Event>,
+        notify: super::NotifyFn<State, Action, Event, Effect>,
     ) -> Vec<Event> {
-        self.log_level.log("on_notify");
         for event in &events {
-            self.log_level.log(format!("event {:?} dispatched", event));
+            self.log_level.log(format!("event: {:?}", event));
         }
 
         notify(store, events)

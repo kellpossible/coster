@@ -46,7 +46,7 @@ mod tests {
         let tab = Tab::new(
             Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap(),
             "Test",
-            aud.clone(),
+            aud.id,
             vec![user1.clone(), user2.clone(), user3.clone()],
             vec![expense],
         );
@@ -130,7 +130,7 @@ mod tests {
         let tab = Tab::new(
             Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap(),
             "Test",
-            aud.clone(),
+            aud.id,
             vec![user1.clone(), user2.clone(), user3.clone()],
             expenses,
         );

@@ -193,13 +193,13 @@ pub mod tests {
     use crate::tab::Tab;
     use crate::user::{User, UserID};
     use chrono::NaiveDate;
-    use commodity::{Commodity, CommodityType};
+    use commodity::{Commodity, CommodityType, CommodityTypeID};
     use rust_decimal::Decimal;
     use std::rc::Rc;
     use uuid::Uuid;
 
-    fn create_test_commodity() -> Rc<CommodityType> {
-        Rc::from(CommodityType::from_currency_alpha3("USD").unwrap())
+    fn create_test_commodity() -> CommodityTypeID {
+        CommodityType::from_currency_alpha3("USD").unwrap().id
     }
 
     fn create_test_tab() -> Tab {
@@ -225,7 +225,7 @@ pub mod tests {
             NaiveDate::from_ymd(2020, 05, 01),
             paid_by,
             shared_by,
-            Commodity::new(Decimal::new(1, 0), create_test_commodity().id),
+            Commodity::new(Decimal::new(1, 0), create_test_commodity()),
             None,
         )
     }

@@ -19,7 +19,7 @@ pub type TabID = Uuid;
 
 /// A collection of expenses, and users who are responsible
 /// for/associated with those expenses.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Tab {
     /// The id of this tab
     pub id: TabID,
@@ -150,7 +150,7 @@ impl Tab {
                 self.users.push(u.clone());
                 self.user_accounts.insert(
                     u.id,
-                    Rc::new(Tab::new_account_for_user(&u, self.working_currency.id)),
+                    Rc::new(Tab::new_account_for_user(&u, self.working_currency)),
                 );
                 Ok(())
             }
@@ -171,7 +171,7 @@ impl Tab {
     /// transactions, and those with larget debts making more
     /// transactions.
     pub fn balance_transactions(&self) -> Result<Vec<Settlement>, CostingError> {
-        let zero = Commodity::zero(self.working_currency.id);
+        let zero = Commodity::zero(self.working_currency);
 
         let mut actual_transactions: Vec<Rc<ActionTypeValue>> =
             Vec::with_capacity(self.expenses.len());
@@ -221,10 +221,10 @@ impl Tab {
         let account_states_to = &mut shared_program_state.account_states;
 
         let from_sum_with_expenses =
-            sum_account_states(account_states_from, self.working_currency.id, None)?;
+            sum_account_states(account_states_from, self.working_currency, None)?;
         assert!(from_sum_with_expenses.eq_approx(zero, Commodity::default_epsilon()));
         let to_sum_with_expenses =
-            sum_account_states(account_states_to, self.working_currency.id, None)?;
+            sum_account_states(account_states_to, self.working_currency, None)?;
         assert!(to_sum_with_expenses.eq_approx(zero, Commodity::default_epsilon()));
 
         let mut account_states_from_without_expenses = account_states_from.clone();
@@ -242,7 +242,7 @@ impl Tab {
         )?;
 
         let differences_sum =
-            sum_account_states(&account_differences, self.working_currency.id, None)?;
+            sum_account_states(&account_differences, self.working_currency, None)?;
 
         assert!(differences_sum.eq_approx(zero, Commodity::default_epsilon()));
 
@@ -379,7 +379,7 @@ impl Tab {
         let actual_balanced_states = &actual_balanced_transactions_states.account_states;
 
         let actual_balanced_sum =
-            sum_account_states(&actual_balanced_states, self.working_currency.id, None)?;
+            sum_account_states(&actual_balanced_states, self.working_currency, None)?;
         assert!(actual_balanced_sum.eq_approx(zero, Commodity::default_epsilon()));
 
         // dbg!(&account_states_to);

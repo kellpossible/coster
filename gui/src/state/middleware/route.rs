@@ -74,7 +74,7 @@ impl<SR, State, Action, Event, Effect> Middleware<State, Action, Event, Effect>
     for RouteMiddleware<SR, State, Action, Event, Effect>
 where
     SR: SwitchRoute + 'static,
-    Action: IsRouteAction<SR> + PartialEq + Debug + 'static,
+    Action: IsRouteAction<SR> + Debug + 'static,
     State: RouteState<SR> + 'static,
     Event: RouteEvent<SR> + PartialEq + Clone + Hash + Eq + StoreEvent + 'static,
     Effect: 'static,

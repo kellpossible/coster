@@ -120,7 +120,7 @@ impl<Key> Display for ValidationErrors<Key> {
     }
 }
 
-impl <Key> std::error::Error for ValidationErrors<Key> where Key: std::fmt::Debug {}
+impl<Key> std::error::Error for ValidationErrors<Key> where Key: std::fmt::Debug {}
 
 pub type ValidatorFn<Value, Key> = dyn Fn(&Value, &Key) -> Result<(), ValidationError<Key>>;
 
@@ -225,9 +225,11 @@ impl<Value, Key> Default for Validator<Value, Key> {
     }
 }
 
-pub fn concat_results<Key>(results: Vec<Result<(), ValidationErrors<Key>>>) -> Result<(), ValidationErrors<Key>> 
+pub fn concat_results<Key>(
+    results: Vec<Result<(), ValidationErrors<Key>>>,
+) -> Result<(), ValidationErrors<Key>>
 where
-    Key: PartialEq + Clone
+    Key: PartialEq + Clone,
 {
     let mut all_errors: ValidationErrors<Key> = ValidationErrors::default();
 

@@ -33,7 +33,6 @@ lazy_static = "1.4.0"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 web-sys = "0.3"
-serde-diff = "0.3.0"
 kvdb = "0.6"
 kvdb-web = "0.6"
 uuid = { version = "0.8", default_features = false, features = ["v4", "serde", "wasm-bindgen"] }

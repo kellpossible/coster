@@ -2,22 +2,24 @@ use crate::bulma::{
     components::{Form, FormFieldLink, InputField, SelectField},
     FieldKey, InputValue,
 };
-use crate::validation::{ValidationError, Validator, Validatable, ValidationErrors, Validation, concat_results};
+use crate::validation::{
+    concat_results, Validatable, Validation, ValidationError, ValidationErrors, Validator,
+};
 use crate::{
     state::{
         middleware::{localize::LocalizeStore, route::RouteStore},
-        StateCallback, StateStoreRef, ChangeLastSelectedCurrency,
+        ChangeLastSelectedCurrency, CosterAction, StateCallback, StateStoreRef,
     },
     AppRoute,
 };
-use commodity::CommodityType;
-use log::{info, error};
-use std::{rc::Rc, fmt::Display};
-use tr::tr;
-use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
-use costing::Tab;
 use anyhow::anyhow;
+use commodity::CommodityType;
+use costing::Tab;
+use log::{error, info};
+use std::{fmt::Display, rc::Rc};
+use tr::tr;
 use uuid::Uuid;
+use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 #[derive(PartialEq, Clone, Copy, Hash, Eq, Debug)]
 enum FormFields {
@@ -42,12 +44,19 @@ pub struct FormData {
 
 impl FormData {
     pub fn create_tab(&self) -> Result<Tab, anyhow::Error> {
-        self.validate().map_err(|e| anyhow!("error validating FormData: {}", e))?;
-        let working_currency = match &self.working_currency {
-            Some(working_currency) => Rc::new(working_currency.clone()),
-            None => return Err(anyhow!("empty working_currency in FormData"))
+        self.validate()
+            .map_err(|e| anyhow!("error validating FormData: {}", e))?;
+        let working_currency_id = match &self.working_currency {
+            Some(working_currency) => working_currency.id,
+            None => return Err(anyhow!("empty working_currency in FormData")),
         };
-        Ok(Tab::new(Uuid::new_v4(), self.name.clone(), working_currency, Vec::new(), Vec::new()))
+        Ok(Tab::new(
+            Uuid::new_v4(),
+            self.name.clone(),
+            working_currency_id,
+            Vec::new(),
+            Vec::new(),
+        ))
     }
 }
 
@@ -78,8 +87,10 @@ impl FormData {
 impl Validatable<FormFields> for FormData {
     fn validate(&self) -> Result<(), ValidationErrors<FormFields>> {
         concat_results(vec![
-            Self::name_validator().validate_value(&InputValue::String(self.name.clone()), &FormFields::Name),
-            Self::working_currency_validator().validate_value(&self.working_currency, &FormFields::WorkingCurrency)
+            Self::name_validator()
+                .validate_value(&InputValue::String(self.name.clone()), &FormFields::Name),
+            Self::working_currency_validator()
+                .validate_value(&self.working_currency, &FormFields::WorkingCurrency),
         ])
     }
 }
@@ -153,15 +164,19 @@ impl Component for NewCostingTab {
                     last_selected_currency: self.form_data.working_currency.clone(),
                     write_to_database: true,
                 });
-                info!("Creating Tab with data: {:?}", self.form_data);
                 let tab = match self.form_data.create_tab() {
                     Ok(tab) => tab,
                     Err(err) => {
                         error!("{}", err);
                         return false;
-                    },
+                    }
                 };
-                info!("Tab: {:?}", tab);
+
+                self.props.state_store.dispatch(CosterAction::CreateTab {
+                    tab: Rc::new(tab),
+                    write_to_database: true,
+                });
+
                 self.props.state_store.change_route(AppRoute::Index);
                 true
             }

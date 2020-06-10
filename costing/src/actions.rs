@@ -7,53 +7,59 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::Hash;
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum TabUserActionType {
+    AddExpense(AddExpense),
+    AddUser(AddUser),
+}
+
 /// Represents an action that a [User](crate::user::User) can perform to modify a [Tab](Tab).
-pub trait UserAction: fmt::Debug {
+pub trait TabUserAction: fmt::Debug {
     /// Get metadata about the action.
-    fn metadata(&self) -> &UserActionMetadata;
+    fn metadata(&self) -> &TabUserActionMetadata;
 
     /// Perform the action to mutate the [Tab](Tab).
     fn perform(&self, tab: &mut Tab) -> Result<(), CostingError>;
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct UserActionMetadata {
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TabUserActionMetadata {
     pub user_id: UserID,
     pub datetime: DateTime<Utc>,
 }
 
-impl UserActionMetadata {
-    pub fn new(user_id: UserID, datetime: DateTime<Utc>) -> UserActionMetadata {
-        UserActionMetadata { user_id, datetime }
+impl TabUserActionMetadata {
+    pub fn new(user_id: UserID, datetime: DateTime<Utc>) -> TabUserActionMetadata {
+        TabUserActionMetadata { user_id, datetime }
     }
 }
 
 // TODO: potentially remove this
-impl Hash for UserActionMetadata {
+impl Hash for TabUserActionMetadata {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.user_id.hash(state);
         self.datetime.hash(state);
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AddExpense {
     /// Metadata about this action.
-    pub metadata: UserActionMetadata,
+    pub metadata: TabUserActionMetadata,
     pub expense: Expense,
 }
 
 impl AddExpense {
     pub fn new(action_user_id: UserID, expense: Expense) -> AddExpense {
         AddExpense {
-            metadata: UserActionMetadata::new(action_user_id, Utc::now()),
+            metadata: TabUserActionMetadata::new(action_user_id, Utc::now()),
             expense,
         }
     }
 }
 
-impl UserAction for AddExpense {
-    fn metadata(&self) -> &UserActionMetadata {
+impl TabUserAction for AddExpense {
+    fn metadata(&self) -> &TabUserActionMetadata {
         &self.metadata
     }
     fn perform(&self, tab: &mut Tab) -> Result<(), CostingError> {
@@ -70,21 +76,21 @@ impl UserAction for AddExpense {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RemoveExpense {
     /// Metadata about this action.
-    pub metadata: UserActionMetadata,
+    pub metadata: TabUserActionMetadata,
     pub expense_id: ExpenseID,
 }
 
 impl RemoveExpense {
     pub fn new(action_user_id: UserID, expense_to_remove_id: UserID) -> RemoveExpense {
         RemoveExpense {
-            metadata: UserActionMetadata::new(action_user_id, Utc::now()),
+            metadata: TabUserActionMetadata::new(action_user_id, Utc::now()),
             expense_id: expense_to_remove_id,
         }
     }
 }
 
-impl UserAction for RemoveExpense {
-    fn metadata(&self) -> &UserActionMetadata {
+impl TabUserAction for RemoveExpense {
+    fn metadata(&self) -> &TabUserActionMetadata {
         &self.metadata
     }
     fn perform(&self, tab: &mut Tab) -> Result<(), CostingError> {
@@ -105,21 +111,21 @@ impl UserAction for RemoveExpense {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChangeTabName {
     /// Metadata about this action.
-    pub metadata: UserActionMetadata,
+    pub metadata: TabUserActionMetadata,
     pub name: String,
 }
 
 impl ChangeTabName {
     pub fn new(action_user_id: UserID, name: &str) -> ChangeTabName {
         ChangeTabName {
-            metadata: UserActionMetadata::new(action_user_id, Utc::now()),
+            metadata: TabUserActionMetadata::new(action_user_id, Utc::now()),
             name: String::from(name),
         }
     }
 }
 
-impl UserAction for ChangeTabName {
-    fn metadata(&self) -> &UserActionMetadata {
+impl TabUserAction for ChangeTabName {
+    fn metadata(&self) -> &TabUserActionMetadata {
         &self.metadata
     }
     fn perform(&self, tab: &mut Tab) -> Result<(), CostingError> {
@@ -128,10 +134,10 @@ impl UserAction for ChangeTabName {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AddUser {
     /// Metadata about this action.
-    pub metadata: UserActionMetadata,
+    pub metadata: TabUserActionMetadata,
     /// The user to add to the [Tab](Tab).
     pub user_to_add: User,
 }
@@ -139,14 +145,14 @@ pub struct AddUser {
 impl AddUser {
     pub fn new(action_user_id: UserID, user_to_add: User) -> AddUser {
         AddUser {
-            metadata: UserActionMetadata::new(action_user_id, Utc::now()),
+            metadata: TabUserActionMetadata::new(action_user_id, Utc::now()),
             user_to_add,
         }
     }
 }
 
-impl UserAction for AddUser {
-    fn metadata(&self) -> &UserActionMetadata {
+impl TabUserAction for AddUser {
+    fn metadata(&self) -> &TabUserActionMetadata {
         &self.metadata
     }
     fn perform(&self, tab: &mut Tab) -> Result<(), CostingError> {
@@ -157,7 +163,7 @@ impl UserAction for AddUser {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RemoveUser {
     /// Metadata about this action.
-    pub metadata: UserActionMetadata,
+    pub metadata: TabUserActionMetadata,
     /// [UserID](UserID) of the [User](User) to remove from the [Tab](Tab).
     pub user_id: UserID,
 }
@@ -165,14 +171,14 @@ pub struct RemoveUser {
 impl RemoveUser {
     pub fn new(action_user_id: UserID, user_to_remove_id: UserID) -> RemoveUser {
         RemoveUser {
-            metadata: UserActionMetadata::new(action_user_id, Utc::now()),
+            metadata: TabUserActionMetadata::new(action_user_id, Utc::now()),
             user_id: user_to_remove_id,
         }
     }
 }
 
-impl UserAction for RemoveUser {
-    fn metadata(&self) -> &UserActionMetadata {
+impl TabUserAction for RemoveUser {
+    fn metadata(&self) -> &TabUserActionMetadata {
         &self.metadata
     }
     fn perform(&self, tab: &mut Tab) -> Result<(), CostingError> {
@@ -182,21 +188,28 @@ impl UserAction for RemoveUser {
 
 #[cfg(test)]
 pub mod tests {
-    use super::{AddExpense, AddUser, ChangeTabName, RemoveExpense, RemoveUser, UserAction};
+    use super::{AddExpense, AddUser, ChangeTabName, RemoveExpense, RemoveUser, TabUserAction};
     use crate::expense::{Expense, ExpenseCategory, ExpenseID};
     use crate::tab::Tab;
     use crate::user::{User, UserID};
     use chrono::NaiveDate;
-    use commodity::{Commodity, CommodityType};
+    use commodity::{Commodity, CommodityType, CommodityTypeID};
     use rust_decimal::Decimal;
     use std::rc::Rc;
+    use uuid::Uuid;
 
-    fn create_test_commodity() -> Rc<CommodityType> {
-        Rc::from(CommodityType::from_currency_alpha3("USD").unwrap())
+    fn create_test_commodity() -> CommodityTypeID {
+        CommodityType::from_currency_alpha3("USD").unwrap().id
     }
 
     fn create_test_tab() -> Tab {
-        Tab::new(0, "Test Tab", create_test_commodity(), vec![], vec![])
+        Tab::new(
+            Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap(),
+            "Test Tab",
+            create_test_commodity(),
+            vec![],
+            vec![],
+        )
     }
 
     fn create_test_user(id: UserID, name: &str) -> Rc<User> {
@@ -218,7 +231,7 @@ pub mod tests {
             NaiveDate::from_ymd(2020, 05, 01),
             paid_by,
             shared_by,
-            Commodity::new(Decimal::new(1, 0), create_test_commodity().id),
+            Commodity::new(Decimal::new(1, 0), create_test_commodity()),
             None,
         )
     }

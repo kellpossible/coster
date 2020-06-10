@@ -1,7 +1,10 @@
-use serde::Serialize;
-use super::{middleware::{localize::LocalizeEvent, route::RouteEvent}, RouteType};
-use yew_state::StoreEvent;
+use super::{
+    middleware::{localize::LocalizeEvent, route::RouteEvent},
+    RouteType,
+};
 use costing::TabID;
+use serde::Serialize;
+use yew_state::StoreEvent;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
 pub enum CosterEvent {

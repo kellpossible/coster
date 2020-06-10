@@ -1,6 +1,6 @@
 use crate::state::middleware::localize::LocalizeStore;
 use crate::{
-    state::{middleware::route::RouteStore, StateCallback, StateStoreRef, CosterEvent},
+    state::{middleware::route::RouteStore, CosterEvent, StateCallback, StateStoreRef},
     AppRoute,
 };
 
@@ -10,9 +10,9 @@ use std::rc::Rc;
 use commodity::CommodityType;
 use costing::Tab;
 use tr::tr;
+use uuid::Uuid;
 use yew::MouseEvent;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
-use uuid::Uuid;
 
 pub struct CostingTabList {
     props: Props,
@@ -44,7 +44,9 @@ impl Component for CostingTabList {
 
         let tabs_changed_callback = link.callback(|(_store, _event)| Msg::TabsChanged).into();
 
-        props.state_store.subscribe_event(&tabs_changed_callback, CosterEvent::TabsChanged);
+        props
+            .state_store
+            .subscribe_event(&tabs_changed_callback, CosterEvent::TabsChanged);
 
         CostingTabList {
             props,

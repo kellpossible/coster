@@ -147,6 +147,7 @@ dependencies = [
  "chrono",
  "commodity",
  "doublecount",
+ "kvdb",
  "rust_decimal",
  "serde",
  "serde_derive",

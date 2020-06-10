@@ -1,10 +1,13 @@
-use serde::{Serialize, Deserialize};
-use yew_state::StoreRef;
-use super::{CosterEvent, CosterAction, CosterEffect, RouteType, AppRoute, middleware::{route::RouteState, localize::LocalizeState}};
-use unic_langid::LanguageIdentifier;
+use super::{
+    middleware::{localize::LocalizeState, route::RouteState},
+    AppRoute, CosterAction, CosterEffect, CosterEvent, RouteType,
+};
 use commodity::CommodityType;
-use costing::Tab;
+use costing::{Tab, TabID};
+use serde::{Deserialize, Serialize};
 use std::rc::Rc;
+use unic_langid::LanguageIdentifier;
+use yew_state::StoreRef;
 
 pub type StateCallback = yew_state::Callback<CosterState, CosterEvent>;
 
@@ -49,7 +52,10 @@ impl CosterState {
         }
     }
 
-    pub fn change_last_selected_currency(&self, last_selected_currency: Option<CommodityType>) -> Self {
+    pub fn change_last_selected_currency(
+        &self,
+        last_selected_currency: Option<CommodityType>,
+    ) -> Self {
         Self {
             selected_language: self.selected_language.clone(),
             route: self.route.clone(),
@@ -65,6 +71,10 @@ impl CosterState {
             last_selected_currency: self.last_selected_currency.clone(),
             tabs,
         }
+    }
+
+    pub fn tab_ids(&self) -> Vec<TabID> {
+        self.tabs.iter().map(|tab| tab.id).collect()
     }
 }
 

@@ -1,19 +1,24 @@
 use crate::actions::TabUserAction;
+use crate::db::{DBTransactionSerde, DatabaseValue, KeyValueDBSerde, KeyValueDBStore};
 use crate::error::CostingError;
 use crate::expense::{Expense, ExpenseCategory};
 use crate::settlement::Settlement;
-use crate::{TabUserActionType, user::{User, UserID}};
+use crate::{
+    user::{User, UserID},
+    TabUserActionType,
+};
 use chrono::{Local, NaiveDate};
 use commodity::{Commodity, CommodityType, CommodityTypeID};
 use doublecount::{
     sum_account_states, Account, AccountID, AccountState, AccountStatus, AccountingError,
     ActionTypeValue, Program, ProgramState, Transaction, TransactionElement,
 };
+use kvdb::KeyValueDB;
+use serde::{Deserialize, Serialize};
 use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::{fmt::Display, rc::Rc};
 use uuid::Uuid;
-use serde::{Serialize, Deserialize};
 
 pub type TabID = Uuid;
 
@@ -26,9 +31,14 @@ struct Accounts {
 }
 
 impl Accounts {
-    pub fn new(users: &Vec<Rc<User>>, expenses: &Vec<Expense>, working_currency: CommodityTypeID) -> Self {
+    pub fn new(
+        users: &Vec<Rc<User>>,
+        expenses: &Vec<Expense>,
+        working_currency: CommodityTypeID,
+    ) -> Self {
         let mut user_accounts = HashMap::with_capacity(users.len());
-        let mut expense_category_accounts: HashMap<String, Rc<Account>> = HashMap::with_capacity(expenses.len());
+        let mut expense_category_accounts: HashMap<String, Rc<Account>> =
+            HashMap::with_capacity(expenses.len());
 
         for user in users {
             let account = Rc::from(Tab::new_account_for_user(&user, working_currency));
@@ -56,9 +66,9 @@ impl Accounts {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
 /// A deserializeable version of [Tab], designed for wire transfers,
 /// without the [Account]s.
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TabData {
     /// The id of this tab
     pub id: TabID,
@@ -74,9 +84,26 @@ pub struct TabData {
     pub user_actions: Vec<TabUserActionType>,
 }
 
+impl TabData {
+    pub fn from_tab(tab: &Tab) -> Self {
+        TabData {
+            id: tab.id,
+            name: tab.name.clone(),
+            working_currency: tab.working_currency,
+            users: tab.users.clone(),
+            expenses: tab.expenses.clone(),
+            user_actions: tab.user_actions.clone(),
+        }
+    }
+}
+
 impl From<TabData> for Tab {
     fn from(tab_data: TabData) -> Self {
-        let accounts = Accounts::new(&tab_data.users, &tab_data.expenses, tab_data.working_currency);
+        let accounts = Accounts::new(
+            &tab_data.users,
+            &tab_data.expenses,
+            tab_data.working_currency,
+        );
         Tab {
             id: tab_data.id,
             name: tab_data.name,
@@ -84,20 +111,7 @@ impl From<TabData> for Tab {
             users: tab_data.users,
             expenses: tab_data.expenses,
             user_actions: tab_data.user_actions,
-            accounts
-        }
-    }
-}
-
-impl From<Tab> for TabData {
-    fn from(tab: Tab) -> Self {
-        TabData {
-            id: tab.id,
-            name: tab.name,
-            working_currency: tab.working_currency,
-            users: tab.users,
-            expenses: tab.expenses,
-            user_actions: tab.user_actions,
+            accounts,
         }
     }
 }
@@ -130,7 +144,6 @@ impl Tab {
         users: Vec<Rc<User>>,
         expenses: Vec<Expense>,
     ) -> Tab {
-
         let accounts = Accounts::new(&users, &expenses, working_currency);
 
         Tab {
@@ -140,7 +153,7 @@ impl Tab {
             users,
             expenses,
             user_actions: vec![],
-            accounts
+            accounts,
         }
     }
 
@@ -174,7 +187,8 @@ impl Tab {
     }
 
     pub fn get_user_account(&self, user_id: &UserID) -> Result<&Rc<Account>, CostingError> {
-        self.accounts.users
+        self.accounts
+            .users
             .get(user_id)
             .ok_or_else(|| CostingError::UserAccountDoesNotExistOnTab(*user_id, self.id))
     }
@@ -183,7 +197,8 @@ impl Tab {
         &self,
         category: &ExpenseCategory,
     ) -> Result<&Rc<Account>, CostingError> {
-        self.accounts.expense_categories
+        self.accounts
+            .expense_categories
             .get(category)
             .ok_or_else(|| CostingError::NoExpenseCategoryAccountOnTab(category.clone(), self.id))
     }
@@ -487,11 +502,36 @@ impl Tab {
     }
 
     fn get_user_with_account(&self, account_id: &AccountID) -> Result<Rc<User>, CostingError> {
-        self.accounts.users
+        self.accounts
+            .users
             .iter()
             .find(|(_, v)| v.id == *account_id)
             .map(|(k, _)| self.user(k).map(|u| u.clone()))
             .unwrap()
+    }
+}
+
+impl DatabaseValue<TabID> for Tab {
+    fn read_from_db<DB, S>(path: &str, id: TabID, db: &DB, db_store: &S) -> Option<Self>
+    where
+        DB: KeyValueDBSerde,
+        S: KeyValueDBStore,
+    {
+        let key = format!("{}/{}", path, id);
+        let tab_data: Option<TabData> = db
+            .get_deserialize(db_store, key)
+            .expect("unable to read tab from database");
+
+        tab_data.map(|td| td.into())
+    }
+
+    fn write_to_db<T, S>(&self, path: &str, transaction: &mut T, db_store: &S)
+    where
+        T: DBTransactionSerde,
+        S: KeyValueDBStore,
+    {
+        let key = format!("{}/{}", path, self.id);
+        transaction.put_serialize(db_store, key, TabData::from_tab(self));
     }
 }
 

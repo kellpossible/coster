@@ -5,8 +5,8 @@ use crate::state::StateStoreRef;
 use commodity::CommodityType;
 use costing::Tab;
 use tr::tr;
-use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use uuid::Uuid;
+use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 pub struct CostingTab {
     tab: RefCell<Tab>,

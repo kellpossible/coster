@@ -11,6 +11,7 @@ use components::new_costing_tab::NewCostingTab;
 use components::pages::{centered, Page};
 use switch_router::{SwitchRoute, SwitchRouteService};
 
+use costing::db::KeyValueDBStore;
 use i18n_embed::{
     language_loader, DefaultLocalizer, I18nEmbed, LanguageRequester, Localizer,
     WebLanguageRequester,
@@ -20,6 +21,7 @@ use log;
 use log::{debug, error};
 use rust_embed::RustEmbed;
 use state::{
+    db::CosterClientDBStore,
     middleware::{
         db::DatabaseMiddleware,
         localize::LocalizeMiddleware,
@@ -113,8 +115,11 @@ impl Component for Model {
         // attempts to change something), it will be overridden, and
         // the change will be lost. #18
         wasm_bindgen_futures::spawn_local(async move {
-            let database_result: Result<kvdb_web::Database, _> =
-                kvdb_web::Database::open("CosterState".to_string(), 1).await;
+            let database_result: Result<kvdb_web::Database, _> = kvdb_web::Database::open(
+                "CosterState".to_string(),
+                CosterClientDBStore::n_db_cols(),
+            )
+            .await;
             match database_result {
                 Ok(database) => {
                     let database_middleware = DatabaseMiddleware::new(database);

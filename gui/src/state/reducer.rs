@@ -1,13 +1,13 @@
 use super::{
-    middleware::{
-        db::DBTransactionSerde, db::DatabaseEffect, db::KeyValueDBSerde, localize::LocalizeStore,
-        route::RouteAction,
-    },
-    CosterAction, CosterEffect, CosterEvent, CosterState, ChangeLastSelectedCurrency,
+    db::CosterClientDBStore,
+    middleware::{db::DatabaseEffect, localize::LocalizeStore, route::RouteAction},
+    ChangeLastSelectedCurrency, CosterAction, CosterEffect, CosterEvent, CosterState,
 };
-use std::rc::Rc;
-use yew_state::{Reducer, ReducerResult};
 use commodity::CommodityType;
+use costing::db::{DBTransactionSerde, DatabaseValue, KeyValueDBSerde};
+use costing::{Tab, TabData, TabID};
+use std::rc::Rc;
+use yew_state::{Reducer, ReducerResult, Store};
 
 pub struct CosterReducer;
 
@@ -31,7 +31,11 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                     let effect =
                         DatabaseEffect::new("write selected_language", move |_store, database| {
                             let mut transaction = database.transaction();
-                            transaction.put_serialize(0, "selected_language", &effect_language);
+                            transaction.put_serialize(
+                                &CosterClientDBStore::General,
+                                "selected_language",
+                                &effect_language,
+                            );
                             database
                                 .write(transaction)
                                 .expect("there was a problem executing a database transaction");
@@ -53,44 +57,25 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                 }
                 RouteAction::PollBrowserRoute => prev_state.clone(),
             },
-            CosterAction::LoadDatabase => {
-                let effect = DatabaseEffect::new("load database", move |store, database| {
-                    log::debug!("DatabaseEffect load database");
-                    let selected_language_option: Option<Option<unic_langid::LanguageIdentifier>> =
-                        database
-                            .get_deserialize(0, "selected_language")
-                            .expect("unable to read from database");
-                    if let Some(selected_language) = selected_language_option {
-                        store.change_selected_language(selected_language, false);
-                    }
-                    let last_selected_currency_option: Option<Option<CommodityType>> =
-                        database
-                            .get_deserialize(0, "last_selected_currency")
-                            .expect("unable to read from database");
-                    if let Some(last_selected_currency) = last_selected_currency_option {
-                        store.dispatch(ChangeLastSelectedCurrency {
-                           last_selected_currency,
-                           write_to_database: false, 
-                        });
-                    }
-                });
-
-                effects.push(effect.into());
-                prev_state.clone()
-            }
             CosterAction::ChangeLastSelectedCurrency(action) => {
                 let last_selected_currency = &action.last_selected_currency;
 
                 if action.write_to_database {
                     let effect_currency = last_selected_currency.clone();
-                    let effect =
-                        DatabaseEffect::new("write last_selected_currency", move |_store, database| {
+                    let effect = DatabaseEffect::new(
+                        "write last_selected_currency",
+                        move |_store, database| {
                             let mut transaction = database.transaction();
-                            transaction.put_serialize(0, "last_selected_currency", &effect_currency);
+                            transaction.put_serialize(
+                                &CosterClientDBStore::General,
+                                "last_selected_currency",
+                                &effect_currency,
+                            );
                             database
                                 .write(transaction)
                                 .expect("there was a problem executing a database transaction");
-                        });
+                        },
+                    );
 
                     effects.push(effect.into());
                 }
@@ -98,12 +83,97 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                 events.push(CosterEvent::LastSelectedCurrencyChanged);
                 Rc::new(prev_state.change_last_selected_currency(last_selected_currency.clone()))
             }
-            CosterAction::AddTab(tab) => {
+            CosterAction::CreateTab {
+                tab,
+                write_to_database,
+            } => {
                 let mut tabs = prev_state.tabs.clone();
                 tabs.push(tab.clone());
                 events.push(CosterEvent::TabsChanged);
                 events.push(CosterEvent::TabChanged(tab.id));
+
+                if *write_to_database {
+                    let effect_tab = tab.clone();
+                    let effect = DatabaseEffect::new(
+                        "write tabs, and add new tab",
+                        move |store: &Store<
+                            CosterState,
+                            CosterAction,
+                            CosterEvent,
+                            CosterEffect,
+                        >,
+                              database| {
+                            let mut transaction = database.transaction();
+                            let tab_ids = store.state().tab_ids();
+                            let tab_key = format!("tabs/{}", effect_tab.id);
+
+                            let tab_data = TabData::from_tab(&effect_tab);
+
+                            // TODO: refactor tabs vector into something within `costing` library to be shared
+                            // with the server.
+                            transaction.put_serialize(&CosterClientDBStore::Tabs, "tabs", &tab_ids);
+                            effect_tab.write_to_db(
+                                "tabs",
+                                &mut transaction,
+                                &CosterClientDBStore::Tabs,
+                            );
+                            database
+                                .write(transaction)
+                                .expect("there was a problem executing a database transaction");
+                        },
+                    );
+
+                    effects.push(effect.into());
+                }
+
                 Rc::new(prev_state.change_tabs(tabs))
+            }
+            CosterAction::LoadDatabase => {
+                let effect = DatabaseEffect::new("load database", move |store, database| {
+                    log::debug!("DatabaseEffect load database");
+                    let selected_language_option: Option<Option<unic_langid::LanguageIdentifier>> =
+                        database
+                            .get_deserialize(&CosterClientDBStore::General, "selected_language")
+                            .expect("unable to read from database");
+                    if let Some(selected_language) = selected_language_option {
+                        store.change_selected_language(selected_language, false);
+                    }
+                    let last_selected_currency_option: Option<Option<CommodityType>> = database
+                        .get_deserialize(&CosterClientDBStore::General, "last_selected_currency")
+                        .expect("unable to read \"last_selected_currency\" from database");
+                    if let Some(last_selected_currency) = last_selected_currency_option {
+                        store.dispatch(ChangeLastSelectedCurrency {
+                            last_selected_currency,
+                            write_to_database: false,
+                        });
+                    }
+
+                    // TODO: refactor tabs vector into something within `costing` library to be shared
+                    // with the server.
+                    let tab_ids_option: Option<Vec<TabID>> = database
+                        .get_deserialize(&CosterClientDBStore::Tabs, "tabs")
+                        .expect("unable to read \"tabs\" from database");
+
+                    if let Some(tab_ids) = tab_ids_option {
+                        for tab_id in tab_ids {
+                            let tab = Tab::read_from_db(
+                                "tabs",
+                                tab_id,
+                                &database,
+                                &CosterClientDBStore::Tabs,
+                            )
+                            .expect("unable to read tab from database");
+
+                            store.dispatch(CosterAction::CreateTab {
+                                tab: Rc::new(tab),
+                                write_to_database: false,
+                            })
+                        }
+                    }
+                });
+
+                effects.push(effect.into());
+                prev_state.clone()
             }
         };
 

@@ -203,7 +203,13 @@ pub mod tests {
     }
 
     fn create_test_tab() -> Tab {
-        Tab::new(Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap(), "Test Tab", create_test_commodity(), vec![], vec![])
+        Tab::new(
+            Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap(),
+            "Test Tab",
+            create_test_commodity(),
+            vec![],
+            vec![],
+        )
     }
 
     fn create_test_user(id: UserID, name: &str) -> Rc<User> {

@@ -1,8 +1,8 @@
-use crate::actions::UserAction;
+use crate::actions::TabUserAction;
 use crate::error::CostingError;
 use crate::expense::{Expense, ExpenseCategory};
 use crate::settlement::Settlement;
-use crate::{UserActionType, user::{User, UserID}};
+use crate::{TabUserActionType, user::{User, UserID}};
 use chrono::{Local, NaiveDate};
 use commodity::{Commodity, CommodityType, CommodityTypeID};
 use doublecount::{
@@ -71,7 +71,7 @@ pub struct TabData {
     /// The expenses recorded on this tab
     pub expenses: Vec<Expense>,
     /// Actions performed by the users of this tab
-    pub user_actions: Vec<UserActionType>,
+    pub user_actions: Vec<TabUserActionType>,
 }
 
 impl From<TabData> for Tab {
@@ -117,7 +117,7 @@ pub struct Tab {
     /// The expenses recorded on this tab
     pub expenses: Vec<Expense>,
     /// Actions performed by the users of this tab
-    pub user_actions: Vec<UserActionType>,
+    pub user_actions: Vec<TabUserActionType>,
     accounts: Accounts,
 }
 

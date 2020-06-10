@@ -35,7 +35,7 @@ impl Display for CosterAction {
                 write!(f, "ChangeLastSelectedCurrency({})", currency_display)
             }
             CosterAction::AddTab(tab) => {
-                write!(f, "AddTab(?)")
+                write!(f, "AddTab({})", tab.id)
             },
         }
     }

@@ -75,21 +75,43 @@ impl Component for CostingTabList {
     }
 
     fn view(&self) -> Html {
+        let state = self.props.state_store.state();
         let new_tab_handler = self.link.callback(|msg: MouseEvent| Msg::NewCostingTab);
 
+        let tabs_html_iter = state.tabs.iter().map(|tab| {
+            html! {
+                <tr>
+                    <td>{ &tab.name }</td>
+                </tr>
+            }
+        });
+
         html! {
-            <nav class="level">
-                <div class="level-left">
-                    <div class="level-item">
-                        <h3 class="title is-3">{ tr!("Your Tabs") }</h3>
+            <>
+                <nav class="level">
+                    <div class="level-left">
+                        <div class="level-item">
+                            <h3 class="title is-3">{ tr!("Your Tabs") }</h3>
+                        </div>
                     </div>
-                </div>
-                <div class="level-right">
-                    <div class="level-item">
-                        <button class="button is-success" onclick = new_tab_handler>{ tr!("New Tab") }</button>
+                    <div class="level-right">
+                        <div class="level-item">
+                            <button class="button is-success" onclick = new_tab_handler>{ tr!("New Tab") }</button>
+                        </div>
                     </div>
-                </div>
-            </nav>
+                </nav>
+                <table class="table is-striped is-fullwidth">
+                    <thead>
+                        <tr>
+                            <th>{ tr!("Tab Name") }</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        { for tabs_html_iter }
+                    </tbody>
+                </table>
+            </>
+
         }
     }
 }

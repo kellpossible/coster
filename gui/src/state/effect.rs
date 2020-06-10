@@ -1,5 +1,8 @@
+use super::{
+    middleware::db::{DatabaseEffect, IsDatabaseEffect},
+    CosterAction, CosterEvent, CosterState,
+};
 use serde::Serialize;
-use super::{CosterState, middleware::db::{IsDatabaseEffect, DatabaseEffect}, CosterAction, CosterEvent};
 
 #[derive(Clone, Debug, Serialize)]
 pub enum CosterEffect {

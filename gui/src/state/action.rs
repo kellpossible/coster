@@ -1,7 +1,14 @@
-use serde::Serialize;
+use super::{
+    middleware::{
+        localize::{ChangeSelectedLanguage, LocalizeAction},
+        route::{IsRouteAction, RouteAction},
+    },
+    RouteType,
+};
 use commodity::CommodityType;
-use super::{RouteType, middleware::{route::{IsRouteAction, RouteAction}, localize::{LocalizeAction, ChangeSelectedLanguage}}};
-use std::fmt::Display;
+use costing::Tab;
+use serde::Serialize;
+use std::{fmt::Display, rc::Rc};
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
 pub struct ChangeLastSelectedCurrency {
@@ -9,13 +16,17 @@ pub struct ChangeLastSelectedCurrency {
     pub write_to_database: bool,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub enum CosterAction {
     /// Selected language, and whether or not to write the value to the database.
     ChangeSelectedLanguage(ChangeSelectedLanguage),
     RouteAction(RouteAction<RouteType>),
     LoadDatabase,
     ChangeLastSelectedCurrency(ChangeLastSelectedCurrency),
+    CreateTab {
+        tab: Rc<Tab>,
+        write_to_database: bool,
+    },
 }
 
 impl Display for CosterAction {
@@ -30,8 +41,16 @@ impl Display for CosterAction {
                     Some(currency) => format!("{}", currency),
                     None => "None".to_string(),
                 };
-                write!(f, "ChangeLastSelectedCurrency({})", currency_display)
+                write!(
+                    f,
+                    "ChangeLastSelectedCurrency({}, write: {:?})",
+                    currency_display, action.write_to_database
+                )
             }
+            CosterAction::CreateTab {
+                tab,
+                write_to_database,
+            } => write!(f, "CreateTab({}, write: {:?})", tab.id, write_to_database),
         }
     }
 }

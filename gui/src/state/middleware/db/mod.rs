@@ -27,41 +27,6 @@ enum DatabaseAction {
     LoadStore,
 }
 
-pub trait KeyValueDBSerde {
-    fn get_deserialize<K: AsRef<str>, V: DeserializeOwned>(
-        &self,
-        col: u32,
-        key: K,
-    ) -> io::Result<Option<V>>;
-}
-
-pub trait DBTransactionSerde {
-    fn put_serialize<K: AsRef<str>, V: Serialize>(&mut self, col: u32, key: K, value: V);
-}
-
-impl KeyValueDBSerde for &dyn KeyValueDB {
-    fn get_deserialize<K: AsRef<str>, V: DeserializeOwned>(
-        &self,
-        col: u32,
-        key: K,
-    ) -> io::Result<Option<V>> {
-        self.get(col, key.as_ref().as_bytes()).map(|value_option| {
-            value_option.map(|value_bytes| {
-                serde_json::from_slice(&value_bytes).expect("unable to desrialize database value")
-            })
-        })
-    }
-}
-
-impl DBTransactionSerde for DBTransaction {
-    fn put_serialize<K: AsRef<str>, V: Serialize>(&mut self, col: u32, key: K, value: V) {
-        let value_string =
-            serde_json::to_string(&value).expect("unable to serialize database value");
-
-        self.put(col, key.as_ref().as_bytes(), value_string.as_bytes())
-    }
-}
-
 // TODO: this could be refactored into an enum, with effect for read, write, and then custom closure.
 // Would make it easier to debug this code with the logger, and more explicit about what is going on.
 // Custom closure could have a name too.

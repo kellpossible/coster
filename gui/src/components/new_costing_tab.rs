@@ -6,7 +6,7 @@ use crate::validation::{ValidationError, Validator, Validatable, ValidationError
 use crate::{
     state::{
         middleware::{localize::LocalizeStore, route::RouteStore},
-        StateCallback, StateStoreRef, ChangeLastSelectedCurrency,
+        StateCallback, StateStoreRef, ChangeLastSelectedCurrency, CosterAction,
     },
     AppRoute,
 };
@@ -43,11 +43,11 @@ pub struct FormData {
 impl FormData {
     pub fn create_tab(&self) -> Result<Tab, anyhow::Error> {
         self.validate().map_err(|e| anyhow!("error validating FormData: {}", e))?;
-        let working_currency = match &self.working_currency {
-            Some(working_currency) => Rc::new(working_currency.clone()),
+        let working_currency_id = match &self.working_currency {
+            Some(working_currency) => working_currency.id,
             None => return Err(anyhow!("empty working_currency in FormData"))
         };
-        Ok(Tab::new(Uuid::new_v4(), self.name.clone(), working_currency, Vec::new(), Vec::new()))
+        Ok(Tab::new(Uuid::new_v4(), self.name.clone(), working_currency_id, Vec::new(), Vec::new()))
     }
 }
 
@@ -153,7 +153,6 @@ impl Component for NewCostingTab {
                     last_selected_currency: self.form_data.working_currency.clone(),
                     write_to_database: true,
                 });
-                info!("Creating Tab with data: {:?}", self.form_data);
                 let tab = match self.form_data.create_tab() {
                     Ok(tab) => tab,
                     Err(err) => {
@@ -161,7 +160,8 @@ impl Component for NewCostingTab {
                         return false;
                     },
                 };
-                info!("Tab: {:?}", tab);
+
+                self.props.state_store.dispatch(CosterAction::AddTab(Rc::new(tab)));
                 self.props.state_store.change_route(AppRoute::Index);
                 true
             }

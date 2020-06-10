@@ -478,7 +478,6 @@ dependencies = [
  "rust-embed",
  "rust_decimal",
  "serde",
- "serde-diff",
  "serde_derive",
  "serde_json",
  "switch-router",

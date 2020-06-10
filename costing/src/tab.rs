@@ -11,15 +11,100 @@ use doublecount::{
 };
 use std::cmp::Reverse;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::{fmt::Display, rc::Rc};
 use uuid::Uuid;
 use serde::{Serialize, Deserialize};
 
 pub type TabID = Uuid;
 
+#[derive(Debug, Default, Serialize, Clone)]
+struct Accounts {
+    /// [Accounts](Account) associated with [ExpenseCategories](ExpenseCategory).
+    expense_categories: HashMap<ExpenseCategory, Rc<Account>>,
+    /// [Accounts](Account) associated with [Users](User).
+    users: HashMap<UserID, Rc<Account>>,
+}
+
+impl Accounts {
+    pub fn new(users: &Vec<Rc<User>>, expenses: &Vec<Expense>, working_currency: CommodityTypeID) -> Self {
+        let mut user_accounts = HashMap::with_capacity(users.len());
+        let mut expense_category_accounts: HashMap<String, Rc<Account>> = HashMap::with_capacity(expenses.len());
+
+        for user in users {
+            let account = Rc::from(Tab::new_account_for_user(&user, working_currency));
+
+            match user_accounts.insert(user.id, account) {
+                Some(_) => panic!("There are duplicate users with id {0}", user.id),
+                None => {}
+            }
+        }
+
+        for expense in expenses {
+            if !expense_category_accounts.get(&expense.category).is_some() {
+                let account = Rc::from(Tab::new_account_for_expense_category(
+                    &expense,
+                    working_currency,
+                ));
+                expense_category_accounts.insert(expense.category.clone(), account);
+            }
+        }
+
+        Self {
+            users: user_accounts,
+            expense_categories: expense_category_accounts,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+/// A deserializeable version of [Tab], designed for wire transfers,
+/// without the [Account]s.
+pub struct TabData {
+    /// The id of this tab
+    pub id: TabID,
+    /// The name of this tab
+    pub name: String,
+    /// The working currency of this tab
+    pub working_currency: CommodityTypeID,
+    /// The users involved with this tab
+    pub users: Vec<Rc<User>>,
+    /// The expenses recorded on this tab
+    pub expenses: Vec<Expense>,
+    /// Actions performed by the users of this tab
+    pub user_actions: Vec<UserActionType>,
+}
+
+impl From<TabData> for Tab {
+    fn from(tab_data: TabData) -> Self {
+        let accounts = Accounts::new(&tab_data.users, &tab_data.expenses, tab_data.working_currency);
+        Tab {
+            id: tab_data.id,
+            name: tab_data.name,
+            working_currency: tab_data.working_currency,
+            users: tab_data.users,
+            expenses: tab_data.expenses,
+            user_actions: tab_data.user_actions,
+            accounts
+        }
+    }
+}
+
+impl From<Tab> for TabData {
+    fn from(tab: Tab) -> Self {
+        TabData {
+            id: tab.id,
+            name: tab.name,
+            working_currency: tab.working_currency,
+            users: tab.users,
+            expenses: tab.expenses,
+            user_actions: tab.user_actions,
+        }
+    }
+}
+
 /// A collection of expenses, and users who are responsible
 /// for/associated with those expenses.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct Tab {
     /// The id of this tab
     pub id: TabID,
@@ -29,16 +114,11 @@ pub struct Tab {
     pub working_currency: CommodityTypeID,
     /// The users involved with this tab
     pub users: Vec<Rc<User>>,
-    #[serde(skip)]
-    /// [Accounts](Account) associated with [Users](User).
-    user_accounts: HashMap<UserID, Rc<Account>>,
     /// The expenses recorded on this tab
     pub expenses: Vec<Expense>,
-    #[serde(skip)]
-    /// [Accounts](Account) associated with [ExpenseCategories](ExpenseCategory).
-    expense_category_accounts: HashMap<ExpenseCategory, Rc<Account>>,
     /// Actions performed by the users of this tab
     pub user_actions: Vec<UserActionType>,
+    accounts: Accounts,
 }
 
 impl Tab {
@@ -50,39 +130,17 @@ impl Tab {
         users: Vec<Rc<User>>,
         expenses: Vec<Expense>,
     ) -> Tab {
-        let mut user_accounts = HashMap::with_capacity(users.len());
 
-        for user in &users {
-            let account = Rc::from(Tab::new_account_for_user(&user, working_currency));
-
-            match user_accounts.insert(user.id, account) {
-                Some(_) => panic!("There are duplicate users with id {0}", user.id),
-                None => {}
-            }
-        }
-
-        let mut expense_category_accounts: HashMap<String, Rc<Account>> =
-            HashMap::with_capacity(expenses.len());
-
-        for expense in &expenses {
-            if !expense_category_accounts.get(&expense.category).is_some() {
-                let account = Rc::from(Tab::new_account_for_expense_category(
-                    &expense,
-                    working_currency,
-                ));
-                expense_category_accounts.insert(expense.category.clone(), account);
-            }
-        }
+        let accounts = Accounts::new(&users, &expenses, working_currency);
 
         Tab {
             id,
             name: name.into(),
             working_currency,
             users,
-            user_accounts,
             expenses,
-            expense_category_accounts,
             user_actions: vec![],
+            accounts
         }
     }
 
@@ -116,7 +174,7 @@ impl Tab {
     }
 
     pub fn get_user_account(&self, user_id: &UserID) -> Result<&Rc<Account>, CostingError> {
-        self.user_accounts
+        self.accounts.users
             .get(user_id)
             .ok_or_else(|| CostingError::UserAccountDoesNotExistOnTab(*user_id, self.id))
     }
@@ -125,7 +183,7 @@ impl Tab {
         &self,
         category: &ExpenseCategory,
     ) -> Result<&Rc<Account>, CostingError> {
-        self.expense_category_accounts
+        self.accounts.expense_categories
             .get(category)
             .ok_or_else(|| CostingError::NoExpenseCategoryAccountOnTab(category.clone(), self.id))
     }
@@ -134,7 +192,7 @@ impl Tab {
         for (i, u) in self.users.iter().enumerate() {
             if &u.id == user_id {
                 self.users.remove(i);
-                self.user_accounts.remove(user_id);
+                self.accounts.users.remove(user_id);
                 return Ok(());
             }
         }
@@ -148,7 +206,7 @@ impl Tab {
             None => {
                 let u = Rc::from(user);
                 self.users.push(u.clone());
-                self.user_accounts.insert(
+                self.accounts.users.insert(
                     u.id,
                     Rc::new(Tab::new_account_for_user(&u, self.working_currency)),
                 );
@@ -429,11 +487,17 @@ impl Tab {
     }
 
     fn get_user_with_account(&self, account_id: &AccountID) -> Result<Rc<User>, CostingError> {
-        self.user_accounts
+        self.accounts.users
             .iter()
             .find(|(_, v)| v.id == *account_id)
             .map(|(k, _)| self.user(k).map(|u| u.clone()))
             .unwrap()
+    }
+}
+
+impl Display for Tab {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
     }
 }
 

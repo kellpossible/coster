@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::Hash;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum UserActionType {
     AddExpense(AddExpense),
     AddUser(AddUser),
@@ -22,7 +22,7 @@ pub trait UserAction: fmt::Debug {
     fn perform(&self, tab: &mut Tab) -> Result<(), CostingError>;
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UserActionMetadata {
     pub user_id: UserID,
     pub datetime: DateTime<Utc>,
@@ -42,7 +42,7 @@ impl Hash for UserActionMetadata {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AddExpense {
     /// Metadata about this action.
     pub metadata: UserActionMetadata,
@@ -134,7 +134,7 @@ impl UserAction for ChangeTabName {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AddUser {
     /// Metadata about this action.
     pub metadata: UserActionMetadata,

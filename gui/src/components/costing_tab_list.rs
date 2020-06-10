@@ -1,6 +1,6 @@
 use crate::state::middleware::localize::LocalizeStore;
 use crate::{
-    state::{middleware::route::RouteStore, StateCallback, StateStoreRef},
+    state::{middleware::route::RouteStore, StateCallback, StateStoreRef, CosterEvent},
     AppRoute,
 };
 
@@ -15,16 +15,17 @@ use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use uuid::Uuid;
 
 pub struct CostingTabList {
-    tab: RefCell<Tab>,
     props: Props,
     link: ComponentLink<Self>,
     _language_changed_callback: StateCallback,
+    _tabs_changed_callback: StateCallback,
 }
 
 #[derive(Clone)]
 pub enum Msg {
     NewCostingTab,
     LanguageChanged,
+    TabsChanged,
 }
 
 #[derive(Clone, Properties, PartialEq)]
@@ -37,23 +38,19 @@ impl Component for CostingTabList {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let callback = props
+        let language_changed_callback = props
             .state_store
             .subscribe_language_changed(&link, Msg::LanguageChanged);
 
-        let tab = RefCell::new(Tab::new(
-            Uuid::new_v4(),
-            "Test Tab",
-            Rc::new(CommodityType::from_currency_alpha3("AUD").unwrap()),
-            vec![],
-            vec![],
-        ));
+        let tabs_changed_callback = link.callback(|(_store, _event)| Msg::TabsChanged).into();
+
+        props.state_store.subscribe_event(&tabs_changed_callback, CosterEvent::TabsChanged);
 
         CostingTabList {
-            tab,
             props,
             link,
-            _language_changed_callback: callback,
+            _language_changed_callback: language_changed_callback,
+            _tabs_changed_callback: tabs_changed_callback,
         }
     }
 
@@ -64,6 +61,7 @@ impl Component for CostingTabList {
                 true
             }
             Msg::LanguageChanged => true,
+            Msg::TabsChanged => true,
         }
     }
 
@@ -77,9 +75,6 @@ impl Component for CostingTabList {
     }
 
     fn view(&self) -> Html {
-        // TODO: do something with this tab
-        let tab = self.tab.borrow();
-
         let new_tab_handler = self.link.callback(|msg: MouseEvent| Msg::NewCostingTab);
 
         html! {

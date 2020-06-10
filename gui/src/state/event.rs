@@ -1,6 +1,7 @@
 use serde::Serialize;
 use super::{middleware::{localize::LocalizeEvent, route::RouteEvent}, RouteType};
 use yew_state::StoreEvent;
+use costing::TabID;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
 pub enum CosterEvent {
@@ -8,6 +9,8 @@ pub enum CosterEvent {
     LanguageChanged,
     RouteChanged,
     LastSelectedCurrencyChanged,
+    TabsChanged,
+    TabChanged(TabID),
     None,
 }
 

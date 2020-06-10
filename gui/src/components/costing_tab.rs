@@ -26,7 +26,7 @@ impl Component for CostingTab {
         let tab = RefCell::new(Tab::new(
             Uuid::new_v4(),
             "Test Tab",
-            Rc::new(CommodityType::from_currency_alpha3("AUD").unwrap()),
+            CommodityType::from_currency_alpha3("AUD").unwrap().id,
             vec![],
             vec![],
         ));

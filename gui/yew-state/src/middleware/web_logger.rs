@@ -1,7 +1,6 @@
 use super::{Middleware, ReduceMiddlewareResult};
 use crate::StoreEvent;
 use serde::Serialize;
-use serde_diff::{Diff, SerdeDiff};
 use std::{fmt::Display, hash::Hash};
 use wasm_bindgen::JsValue;
 use web_sys::console;
@@ -52,7 +51,7 @@ impl WebLoggerMiddleware {
 
 impl<State, Action, Event, Effect> Middleware<State, Action, Event, Effect> for WebLoggerMiddleware
 where
-    State: Serialize + SerdeDiff,
+    State: Serialize,
     Action: Serialize + Display,
     Event: StoreEvent + Clone + Hash + Eq + Serialize,
     Effect: Serialize,
@@ -76,9 +75,6 @@ where
         let result = reduce(store, action);
         let next_state_js = JsValue::from_serde(&(*store.state())).unwrap();
         let next_state = store.state();
-
-        let state_diff = Diff::serializable(&*prev_state, &*next_state);
-        let state_diff_js = JsValue::from_serde(&state_diff).unwrap();
 
         let effects_js = JsValue::from_serde(&result.effects).unwrap();
         let effects_display = match &result.effects.len() {
@@ -111,13 +107,6 @@ where
             &JsValue::from_str("color: #4CAF50; font-weight: bold;"),
         );
         self.log_level.log(&next_state_js);
-        console::group_end();
-
-        console::group_collapsed_2(
-            &JsValue::from_str("%cstate diff"),
-            &JsValue::from_str("color: #4CAF50; font-weight: bold;"),
-        );
-        self.log_level.log(&state_diff_js);
         console::group_end();
 
         console::group_collapsed_3(

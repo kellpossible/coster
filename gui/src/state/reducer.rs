@@ -98,6 +98,13 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                 events.push(CosterEvent::LastSelectedCurrencyChanged);
                 Rc::new(prev_state.change_last_selected_currency(last_selected_currency.clone()))
             }
+            CosterAction::AddTab(tab) => {
+                let mut tabs = prev_state.tabs.clone();
+                tabs.push(tab.clone());
+                events.push(CosterEvent::TabsChanged);
+                events.push(CosterEvent::TabChanged(tab.id));
+                Rc::new(prev_state.change_tabs(tabs))
+            }
         };
 
         ReducerResult {

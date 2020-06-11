@@ -1,22 +1,94 @@
 use kvdb::{DBTransaction, KeyValueDB};
-use serde::{de::DeserializeOwned, Serialize};
-use std::io;
+use serde::{de::DeserializeOwned, Serialize, Deserialize};
+use std::{rc::Rc, io};
 
-pub trait DatabaseValue<ID>: Sized
-where
-    ID: ToString,
+pub trait DatabaseValueID {
+    type ID: ToString;
+    fn id(&self) -> Self::ID;
+}
+
+pub trait DatabaseValueRead: Sized
 {
-    fn read_from_db<'a, DB, S, P>(id: ID, path: P, database: &DB, db_store: &S) -> Option<Self>
+    type ID: ToString;
+    fn read_from_db<'a, DB, S, P>(id: Self::ID, path: P, database: &DB, db_store: &S) -> Option<Self>
     where
         DB: KeyValueDBSerde,
         S: KeyValueDBStore,
-        P: Into<Option<&'a str>>;
+        P: Into<Option<&'a str>>;    
+}
 
+pub trait DatabaseValueWrite: DatabaseValueID {
     fn write_to_db<'a, T, S, P>(&self, path: P, transaction: &mut T, db_store: &S)
     where
         T: DBTransactionSerde,
         S: KeyValueDBStore,
         P: Into<Option<&'a str>>;
+}
+
+pub trait DatabaseValueWriteID<ID> {
+    fn write_to_db_id<'a, T, S, P>(&self, id: ID, path: P, transaction: &mut T, db_store: &S)
+    where
+        T: DBTransactionSerde,
+        S: KeyValueDBStore,
+        P: Into<Option<&'a str>>;
+}
+
+
+impl <T> DatabaseValueRead for Vec<T> 
+where 
+    T: DatabaseValueRead + DeserializeOwned,
+{
+    type ID = String;
+    fn read_from_db<'a, DB, S, P>(id: Self::ID, path: P, database: &DB, db_store: &S) -> Option<Self>
+    where
+        DB: KeyValueDBSerde,
+        S: KeyValueDBStore,
+        P: Into<Option<&'a str>>,
+    {
+        // TODO: refactor tabs vector into something within `costing` library to be shared
+        // with the server.
+        let item_ids_option: Option<Vec<T::ID>> = database
+            .get_deserialize(db_store, id.to_string())
+            .expect("unable to read from database");
+
+        item_ids_option.map(|item_ids| {
+            item_ids
+                .iter()
+                .map(|item_id| {
+                    Rc::new(
+                        T::read_from_db(*item_id, id, database, db_store)
+                            .expect("unable to read tab from database"),
+                    )
+                })
+                .collect()
+        })
+    }
+
+    // TODO: refactor this method to not use TabsID, but instead supply a proper id.
+    // fn write_to_db<'a, T, S, P>(&self, path: P, transaction: &mut T, db_store: &S)
+    // where
+    //     T: DBTransactionSerde,
+    //     S: KeyValueDBStore,
+    //     P: Into<Option<&'a str>>,
+    // {
+    //     let tabs_id = TabsID.to_string();
+        
+    //     let key = match path.into() {
+    //         Some(path) => format!("{}/{}", path, tabs_id),
+    //         None => tabs_id.clone(),
+    //     };
+
+    //     transaction.put_serialize(db_store, key, self.ids());
+        
+    //     for tab in self {
+    //         tab.write_to_db(tabs_id.as_str(), transaction, db_store);
+    //     }
+        
+    // }
+
+    // fn id(&self) -> TabsID {
+    //     TabsID
+    // }
 }
 
 /// A subset of a key-value database (a column usually).

@@ -4,7 +4,7 @@ use super::{
     ChangeLastSelectedCurrency, CosterAction, CosterEffect, CosterEvent, CosterState,
 };
 use commodity::CommodityType;
-use costing::db::{DBTransactionSerde, DatabaseValue, KeyValueDBSerde, Ids};
+use costing::db::{DBTransactionSerde, DatabaseValueRead, KeyValueDBSerde, Ids};
 use costing::{Tab, TabData, TabID, TabsID};
 use std::rc::Rc;
 use yew_state::{Reducer, ReducerResult, Store};
@@ -181,7 +181,7 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                         DatabaseEffect::new("write all tabs to database", move |store, database| {
                             let mut transaction = database.transaction();
                             tabs_effect.write_to_db(
-                                None,
+                                "tabs",
                                 &mut transaction,
                                 &CosterClientDBStore::Tabs,
                             );

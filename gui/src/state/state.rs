@@ -72,10 +72,6 @@ impl CosterState {
             tabs,
         }
     }
-
-    pub fn tab_ids(&self) -> Vec<TabID> {
-        self.tabs.iter().map(|tab| tab.id).collect()
-    }
 }
 
 impl RouteState<RouteType> for CosterState {

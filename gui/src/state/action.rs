@@ -27,6 +27,11 @@ pub enum CosterAction {
         tab: Rc<Tab>,
         write_to_database: bool,
     },
+    /// Load tabs from a vector (replacing any currently loaded tabs).
+    LoadTabs {
+        tabs: Vec<Rc<Tab>>,
+        write_to_database: bool,
+    },
 }
 
 impl Display for CosterAction {
@@ -51,6 +56,10 @@ impl Display for CosterAction {
                 tab,
                 write_to_database,
             } => write!(f, "CreateTab({}, write: {:?})", tab.id, write_to_database),
+            CosterAction::LoadTabs {
+                tabs,
+                write_to_database,
+            } => write!(f, "LoadTabs({} tabs, write: {:?})", tabs.len(), write_to_database),
         }
     }
 }

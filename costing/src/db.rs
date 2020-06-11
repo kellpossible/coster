@@ -6,15 +6,17 @@ pub trait DatabaseValue<ID>: Sized
 where
     ID: ToString,
 {
-    fn read_from_db<DB, S>(path: &str, id: ID, db: &DB, db_store: &S) -> Option<Self>
+    fn read_from_db<'a, DB, S, P>(id: ID, path: P, database: &DB, db_store: &S) -> Option<Self>
     where
         DB: KeyValueDBSerde,
-        S: KeyValueDBStore;
+        S: KeyValueDBStore,
+        P: Into<Option<&'a str>>;
 
-    fn write_to_db<T, S>(&self, path: &str, transaction: &mut T, db_store: &S)
+    fn write_to_db<'a, T, S, P>(&self, path: P, transaction: &mut T, db_store: &S)
     where
         T: DBTransactionSerde,
-        S: KeyValueDBStore;
+        S: KeyValueDBStore,
+        P: Into<Option<&'a str>>;
 }
 
 /// A subset of a key-value database (a column usually).
@@ -38,7 +40,7 @@ pub trait KeyValueDBSerde {
 pub trait DBTransactionSerde {
     fn put_serialize<S: KeyValueDBStore, K: AsRef<str>, V: Serialize>(
         &mut self,
-        store: &S,
+        db_store: &S,
         key: K,
         value: V,
     );
@@ -47,10 +49,10 @@ pub trait DBTransactionSerde {
 impl KeyValueDBSerde for &dyn KeyValueDB {
     fn get_deserialize<S: KeyValueDBStore, K: AsRef<str>, V: DeserializeOwned>(
         &self,
-        store: &S,
+        db_store: &S,
         key: K,
     ) -> io::Result<Option<V>> {
-        self.get(store.db_col(), key.as_ref().as_bytes())
+        self.get(db_store.db_col(), key.as_ref().as_bytes())
             .map(|value_option| {
                 value_option.map(|value_bytes| {
                     serde_json::from_slice(&value_bytes)
@@ -76,4 +78,8 @@ impl DBTransactionSerde for DBTransaction {
             value_string.as_bytes(),
         )
     }
+}
+
+pub trait Ids<ID> {
+    fn ids(&self) -> Vec<ID>;
 }

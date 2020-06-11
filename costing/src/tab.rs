@@ -1,5 +1,5 @@
 use crate::actions::TabUserAction;
-use crate::db::{DBTransactionSerde, DatabaseValue, KeyValueDBSerde, KeyValueDBStore};
+use crate::db::{DBTransactionSerde, DatabaseValue, KeyValueDBSerde, KeyValueDBStore, Ids};
 use crate::error::CostingError;
 use crate::expense::{Expense, ExpenseCategory};
 use crate::settlement::Settlement;
@@ -512,12 +512,17 @@ impl Tab {
 }
 
 impl DatabaseValue<TabID> for Tab {
-    fn read_from_db<DB, S>(path: &str, id: TabID, db: &DB, db_store: &S) -> Option<Self>
+    fn read_from_db<'a, DB, S, P>(id: TabID, path: P, db: &DB, db_store: &S) -> Option<Self>
     where
         DB: KeyValueDBSerde,
         S: KeyValueDBStore,
+        P: Into<Option<&'a str>>,
     {
-        let key = format!("{}/{}", path, id);
+        let key = match path.into() {
+            Some(path) => format!("{}/{}", path, id),
+            None => format!("{}", id),
+        };
+
         let tab_data: Option<TabData> = db
             .get_deserialize(db_store, key)
             .expect("unable to read tab from database");
@@ -525,12 +530,17 @@ impl DatabaseValue<TabID> for Tab {
         tab_data.map(|td| td.into())
     }
 
-    fn write_to_db<T, S>(&self, path: &str, transaction: &mut T, db_store: &S)
+    fn write_to_db<'a, T, S, P>(&self, path: P, transaction: &mut T, db_store: &S)
     where
         T: DBTransactionSerde,
         S: KeyValueDBStore,
+        P: Into<Option<&'a str>>,
     {
-        let key = format!("{}/{}", path, self.id);
+        let key = match path.into() {
+            Some(path) => format!("{}/{}", path, self.id),
+            None => self.id.to_string(),
+        };
+
         transaction.put_serialize(db_store, key, TabData::from_tab(self));
     }
 }
@@ -538,6 +548,62 @@ impl DatabaseValue<TabID> for Tab {
 impl Display for Tab {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)
+    }
+}
+
+pub struct TabsID;
+
+impl Display for TabsID {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "tabs")
+    }
+}
+
+impl Ids<TabID> for Vec<Rc<Tab>> {
+    fn ids(&self) -> Vec<TabID> {
+        self.iter().map(|tab| tab.id).collect()
+    }
+}
+
+impl DatabaseValue<TabsID> for Vec<Rc<Tab>> {
+    fn read_from_db<'a, DB, S, P>(id: TabsID, path: P, database: &DB, db_store: &S) -> Option<Self>
+    where
+        DB: KeyValueDBSerde,
+        S: KeyValueDBStore,
+        P: Into<Option<&'a str>>,
+    {
+        // TODO: refactor tabs vector into something within `costing` library to be shared
+        // with the server.
+        let tab_ids_option: Option<Vec<TabID>> = database
+            .get_deserialize(db_store, id.to_string())
+            .expect("unable to read from database");
+
+        tab_ids_option.map(|tab_ids| {
+            tab_ids
+                .iter()
+                .map(|tab_id| {
+                    Rc::new(
+                        Tab::read_from_db(*tab_id, "tabs", database, db_store)
+                            .expect("unable to read tab from database"),
+                    )
+                })
+                .collect()
+        })
+    }
+
+    fn write_to_db<'a, T, S, P>(&self, path: P, transaction: &mut T, db_store: &S)
+    where
+        T: DBTransactionSerde,
+        S: KeyValueDBStore,
+        P: Into<Option<&'a str>>,
+    {
+        let key = match path.into() {
+            Some(path) => format!("{}/{}", path, TabsID.to_string()),
+            None => TabsID.to_string(),
+        };
+        // TODO: get this to work!
+        transaction.put_serialize(db_store, key, self.ids())
+        
     }
 }
 

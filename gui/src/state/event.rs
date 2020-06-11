@@ -13,7 +13,6 @@ pub enum CosterEvent {
     RouteChanged,
     LastSelectedCurrencyChanged,
     TabsChanged,
-    TabChanged(TabID),
     None,
 }
 

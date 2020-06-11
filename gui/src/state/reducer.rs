@@ -4,8 +4,8 @@ use super::{
     ChangeLastSelectedCurrency, CosterAction, CosterEffect, CosterEvent, CosterState,
 };
 use commodity::CommodityType;
-use costing::db::{DBTransactionSerde, DatabaseValue, KeyValueDBSerde};
-use costing::{Tab, TabData, TabID};
+use costing::db::{DBTransactionSerde, DatabaseValue, KeyValueDBSerde, Ids};
+use costing::{Tab, TabData, TabID, TabsID};
 use std::rc::Rc;
 use yew_state::{Reducer, ReducerResult, Store};
 
@@ -90,7 +90,6 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                 let mut tabs = prev_state.tabs.clone();
                 tabs.push(tab.clone());
                 events.push(CosterEvent::TabsChanged);
-                events.push(CosterEvent::TabChanged(tab.id));
 
                 if *write_to_database {
                     let effect_tab = tab.clone();
@@ -104,7 +103,7 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                         >,
                               database| {
                             let mut transaction = database.transaction();
-                            let tab_ids = store.state().tab_ids();
+                            let tab_ids = store.state().tabs.ids();
                             let tab_key = format!("tabs/{}", effect_tab.id);
 
                             let tab_data = TabData::from_tab(&effect_tab);
@@ -113,7 +112,7 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                             // with the server.
                             transaction.put_serialize(&CosterClientDBStore::Tabs, "tabs", &tab_ids);
                             effect_tab.write_to_db(
-                                "tabs",
+                                Some("tabs"),
                                 &mut transaction,
                                 &CosterClientDBStore::Tabs,
                             );
@@ -154,26 +153,48 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                         .get_deserialize(&CosterClientDBStore::Tabs, "tabs")
                         .expect("unable to read \"tabs\" from database");
 
-                    if let Some(tab_ids) = tab_ids_option {
-                        for tab_id in tab_ids {
-                            let tab = Tab::read_from_db(
-                                "tabs",
-                                tab_id,
-                                &database,
-                                &CosterClientDBStore::Tabs,
-                            )
-                            .expect("unable to read tab from database");
+                    let tabs_option = Vec::<Rc<Tab>>::read_from_db(
+                        TabsID,
+                        None,
+                        &database,
+                        &CosterClientDBStore::Tabs,
+                    );
 
-                            store.dispatch(CosterAction::CreateTab {
-                                tab: Rc::new(tab),
-                                write_to_database: false,
-                            })
-                        }
+                    if let Some(tabs) = tabs_option {
+                        store.dispatch(CosterAction::LoadTabs {
+                            tabs,
+                            write_to_database: false,
+                        });
                     }
                 });
 
                 effects.push(effect.into());
                 prev_state.clone()
+            }
+            CosterAction::LoadTabs {
+                tabs,
+                write_to_database,
+            } => {
+                if *write_to_database {
+                    let tabs_effect = tabs.clone();
+                    let effect =
+                        DatabaseEffect::new("write all tabs to database", move |store, database| {
+                            let mut transaction = database.transaction();
+                            tabs_effect.write_to_db(
+                                None,
+                                &mut transaction,
+                                &CosterClientDBStore::Tabs,
+                            );
+                            database
+                                .write(transaction)
+                                .expect("unable to write tabs to database");
+                        });
+
+                    effects.push(effect.into());
+                }
+
+                events.push(CosterEvent::TabsChanged);
+                Rc::new(prev_state.change_tabs(tabs.clone()))
             }
         };
 

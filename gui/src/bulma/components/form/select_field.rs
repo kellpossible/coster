@@ -110,7 +110,7 @@ where
         form_link.register_field(Rc::new(field_link));
 
         SelectField {
-            value: None,
+            value: props.selected.clone(),
             validation_errors: ValidationErrors::default(),
             props,
             form_link,
@@ -167,7 +167,7 @@ where
                 }
                 <div class="control">
                     <Select<Value>
-                        selected=self.props.selected.clone()
+                        selected=self.value.clone()
                         options=self.props.options.clone()
                         div_classes=classes
                         onchange=select_onchange

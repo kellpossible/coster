@@ -139,8 +139,11 @@ impl Component for NewCostingTab {
             .state_store
             .subscribe_language_changed(&link, Msg::LanguageChanged);
 
+        let mut form_data = FormData::default();
+        form_data.working_currency = props.state_store.state().last_selected_currency.clone();
+
         NewCostingTab {
-            form_data: FormData::default(),
+            form_data,
             props,
             currencies,
             link,
@@ -242,7 +245,7 @@ impl Component for NewCostingTab {
                             options = self.currencies.clone()
                             validator = FormData::working_currency_validator()
                             onchange = onchange_working_currency
-                            selected = last_selected_currency
+                            selected = self.form_data.working_currency.clone()
                             />
                     </Form<FormFields>>
                 </div>

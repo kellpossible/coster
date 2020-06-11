@@ -74,7 +74,6 @@ where
 
         let result = reduce(store, action);
         let next_state_js = JsValue::from_serde(&(*store.state())).unwrap();
-        let next_state = store.state();
 
         let effects_js = JsValue::from_serde(&result.effects).unwrap();
         let effects_display = match &result.effects.len() {

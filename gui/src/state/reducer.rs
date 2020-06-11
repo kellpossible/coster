@@ -4,7 +4,7 @@ use super::{
     ChangeLastSelectedCurrency, CosterAction, CosterEffect, CosterEvent, CosterState,
 };
 use commodity::CommodityType;
-use costing::db::{DBTransactionSerde, DatabaseValueRead, KeyValueDBSerde, Ids};
+use costing::db::{DBTransactionSerde, DatabaseValueRead, KeyValueDBSerde, DatabaseValueWriteID, DatabaseValueWrite};
 use costing::{Tab, TabData, TabID, TabsID};
 use std::rc::Rc;
 use yew_state::{Reducer, ReducerResult, Store};
@@ -103,19 +103,10 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                         >,
                               database| {
                             let mut transaction = database.transaction();
-                            let tab_ids = store.state().tabs.ids();
-                            let tab_key = format!("tabs/{}", effect_tab.id);
+                            let tabs = &store.state().tabs;
 
-                            let tab_data = TabData::from_tab(&effect_tab);
-
-                            // TODO: refactor tabs vector into something within `costing` library to be shared
-                            // with the server.
-                            transaction.put_serialize(&CosterClientDBStore::Tabs, "tabs", &tab_ids);
-                            effect_tab.write_to_db(
-                                Some("tabs"),
-                                &mut transaction,
-                                &CosterClientDBStore::Tabs,
-                            );
+                            
+                            
                             database
                                 .write(transaction)
                                 .expect("there was a problem executing a database transaction");
@@ -147,25 +138,14 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                         });
                     }
 
-                    // TODO: refactor tabs vector into something within `costing` library to be shared
-                    // with the server.
-                    let tab_ids_option: Option<Vec<TabID>> = database
-                        .get_deserialize(&CosterClientDBStore::Tabs, "tabs")
-                        .expect("unable to read \"tabs\" from database");
+                    
 
-                    let tabs_option = Vec::<Rc<Tab>>::read_from_db(
-                        TabsID,
-                        None,
-                        &database,
-                        &CosterClientDBStore::Tabs,
-                    );
-
-                    if let Some(tabs) = tabs_option {
-                        store.dispatch(CosterAction::LoadTabs {
-                            tabs,
-                            write_to_database: false,
-                        });
-                    }
+                    // if let Some(tabs) = tabs_option {
+                    //     store.dispatch(CosterAction::LoadTabs {
+                    //         tabs,
+                    //         write_to_database: false,
+                    //     });
+                    // }
                 });
 
                 effects.push(effect.into());
@@ -180,8 +160,8 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                     let effect =
                         DatabaseEffect::new("write all tabs to database", move |store, database| {
                             let mut transaction = database.transaction();
-                            tabs_effect.write_to_db(
-                                "tabs",
+                            tabs_effect.write_to_db_id(
+                                "tabs".to_string(),
                                 &mut transaction,
                                 &CosterClientDBStore::Tabs,
                             );

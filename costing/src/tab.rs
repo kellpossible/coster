@@ -1,5 +1,5 @@
 use crate::actions::TabUserAction;
-use crate::db::{DBTransactionSerde, DatabaseValueRead, DatabaseValueWrite, DatabaseValueID, KeyValueDBSerde, KeyValueDBStore, Ids};
+use crate::db::{DBTransactionSerde, DatabaseValueRead, DatabaseValueWrite, DatabaseValueID, KeyValueDBSerde, KeyValueDBStore};
 use crate::error::CostingError;
 use crate::expense::{Expense, ExpenseCategory};
 use crate::settlement::Settlement;
@@ -513,22 +513,21 @@ impl Tab {
 
 impl DatabaseValueRead for Tab {
     type ID = TabID;
-    fn read_from_db<'a, DB, S, P>(id: TabID, path: P, db: &DB, db_store: &S) -> Option<Self>
+    fn read_from_db<'a, DB, S, P>(id: &Self::ID, path: P, database: &DB, db_store: &S) -> Option<Self>
     where
         DB: KeyValueDBSerde,
         S: KeyValueDBStore,
-        P: Into<Option<&'a str>>,
-    {
-        let key = match path.into() {
-            Some(path) => format!("{}/{}", path, id),
-            None => format!("{}", id),
-        };
-
-        let tab_data: Option<TabData> = db
-            .get_deserialize(db_store, key)
-            .expect("unable to read tab from database");
-
-        tab_data.map(|td| td.into())
+        P: Into<Option<&'a str>> {
+            let key = match path.into() {
+                Some(path) => format!("{}/{}", path, id),
+                None => format!("{}", id),
+            };
+    
+            let tab_data: Option<TabData> = database
+                .get_deserialize(db_store, key)
+                .expect("unable to read tab from database");
+    
+            tab_data.map(|td| td.into())
     }
 }
 
@@ -566,12 +565,6 @@ pub struct TabsID;
 impl Display for TabsID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "tabs")
-    }
-}
-
-impl Ids<TabID> for Vec<Rc<Tab>> {
-    fn ids(&self) -> Vec<TabID> {
-        self.iter().map(|tab| tab.id).collect()
     }
 }
 

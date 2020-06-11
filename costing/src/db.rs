@@ -10,7 +10,7 @@ pub trait DatabaseValueID {
 pub trait DatabaseValueRead: Sized
 {
     type ID: ToString;
-    fn read_from_db<'a, DB, S, P>(id: Self::ID, path: P, database: &DB, db_store: &S) -> Option<Self>
+    fn read_from_db<'a, DB, S, P>(id: &Self::ID, path: P, database: &DB, db_store: &S) -> Option<Self>
     where
         DB: KeyValueDBSerde,
         S: KeyValueDBStore,
@@ -25,8 +25,9 @@ pub trait DatabaseValueWrite: DatabaseValueID {
         P: Into<Option<&'a str>>;
 }
 
-pub trait DatabaseValueWriteID<ID> {
-    fn write_to_db_id<'a, T, S, P>(&self, id: ID, path: P, transaction: &mut T, db_store: &S)
+pub trait DatabaseValueWriteID {
+    type ID;
+    fn write_to_db_id<'a, T, S, P>(&self, id: Self::ID, path: P, transaction: &mut T, db_store: &S)
     where
         T: DBTransactionSerde,
         S: KeyValueDBStore,
@@ -37,58 +38,60 @@ pub trait DatabaseValueWriteID<ID> {
 impl <T> DatabaseValueRead for Vec<T> 
 where 
     T: DatabaseValueRead + DeserializeOwned,
+    T::ID: DeserializeOwned,
 {
     type ID = String;
-    fn read_from_db<'a, DB, S, P>(id: Self::ID, path: P, database: &DB, db_store: &S) -> Option<Self>
+    fn read_from_db<'a, DB, S, P>(id: &Self::ID, path: P, database: &DB, db_store: &S) -> Option<Self>
     where
         DB: KeyValueDBSerde,
         S: KeyValueDBStore,
         P: Into<Option<&'a str>>,
     {
-        // TODO: refactor tabs vector into something within `costing` library to be shared
-        // with the server.
+        let key = match path.into() {
+            Some(path) => format!("{}/{}", path, id),
+            None => id.clone(),
+        };
+
         let item_ids_option: Option<Vec<T::ID>> = database
-            .get_deserialize(db_store, id.to_string())
+            .get_deserialize(db_store, key.clone())
             .expect("unable to read from database");
 
         item_ids_option.map(|item_ids| {
             item_ids
                 .iter()
                 .map(|item_id| {
-                    Rc::new(
-                        T::read_from_db(*item_id, id, database, db_store)
-                            .expect("unable to read tab from database"),
-                    )
+                    T::read_from_db(item_id, key.as_str(), database, db_store)
+                        .expect("unable to read tab from database")
                 })
                 .collect()
         })
     }
+}
 
-    // TODO: refactor this method to not use TabsID, but instead supply a proper id.
-    // fn write_to_db<'a, T, S, P>(&self, path: P, transaction: &mut T, db_store: &S)
-    // where
-    //     T: DBTransactionSerde,
-    //     S: KeyValueDBStore,
-    //     P: Into<Option<&'a str>>,
-    // {
-    //     let tabs_id = TabsID.to_string();
-        
-    //     let key = match path.into() {
-    //         Some(path) => format!("{}/{}", path, tabs_id),
-    //         None => tabs_id.clone(),
-    //     };
+impl <T> DatabaseValueWriteID for Vec<T> 
+where 
+    T: DatabaseValueWrite + DatabaseValueID + Serialize,
+    <T as DatabaseValueID>::ID: Serialize, {
+    type ID = String;
+    fn write_to_db_id<'a, TR, S, P>(&self, id: Self::ID, path: P, transaction: &mut TR, db_store: &S)
+    where
+        TR: DBTransactionSerde,
+        S: KeyValueDBStore,
+        P: Into<Option<&'a str>> {
 
-    //     transaction.put_serialize(db_store, key, self.ids());
-        
-    //     for tab in self {
-    //         tab.write_to_db(tabs_id.as_str(), transaction, db_store);
-    //     }
-        
-    // }
+        let key = match path.into() {
+            Some(path) => format!("{}/{}", path, id),
+            None => id.clone(),
+        };
 
-    // fn id(&self) -> TabsID {
-    //     TabsID
-    // }
+        let item_ids: Vec<T::ID> = self.iter().map(|item| item.id()).collect();
+
+        transaction.put_serialize(db_store, key.clone(), item_ids);
+        
+        for item in self {
+            item.write_to_db(key.as_str(), transaction, db_store);
+        }
+    }
 }
 
 /// A subset of a key-value database (a column usually).
@@ -150,8 +153,4 @@ impl DBTransactionSerde for DBTransaction {
             value_string.as_bytes(),
         )
     }
-}
-
-pub trait Ids<ID> {
-    fn ids(&self) -> Vec<ID>;
 }

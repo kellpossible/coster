@@ -4,13 +4,7 @@ use crate::{
     AppRoute,
 };
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
-use commodity::CommodityType;
-use costing::Tab;
 use tr::tr;
-use uuid::Uuid;
 use yew::MouseEvent;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 

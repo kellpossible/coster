@@ -15,7 +15,7 @@ use crate::{
 use anyhow::anyhow;
 use commodity::CommodityType;
 use costing::Tab;
-use log::{error, info};
+use log::error;
 use std::{fmt::Display, rc::Rc};
 use tr::tr;
 use uuid::Uuid;

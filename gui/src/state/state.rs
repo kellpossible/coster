@@ -3,8 +3,8 @@ use super::{
     AppRoute, CosterAction, CosterEffect, CosterEvent, RouteType,
 };
 use commodity::CommodityType;
-use costing::{Tab, TabID};
-use serde::{Deserialize, Serialize};
+use costing::Tab;
+use serde::Serialize;
 use std::rc::Rc;
 use unic_langid::LanguageIdentifier;
 use yew_state::StoreRef;

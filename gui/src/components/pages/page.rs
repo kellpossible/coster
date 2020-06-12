@@ -1,8 +1,4 @@
-use crate::{
-    components::navbar::Navbar,
-    state::{CosterAction, StateStoreRef},
-    LanguageRequesterRef,
-};
+use crate::{components::navbar::Navbar, state::StateStoreRef, LanguageRequesterRef};
 
 use std::rc::Rc;
 use yew::{
@@ -11,7 +7,7 @@ use yew::{
 
 pub struct Page {
     props: Props,
-    link: ComponentLink<Self>,
+    _link: ComponentLink<Self>,
 }
 
 #[derive(Clone, Properties)]
@@ -35,7 +31,7 @@ impl Component for Page {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Page { props, link }
+        Page { props, _link: link }
     }
 
     fn update(&mut self, _: ()) -> ShouldRender {

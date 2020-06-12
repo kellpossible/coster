@@ -59,7 +59,12 @@ impl Display for CosterAction {
             CosterAction::LoadTabs {
                 tabs,
                 write_to_database,
-            } => write!(f, "LoadTabs({} tabs, write: {:?})", tabs.len(), write_to_database),
+            } => write!(
+                f,
+                "LoadTabs({} tabs, write: {:?})",
+                tabs.len(),
+                write_to_database
+            ),
         }
     }
 }

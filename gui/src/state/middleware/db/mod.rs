@@ -5,9 +5,9 @@
 mod dispatch;
 
 pub use dispatch::DatabaseDispatch;
-use kvdb::{DBTransaction, KeyValueDB};
-use serde::{de::DeserializeOwned, Serialize};
-use std::{fmt::Debug, io, rc::Rc};
+use kvdb::KeyValueDB;
+use serde::Serialize;
+use std::{fmt::Debug, rc::Rc};
 use yew_state::{middleware::Middleware, Store};
 
 pub struct DatabaseMiddleware<DB> {
@@ -21,10 +21,6 @@ where
     pub fn new(database: DB) -> Self {
         Self { database }
     }
-}
-
-enum DatabaseAction {
-    LoadStore,
 }
 
 // TODO: this could be refactored into an enum, with effect for read, write, and then custom closure.
@@ -62,10 +58,6 @@ impl<State, Action, Event, Effect> Debug for DatabaseEffect<State, Action, Event
 
 pub trait IsDatabaseEffect<State, Action, Event, Effect> {
     fn database_effect(&self) -> Option<&DatabaseEffect<State, Action, Event, Effect>>;
-}
-
-trait IsDatabaseAction {
-    fn database_action(&self) -> Option<DatabaseAction>;
 }
 
 impl<DB, State, Action, Event, Effect> Middleware<State, Action, Event, Effect>

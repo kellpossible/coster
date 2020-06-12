@@ -4,8 +4,8 @@ use super::{
     ChangeLastSelectedCurrency, CosterAction, CosterEffect, CosterEvent, CosterState,
 };
 use commodity::CommodityType;
-use costing::db::{DBTransactionSerde, DatabaseValueRead, KeyValueDBSerde, DatabaseValueWriteID, DatabaseValueWrite};
-use costing::{Tab, TabData, TabID, TabsID};
+use costing::db::{DBTransactionSerde, DatabaseValueRead, DatabaseValueWriteID, KeyValueDBSerde};
+use costing::Tab;
 use std::rc::Rc;
 use yew_state::{Reducer, ReducerResult, Store};
 
@@ -111,7 +111,7 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                                 &mut transaction,
                                 &CosterClientDBStore::Tabs,
                             );
-                            
+
                             database
                                 .write(transaction)
                                 .expect("there was a problem executing a database transaction");
@@ -143,7 +143,12 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                         });
                     }
 
-                    let tabs_option = Vec::<Rc<Tab>>::read_from_db(&"tabs".to_string(), None, database, &CosterClientDBStore::Tabs);
+                    let tabs_option = Vec::<Rc<Tab>>::read_from_db(
+                        &"tabs".to_string(),
+                        None,
+                        database,
+                        &CosterClientDBStore::Tabs,
+                    );
 
                     if let Some(tabs) = tabs_option {
                         store.dispatch(CosterAction::LoadTabs {
@@ -162,8 +167,9 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
             } => {
                 if *write_to_database {
                     let tabs_effect = tabs.clone();
-                    let effect =
-                        DatabaseEffect::new("write all tabs to database", move |store, database| {
+                    let effect = DatabaseEffect::new(
+                        "write all tabs to database",
+                        move |store, database| {
                             let mut transaction = database.transaction();
                             tabs_effect.write_to_db_id(
                                 &"tabs".to_string(),
@@ -174,7 +180,8 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                             database
                                 .write(transaction)
                                 .expect("unable to write tabs to database");
-                        });
+                        },
+                    );
 
                     effects.push(effect.into());
                 }

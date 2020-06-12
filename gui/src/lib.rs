@@ -34,11 +34,7 @@ use std::rc::Rc;
 use tr::tr;
 use wasm_bindgen::prelude::*;
 use yew::virtual_dom::VNode;
-use yew::{
-    html,
-    services::{storage, StorageService},
-    Component, ComponentLink, Html, ShouldRender,
-};
+use yew::{html, Component, ComponentLink, Html, ShouldRender};
 use yew_state::middleware::web_logger::{LogLevel, WebLoggerMiddleware};
 
 #[derive(RustEmbed, I18nEmbed)]
@@ -63,8 +59,8 @@ pub enum Msg {
 
 pub struct Model {
     language_requester: LanguageRequesterRef,
-    localizer: LocalizerRef,
-    link: ComponentLink<Self>,
+    _localizer: LocalizerRef,
+    _link: ComponentLink<Self>,
     state_store: StateStoreRef,
     _state_callback: yew_state::Callback<CosterState, CosterEvent>,
 }
@@ -144,8 +140,8 @@ impl Component for Model {
 
         Model {
             language_requester: language_requester_ref,
-            localizer: localizer_ref,
-            link,
+            _localizer: localizer_ref,
+            _link: link,
             state_store,
             _state_callback: state_callback,
         }

@@ -1,5 +1,8 @@
 use crate::actions::TabUserAction;
-use crate::db::{DBTransactionSerde, DatabaseValueRead, DatabaseValueWrite, DatabaseValueID, KeyValueDBSerde, KeyValueDBStore};
+use crate::db::{
+    DBTransactionSerde, DatabaseValueID, DatabaseValueRead, DatabaseValueWrite, KeyValueDBSerde,
+    KeyValueDBStore,
+};
 use crate::error::CostingError;
 use crate::expense::{Expense, ExpenseCategory};
 use crate::settlement::Settlement;
@@ -512,21 +515,26 @@ impl Tab {
 }
 
 impl DatabaseValueRead<TabID, ()> for Tab {
-    fn read_from_db<'a, DB, S, P>(id: &TabID, path: P, database: &DB, db_store: &S) -> Option<Self>
+    fn read_from_db<'a, S, P>(
+        id: &TabID,
+        path: P,
+        database: &dyn KeyValueDB,
+        db_store: &S,
+    ) -> Option<Self>
     where
-        DB: KeyValueDBSerde,
         S: KeyValueDBStore,
-        P: Into<Option<&'a str>> {
-            let key = match path.into() {
-                Some(path) => format!("{}/{}", path, id),
-                None => format!("{}", id),
-            };
-    
-            let tab_data: Option<TabData> = database
-                .get_deserialize(db_store, key)
-                .expect("unable to read tab from database");
-    
-            tab_data.map(|td| td.into())
+        P: Into<Option<&'a str>>,
+    {
+        let key = match path.into() {
+            Some(path) => format!("{}/{}", path, id),
+            None => format!("{}", id),
+        };
+
+        let tab_data: Option<TabData> = database
+            .get_deserialize(db_store, key)
+            .expect("unable to read tab from database");
+
+        tab_data.map(|td| td.into())
     }
 }
 

@@ -105,7 +105,12 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                             let mut transaction = database.transaction();
                             let tabs = &store.state().tabs;
 
-                            
+                            tabs.write_to_db_id(
+                                &"tabs".to_string(),
+                                None,
+                                &mut transaction,
+                                &CosterClientDBStore::Tabs,
+                            );
                             
                             database
                                 .write(transaction)
@@ -138,14 +143,14 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                         });
                     }
 
-                    
+                    let tabs_option = Vec::<Rc<Tab>>::read_from_db(&"tabs".to_string(), None, database, &CosterClientDBStore::Tabs);
 
-                    // if let Some(tabs) = tabs_option {
-                    //     store.dispatch(CosterAction::LoadTabs {
-                    //         tabs,
-                    //         write_to_database: false,
-                    //     });
-                    // }
+                    if let Some(tabs) = tabs_option {
+                        store.dispatch(CosterAction::LoadTabs {
+                            tabs,
+                            write_to_database: false,
+                        });
+                    }
                 });
 
                 effects.push(effect.into());
@@ -161,7 +166,8 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                         DatabaseEffect::new("write all tabs to database", move |store, database| {
                             let mut transaction = database.transaction();
                             tabs_effect.write_to_db_id(
-                                "tabs".to_string(),
+                                &"tabs".to_string(),
+                                None,
                                 &mut transaction,
                                 &CosterClientDBStore::Tabs,
                             );

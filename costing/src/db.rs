@@ -2,57 +2,45 @@ use kvdb::{DBTransaction, KeyValueDB};
 use serde::{de::DeserializeOwned, Serialize, Deserialize};
 use std::{rc::Rc, io};
 
-pub trait DatabaseValueID {
-    type ID: ToString;
-    fn id(&self) -> Self::ID;
+pub trait DatabaseValueID<ID> {
+    fn id(&self) -> ID;
 }
 
-pub trait DatabaseValueRead: Sized
+impl <T, ID> DatabaseValueID<ID> for Rc<T> 
+where
+    T: DatabaseValueID<ID>
 {
-    type ID: ToString;
-    fn read_from_db<'a, DB, S, P>(id: &Self::ID, path: P, database: &DB, db_store: &S) -> Option<Self>
+    fn id(&self) -> ID {
+        (**self).id()
+    }
+}
+
+pub trait DatabaseValueRead<ID, TID>: Sized
+{
+    fn read_from_db<'a, DB, S, P>(id: &ID, path: P, database: &DB, db_store: &S) -> Option<Self>
     where
         DB: KeyValueDBSerde,
         S: KeyValueDBStore,
         P: Into<Option<&'a str>>;    
 }
 
-pub trait DatabaseValueWrite: DatabaseValueID {
-    fn write_to_db<'a, T, S, P>(&self, path: P, transaction: &mut T, db_store: &S)
-    where
-        T: DBTransactionSerde,
-        S: KeyValueDBStore,
-        P: Into<Option<&'a str>>;
-}
-
-pub trait DatabaseValueWriteID {
-    type ID;
-    fn write_to_db_id<'a, T, S, P>(&self, id: Self::ID, path: P, transaction: &mut T, db_store: &S)
-    where
-        T: DBTransactionSerde,
-        S: KeyValueDBStore,
-        P: Into<Option<&'a str>>;
-}
-
-
-impl <T> DatabaseValueRead for Vec<T> 
-where 
-    T: DatabaseValueRead + DeserializeOwned,
-    T::ID: DeserializeOwned,
+impl <T, TID> DatabaseValueRead<String, TID> for Vec<T> 
+where
+    T: DatabaseValueRead<TID, ()>,
+    TID: DeserializeOwned
 {
-    type ID = String;
-    fn read_from_db<'a, DB, S, P>(id: &Self::ID, path: P, database: &DB, db_store: &S) -> Option<Self>
+    fn read_from_db<'a, DB, S, P>(id: &String, path: P, database: &DB, db_store: &S) -> Option<Self>
     where
         DB: KeyValueDBSerde,
         S: KeyValueDBStore,
         P: Into<Option<&'a str>>,
     {
         let key = match path.into() {
-            Some(path) => format!("{}/{}", path, id),
+            Some(path) => format!("{}/{}", path, id.to_string()),
             None => id.clone(),
         };
 
-        let item_ids_option: Option<Vec<T::ID>> = database
+        let item_ids_option: Option<Vec<TID>> = database
             .get_deserialize(db_store, key.clone())
             .expect("unable to read from database");
 
@@ -68,23 +56,64 @@ where
     }
 }
 
-impl <T> DatabaseValueWriteID for Vec<T> 
+impl <T, ID> DatabaseValueRead<ID, ()> for Rc<T> 
+where
+    T: DatabaseValueRead<ID, ()>,
+{
+    fn read_from_db<'a, DB, S, P>(id: &ID, path: P, database: &DB, db_store: &S) -> Option<Self>
+    where
+        DB: KeyValueDBSerde,
+        S: KeyValueDBStore,
+        P: Into<Option<&'a str>> {
+        T::read_from_db(id, path, database, db_store).map(|v| Rc::new(v))
+    }
+}
+
+pub trait DatabaseValueWrite<ID>: DatabaseValueID<ID> {
+    fn write_to_db<'a, TR, S, P>(&self, path: P, transaction: &mut TR, db_store: &S)
+    where
+        TR: DBTransactionSerde,
+        S: KeyValueDBStore,
+        P: Into<Option<&'a str>>;
+}
+
+impl <T, ID> DatabaseValueWrite<ID> for Rc<T> 
+where
+    T: DatabaseValueWrite<ID>
+{
+    fn write_to_db<'a, TR, S, P>(&self, path: P, transaction: &mut TR, db_store: &S)
+    where
+        TR: DBTransactionSerde,
+        S: KeyValueDBStore,
+        P: Into<Option<&'a str>> {
+        (**self).write_to_db(path, transaction, db_store);
+    }
+}
+
+pub trait DatabaseValueWriteID<ID, TID> {
+    fn write_to_db_id<'a, T, S, P>(&self, id: &ID, path: P, transaction: &mut T, db_store: &S)
+    where
+        T: DBTransactionSerde,
+        S: KeyValueDBStore,
+        P: Into<Option<&'a str>>;
+}
+
+impl <T, TID> DatabaseValueWriteID<String, TID> for Vec<T> 
 where 
-    T: DatabaseValueWrite + DatabaseValueID + Serialize,
-    <T as DatabaseValueID>::ID: Serialize, {
-    type ID = String;
-    fn write_to_db_id<'a, TR, S, P>(&self, id: Self::ID, path: P, transaction: &mut TR, db_store: &S)
+    T: DatabaseValueWrite<TID> + DatabaseValueID<TID> + Serialize,
+    TID: Serialize + ToString, {
+    fn write_to_db_id<'a, TR, S, P>(&self, id: &String, path: P, transaction: &mut TR, db_store: &S)
     where
         TR: DBTransactionSerde,
         S: KeyValueDBStore,
         P: Into<Option<&'a str>> {
 
         let key = match path.into() {
-            Some(path) => format!("{}/{}", path, id),
-            None => id.clone(),
+            Some(path) => format!("{}/{}", path, id.to_string()),
+            None => id.to_string(),
         };
 
-        let item_ids: Vec<T::ID> = self.iter().map(|item| item.id()).collect();
+        let item_ids: Vec<TID> = self.iter().map(|item| item.id()).collect();
 
         transaction.put_serialize(db_store, key.clone(), item_ids);
         

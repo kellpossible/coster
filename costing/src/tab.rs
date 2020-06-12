@@ -511,9 +511,8 @@ impl Tab {
     }
 }
 
-impl DatabaseValueRead for Tab {
-    type ID = TabID;
-    fn read_from_db<'a, DB, S, P>(id: &Self::ID, path: P, database: &DB, db_store: &S) -> Option<Self>
+impl DatabaseValueRead<TabID, ()> for Tab {
+    fn read_from_db<'a, DB, S, P>(id: &TabID, path: P, database: &DB, db_store: &S) -> Option<Self>
     where
         DB: KeyValueDBSerde,
         S: KeyValueDBStore,
@@ -531,7 +530,7 @@ impl DatabaseValueRead for Tab {
     }
 }
 
-impl DatabaseValueWrite for Tab {
+impl DatabaseValueWrite<TabID> for Tab {
     fn write_to_db<'a, T, S, P>(&self, path: P, transaction: &mut T, db_store: &S)
     where
         T: DBTransactionSerde,
@@ -547,9 +546,8 @@ impl DatabaseValueWrite for Tab {
     }
 }
 
-impl DatabaseValueID for Tab {
-    type ID = TabID;
-    fn id(&self) -> Self::ID {
+impl DatabaseValueID<TabID> for Tab {
+    fn id(&self) -> TabID {
         self.id
     }
 }

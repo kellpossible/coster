@@ -1,0 +1,3 @@
+query AddTest($a: Int!, $b: Int!) {
+  add(a: $a, b: $b)
+}

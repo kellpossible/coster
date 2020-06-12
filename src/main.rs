@@ -1,17 +1,16 @@
+use async_graphql::{
+    http::{playground_source, GraphQLPlaygroundConfig},
+    EmptyMutation, EmptySubscription, Object, QueryBuilder, Schema,
+};
+use async_graphql_warp::{BadRequest, GQLResponse};
 use log::{debug, info};
 use mime_guess;
 use rust_embed::RustEmbed;
-use std::{convert::Infallible};
+use std::convert::Infallible;
 use warp::{
-    filters::BoxedFilter,
-    http,
-    http::header::HeaderValue,
-    path::Tail,
-    reply,
-    Filter, Rejection, Reply, hyper::StatusCode,
+    filters::BoxedFilter, http, http::header::HeaderValue, hyper::StatusCode, path::Tail, reply,
+    Filter, Rejection, Reply,
 };
-use async_graphql::{Object, Schema, EmptyMutation, EmptySubscription, QueryBuilder, http::{GraphQLPlaygroundConfig, playground_source}};
-use async_graphql_warp::{BadRequest, GQLResponse};
 
 #[derive(RustEmbed)]
 #[folder = "public/"]
@@ -44,6 +43,8 @@ async fn main() {
 }
 
 pub fn api() -> BoxedFilter<(impl Reply,)> {
+    let log = warp::log("api");
+
     let schema = Schema::build(Query, EmptyMutation, EmptySubscription).finish();
 
     let graphql_post = async_graphql_warp::graphql(schema).and_then(
@@ -58,23 +59,27 @@ pub fn api() -> BoxedFilter<(impl Reply,)> {
             .header("content-type", "text/html")
             .body(playground_source(GraphQLPlaygroundConfig::new("/api/")))
     });
-    
 
     // let log = warp::log("coster::api");
     warp::path("api")
-        .and(graphql_playground.or(graphql_post).recover(|err: Rejection| async move {
-            if let Some(BadRequest(err)) = err.find() {
-                return Ok::<_, Infallible>(warp::reply::with_status(
-                    err.to_string(),
-                    StatusCode::BAD_REQUEST,
-                ));
-            }
+        .and(
+            graphql_playground
+                .or(graphql_post)
+                .recover(|err: Rejection| async move {
+                    if let Some(BadRequest(err)) = err.find() {
+                        return Ok::<_, Infallible>(warp::reply::with_status(
+                            err.to_string(),
+                            StatusCode::BAD_REQUEST,
+                        ));
+                    }
 
-            Ok(warp::reply::with_status(
-                "INTERNAL_SERVER_ERROR".to_string(),
-                StatusCode::INTERNAL_SERVER_ERROR,
-            ))
-        }))
+                    Ok(warp::reply::with_status(
+                        "INTERNAL_SERVER_ERROR".to_string(),
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                    ))
+                }),
+        )
+        .with(log)
         .boxed()
 }
 

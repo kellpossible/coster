@@ -1,0 +1,9 @@
+schema {
+    query: Query
+}
+
+directive @defer on FIELD
+directive @stream on FIELD
+type Query {
+  add(a: Int!, b: Int!): Int!
+}

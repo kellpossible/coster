@@ -20,6 +20,7 @@ pub enum Msg {
     NewCostingTab,
     LanguageChanged,
     TabsChanged,
+    TestGraphQL,
 }
 
 #[derive(Clone, Properties, PartialEq)]
@@ -58,6 +59,10 @@ impl Component for CostingTabList {
             }
             Msg::LanguageChanged => true,
             Msg::TabsChanged => true,
+            Msg::TestGraphQL => {
+                crate::graphql::addtest::add_test();
+                false
+            }
         }
     }
 
@@ -73,6 +78,8 @@ impl Component for CostingTabList {
     fn view(&self) -> Html {
         let state = self.props.state_store.state();
         let new_tab_handler = self.link.callback(|msg: MouseEvent| Msg::NewCostingTab);
+        let test_graphql_handler = self.link.callback(|msg: MouseEvent| Msg::TestGraphQL);
+
 
         let tabs_html_iter = state.tabs.iter().map(|tab| {
             html! {
@@ -106,8 +113,8 @@ impl Component for CostingTabList {
                         { for tabs_html_iter }
                     </tbody>
                 </table>
+                <button class="button is-success" onclick = test_graphql_handler>{ "Test GraphQL" }</button>
             </>
-
         }
     }
 }

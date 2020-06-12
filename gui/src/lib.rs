@@ -2,6 +2,7 @@
 
 mod bulma;
 mod components;
+mod graphql;
 mod state;
 mod validation;
 

@@ -1,4 +1,7 @@
 //! A port of `graphql_client::web` module to use futures 0.3 and wasm-bindgen-futures 0.4
+//! 
+//! + Original: <https://github.com/graphql-rust/graphql-client/blob/master/graphql_client/src/web.rs>
+//! + License: <https://github.com/graphql-rust/graphql-client/blob/master/LICENSE-MIT>
 
 use futures::{future, Future, TryFutureExt};
 use graphql_client::{GraphQLQuery, Response};

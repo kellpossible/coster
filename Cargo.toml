@@ -22,6 +22,8 @@ mime_guess = "2"
 log = "0.4"
 pretty_env_logger = "0.4"
 kvdb = "0.6"
+async-graphql = "1.14"
+async-graphql-warp = "1.14"
 
 [build-dependencies]
 ignore = "0.4"

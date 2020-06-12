@@ -1,23 +1,36 @@
 use log::{debug, info};
 use mime_guess;
 use rust_embed::RustEmbed;
-use std::path::PathBuf;
+use std::{convert::Infallible};
 use warp::{
     filters::BoxedFilter,
-    fs::File,
+    http,
     http::header::HeaderValue,
-    path::{self, Peek, Tail},
-    reply::Response,
-    Filter, Rejection, Reply,
+    path::Tail,
+    reply,
+    Filter, Rejection, Reply, hyper::StatusCode,
 };
+use async_graphql::{Object, Schema, EmptyMutation, EmptySubscription, QueryBuilder, http::{GraphQLPlaygroundConfig, playground_source}};
+use async_graphql_warp::{BadRequest, GQLResponse};
 
 #[derive(RustEmbed)]
 #[folder = "public/"]
 struct Asset;
 
+struct Query;
+
+#[Object]
+impl Query {
+    #[field(desc = "Returns the sum of a and b")]
+    async fn add(&self, a: i32, b: i32) -> i32 {
+        a + b
+    }
+}
+
 #[tokio::main]
 async fn main() {
     pretty_env_logger::init();
+
     let localhost: [u8; 4] = [0, 0, 0, 0];
     let port: u16 = 8000;
     let addr = (localhost, port);
@@ -26,30 +39,44 @@ async fn main() {
         .or(static_files_handler())
         .or(index_static_file_redirect());
 
+    println!("Serving on http://0.0.0.0:8000");
     warp::serve(routes).run(addr).await;
 }
 
 pub fn api() -> BoxedFilter<(impl Reply,)> {
+    let schema = Schema::build(Query, EmptyMutation, EmptySubscription).finish();
+
+    let graphql_post = async_graphql_warp::graphql(schema).and_then(
+        |(schema, builder): (_, QueryBuilder)| async move {
+            let resp = builder.execute(&schema).await;
+            Ok::<_, Infallible>(GQLResponse::from(resp))
+        },
+    );
+
+    let graphql_playground = warp::path::end().and(warp::get()).map(|| {
+        http::Response::builder()
+            .header("content-type", "text/html")
+            .body(playground_source(GraphQLPlaygroundConfig::new("/api/")))
+    });
+    
+
     // let log = warp::log("coster::api");
     warp::path("api")
-        .and(warp::path!(String))
-        .map(|path| {
-            debug!(target: "coster::api", "api call: {:?}", path);
-            std::convert::identity(path)
-        }) // Echos the string back in the response body
-        // .with(log)
+        .and(graphql_playground.or(graphql_post).recover(|err: Rejection| async move {
+            if let Some(BadRequest(err)) = err.find() {
+                return Ok::<_, Infallible>(warp::reply::with_status(
+                    err.to_string(),
+                    StatusCode::BAD_REQUEST,
+                ));
+            }
+
+            Ok(warp::reply::with_status(
+                "INTERNAL_SERVER_ERROR".to_string(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            ))
+        }))
         .boxed()
 }
-
-/// Expose filters that work with static files
-// pub fn old_static_files_handler(assets_dir: PathBuf) -> BoxedFilter<(impl Reply,)> {
-//     const INDEX_HTML: &str = "index.html";
-
-//     let files =
-//         assets(assets_dir.clone()).or(index_static_file_redirect(assets_dir.join(INDEX_HTML)));
-
-//     warp::any().and(files).boxed()
-// }
 
 /// For any path within the path `/dist`, serve the embedded static
 /// files.
@@ -83,7 +110,7 @@ fn serve_impl(path: &str) -> Result<impl Reply, Rejection> {
     debug!(target: "coster::static-files", "Found static file: {}", path);
     let mime = mime_guess::from_path(path).first_or_octet_stream();
 
-    let mut res = Response::new(asset.into());
+    let mut res = reply::Response::new(asset.into());
     res.headers_mut().insert(
         "content-type",
         HeaderValue::from_str(mime.as_ref()).unwrap(),

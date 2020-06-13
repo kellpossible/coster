@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 pub type UserID = i32;
 
 /// Represents a person using this system, and to be associated with
-/// [Expense](Expenses) in a [Tab](Tab).
+/// [Expense](crate::Expense)s in a [Tab](crate::Tab).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
     /// The id of this user

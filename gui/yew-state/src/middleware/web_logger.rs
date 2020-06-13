@@ -63,7 +63,6 @@ where
         reduce: super::ReduceFn<State, Action, Event, Effect>,
     ) -> ReduceMiddlewareResult<Event, Effect> {
         let prev_state_js = JsValue::from_serde(&(*store.state())).unwrap();
-        let prev_state = store.state();
 
         // TODO: what will happen when action is None?
         let action_js = JsValue::from_serde(&action).unwrap();

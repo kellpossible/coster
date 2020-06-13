@@ -7,7 +7,7 @@ use crate::expense::{Expense, ExpenseCategory};
 use crate::settlement::Settlement;
 use crate::{
     user::{User, UserID},
-    TabUserActionType,
+    actions::TabUserActionType,
 };
 use chrono::{Local, NaiveDate};
 use commodity::{Commodity, CommodityTypeID};

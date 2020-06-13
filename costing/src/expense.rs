@@ -22,9 +22,9 @@ pub struct Expense {
     pub category: ExpenseCategory,
     /// The date that this expense was incurred
     pub date: NaiveDate,
-    /// The [User](User) who paid this expense
+    /// The [User](crate::User) who paid this expense
     pub paid_by: UserID,
-    /// [User](User)s who were involved in/benefited from/are sharing this expense
+    /// [User](crate::User)s who were involved in/benefited from/are sharing this expense
     pub shared_by: Vec<UserID>,
     /// The amount of money
     pub amount: Commodity,

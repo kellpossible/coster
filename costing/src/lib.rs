@@ -1,6 +1,6 @@
 //! This module holds the business logic for the `coster` application.
 
-mod actions;
+pub mod actions;
 pub mod db;
 mod error;
 mod expense;
@@ -8,7 +8,6 @@ mod settlement;
 mod tab;
 mod user;
 
-pub use actions::*;
 pub use error::*;
 pub use expense::*;
 pub use settlement::*;

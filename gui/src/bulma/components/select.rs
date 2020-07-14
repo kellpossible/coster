@@ -1,10 +1,10 @@
-//! This module contains implementation of `Select` component.
-//! You can use it instead `<select>` tag, because the component
-//! helps you to track selected value in an original type. Example:
+//! A `yew` [Component](yew::Component) to render a `bulma`
+//! [Dropdown](https://bulma.io/documentation/components/dropdown/).
 //!
-//! Ripped out of Yew source code https://github.com/yewstack/yew/blob/8edf136da6ba1955c847c5860ec55623a27c08e9/src/components/select.rs
-//! License for original code: https://github.com/yewstack/yew/blob/master/LICENSE-APACHE
-//! Modified to support css `bulma` classes.
+//! Modified version of the `Select` component in the Yew source code
+//! https://github.com/yewstack/yew/blob/8edf136da6ba1955c847c5860ec55623a27c08e9/src/components/select.rs
+//! License for original code:
+//! https://github.com/yewstack/yew/blob/master/LICENSE-APACHE
 
 use crate::bulma::{
     components::{icon, Icon},

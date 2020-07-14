@@ -1,3 +1,7 @@
+//! This module contains `yew` [Component](yew::Components) for
+//! rendering and validating [bulma forms and form
+//! controls](https://bulma.io/documentation/form/general/).
+
 pub mod field;
 pub mod form;
 pub mod input_field;

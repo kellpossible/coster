@@ -1,5 +1,5 @@
-use futures::future::FutureExt;
 use super::client::Client;
+use futures::future::FutureExt;
 use graphql_client::GraphQLQuery;
 use log::error;
 use wasm_bindgen_futures::spawn_local;

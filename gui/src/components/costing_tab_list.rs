@@ -80,7 +80,6 @@ impl Component for CostingTabList {
         let new_tab_handler = self.link.callback(|msg: MouseEvent| Msg::NewCostingTab);
         let test_graphql_handler = self.link.callback(|msg: MouseEvent| Msg::TestGraphQL);
 
-
         let tabs_html_iter = state.tabs.iter().map(|tab| {
             html! {
                 <tr>

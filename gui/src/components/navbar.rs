@@ -1,4 +1,3 @@
-use yew_bulma::components::Select;
 use crate::{
     state::{
         middleware::{localize::LocalizeStore, route::RouteStore},
@@ -6,6 +5,7 @@ use crate::{
     },
     AppRoute, LanguageRequesterRef,
 };
+use yew_bulma::components::Select;
 
 use std::rc::Rc;
 use tr::tr;

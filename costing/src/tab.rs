@@ -6,8 +6,8 @@ use crate::error::CostingError;
 use crate::expense::{Expense, ExpenseCategory};
 use crate::settlement::Settlement;
 use crate::{
-    user::{User, UserID},
     actions::TabUserActionType,
+    user::{User, UserID},
 };
 use chrono::{Local, NaiveDate};
 use commodity::{Commodity, CommodityTypeID};

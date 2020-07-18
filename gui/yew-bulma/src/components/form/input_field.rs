@@ -1,6 +1,4 @@
-use crate::{
-    components::form::field::FieldKey,
-};
+use crate::components::form::field::FieldKey;
 
 use form_validation::{Validatable, Validation, ValidationErrors, Validator};
 use yew::{html, Callback, ChangeData, Component, ComponentLink, Html, Properties, ShouldRender};

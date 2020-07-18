@@ -1,9 +1,12 @@
 [package]
 name = "form-validation"
+description = "A library for validating forms, and allowing validation logic to be shared."
 version = "0.1.0"
 authors = ["Luke Frisken <l.frisken@gmail.com>"]
 edition = "2018"
+license = "MIT"
+keywords = ["validation", "forms"]
+categories = ["gui"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
+[badges]
+maintenance = { status = "actively-developed" }

@@ -6,7 +6,7 @@
 //! License for original code:
 //! https://github.com/yewstack/yew/blob/master/LICENSE-APACHE
 
-use crate::bulma::{
+use crate::{
     components::{icon, Icon},
     Size,
 };

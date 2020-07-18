@@ -1,9 +1,9 @@
 use crate::{
-    bulma::components::form::field::FieldKey,
-    validation::{Validatable, Validation, ValidationErrors, Validator},
+    components::{form::field::FieldKey, Select},
 };
 
-use yew::{html, Callback, ChangeData, Component, ComponentLink, Html, Properties, ShouldRender};
+use form_validation::{Validatable, Validation, ValidationErrors, Validator};
+use yew::{html, Callback, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use super::{
     field::{FieldLink, FieldMsg, FormField},
@@ -12,64 +12,39 @@ use super::{
 use form::FormMsg;
 use std::{
     fmt::{Debug, Display},
-    hash::Hash,
     rc::Rc,
 };
 
-#[derive(Debug, Clone)]
-pub enum InputValue {
-    String(String),
-}
-
-impl InputValue {
-    pub fn as_string(&self) -> &String {
-        match self {
-            InputValue::String(value) => &value,
-        }
-    }
-
-    pub fn into_string(self) -> String {
-        match self {
-            InputValue::String(value) => value,
-        }
-    }
-}
-
-impl Display for InputValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            InputValue::String(value) => Display::fmt(&value, f),
-        }
-    }
-}
-
 #[derive(Debug)]
-pub struct InputField<Key>
+pub struct SelectField<Value, Key>
 where
+    Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
 {
-    value: InputValue,
+    value: Option<Value>,
     validation_errors: ValidationErrors<Key>,
-    props: Props<Key>,
+    props: Props<Value, Key>,
     form_link: FormFieldLink<Key>,
     link: ComponentLink<Self>,
 }
 
-pub enum Msg {
-    Update(InputValue),
+pub enum Msg<Value> {
+    Update(Value),
     Validate,
 }
 
-pub struct InputFieldLink<Key>
+pub struct SelectFieldLink<Value, Key>
 where
+    Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
 {
     pub field_key: Key,
-    pub link: ComponentLink<InputField<Key>>,
+    pub link: ComponentLink<SelectField<Value, Key>>,
 }
 
-impl<Key> Debug for InputFieldLink<Key>
+impl<Value, Key> Debug for SelectFieldLink<Value, Key>
 where
+    Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -77,16 +52,17 @@ where
     }
 }
 
-impl Into<Msg> for FieldMsg {
-    fn into(self) -> Msg {
+impl<T> Into<Msg<T>> for FieldMsg {
+    fn into(self) -> Msg<T> {
         match self {
             FieldMsg::Validate => Msg::Validate,
         }
     }
 }
 
-impl<Key> FieldLink<Key> for InputFieldLink<Key>
+impl<Value, Key> FieldLink<Key> for SelectFieldLink<Value, Key>
 where
+    Value: Clone + PartialEq + Display + Debug + 'static,
     Key: FieldKey + 'static,
 {
     fn field_key(&self) -> &Key {
@@ -98,41 +74,43 @@ where
 }
 
 #[derive(PartialEq, Clone, Properties, Debug)]
-pub struct Props<Key>
+pub struct Props<Value, Key>
 where
     Key: FieldKey + 'static,
+    Value: Clone,
 {
     pub field_key: Key,
     pub form_link: FormFieldLink<Key>,
     #[prop_or_default]
     pub label: Option<String>,
     #[prop_or_default]
-    pub validator: Validator<InputValue, Key>,
+    pub selected: Option<Value>,
+    pub options: Vec<Value>,
     #[prop_or_default]
-    pub onchange: Callback<InputValue>,
+    pub validator: Validator<Option<Value>, Key>,
     #[prop_or_default]
-    pub placeholder: String,
+    pub onchange: Callback<Value>,
 }
 
-impl<Key> Component for InputField<Key>
+impl<Value, Key> Component for SelectField<Value, Key>
 where
-    Key: Clone + PartialEq + Display + FieldKey + Hash + Eq + 'static,
+    Value: Clone + PartialEq + ToString + Display + Debug + 'static,
+    Key: FieldKey + 'static,
 {
-    type Message = Msg;
-    type Properties = Props<Key>;
+    type Message = Msg<Value>;
+    type Properties = Props<Value, Key>;
 
-    fn create(props: Props<Key>, link: ComponentLink<Self>) -> Self {
+    fn create(props: Props<Value, Key>, link: ComponentLink<Self>) -> Self {
         let form_link = props.form_link.clone();
 
-        let field_link = InputFieldLink {
+        let field_link = SelectFieldLink {
             field_key: props.field_key.clone(),
             link: link.clone(),
         };
-
         form_link.register_field(Rc::new(field_link));
 
-        InputField {
-            value: InputValue::String(String::default()),
+        SelectField {
+            value: props.selected.clone(),
             validation_errors: ValidationErrors::default(),
             props,
             form_link,
@@ -140,16 +118,15 @@ where
         }
     }
 
-    fn update(&mut self, msg: Msg) -> ShouldRender {
+    fn update(&mut self, msg: Msg<Value>) -> ShouldRender {
         match msg {
             Msg::Update(value) => {
-                self.value = value.clone();
+                self.value = Some(value.clone());
                 self.props.onchange.emit(value);
                 self.props
                     .form_link
                     .send_form_message(FormMsg::FieldValueUpdate(self.props.field_key.clone()));
                 self.update(Msg::Validate);
-                true
             }
             Msg::Validate => {
                 self.validation_errors = self.validate_or_empty();
@@ -158,14 +135,14 @@ where
                     .send_form_message(FormMsg::FieldValidationUpdate(
                         self.props.field_key.clone(),
                         self.validation_errors.clone(),
-                    ));
-                true
+                    ))
             }
         }
+        true
     }
 
     fn view(&self) -> Html {
-        let mut classes = vec!["input".to_string()];
+        let mut classes = vec![];
         let validation_error =
             if let Some(errors) = self.validation_errors.get(&self.props.field_key) {
                 classes.push("is-danger".to_string());
@@ -175,10 +152,7 @@ where
                 html! {}
             };
 
-        let input_onchange = self.link.callback(move |data: ChangeData| match data {
-            ChangeData::Value(value) => Msg::Update(InputValue::String(value)),
-            _ => panic!("invalid data type"),
-        });
+        let select_onchange = self.link.callback(Msg::Update);
 
         html! {
             <div class="field">
@@ -191,27 +165,26 @@ where
                         html!{}
                     }
                 }
-
                 <div class="control">
-                    <input
-                        class=classes
-                        value=self.value
-                        type="text"
-                        placeholder=self.props.placeholder
-                        onchange=input_onchange/>
+                    <Select<Value>
+                        selected=self.value.clone()
+                        options=self.props.options.clone()
+                        div_classes=classes
+                        onchange=select_onchange
+                        />
                 </div>
                 { validation_error }
             </div>
         }
     }
 
-    fn change(&mut self, props: Props<Key>) -> ShouldRender {
+    fn change(&mut self, props: Props<Value, Key>) -> ShouldRender {
         if self.props != props {
             if self.form_link != props.form_link {
                 let form_link = props.form_link.clone();
 
                 if !form_link.field_is_registered(&props.field_key) {
-                    let field_link = InputFieldLink {
+                    let field_link = SelectFieldLink {
                         field_key: props.field_key.clone(),
                         link: self.link.clone(),
                     };
@@ -228,9 +201,10 @@ where
     }
 }
 
-impl<Key> Validatable<Key> for InputField<Key>
+impl<Value, Key> Validatable<Key> for SelectField<Value, Key>
 where
     Key: FieldKey,
+    Value: Clone + PartialEq + Display + Debug,
 {
     fn validate(&self) -> Result<(), ValidationErrors<Key>> {
         self.props
@@ -239,9 +213,10 @@ where
     }
 }
 
-impl<Key> FormField<Key> for InputField<Key>
+impl<Value, Key> FormField<Key> for SelectField<Value, Key>
 where
     Key: FieldKey + 'static,
+    Value: Clone + PartialEq + Display + Debug,
 {
     fn validation_errors(&self) -> &ValidationErrors<Key> {
         &self.validation_errors

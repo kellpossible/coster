@@ -1,5 +1,5 @@
-use crate::{bulma::components::form::field::FieldKey, validation::ValidationErrors};
-
+use crate::components::form::field::FieldKey;
+use form_validation::ValidationErrors;
 use yew::html::Renderable;
 use yew::{html, Callback, Children, Component, ComponentLink, Html, Properties, ShouldRender};
 

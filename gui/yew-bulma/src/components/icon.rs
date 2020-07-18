@@ -3,7 +3,7 @@
 
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use crate::bulma::Color;
+use crate::Color;
 use yewtil::NeqAssign;
 
 #[derive(Debug, Clone)]

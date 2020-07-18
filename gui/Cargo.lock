@@ -362,6 +362,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
+name = "form-validation"
+version = "0.1.0"
+
+[[package]]
 name = "fuchsia-cprng"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -613,6 +617,7 @@ dependencies = [
  "chrono",
  "commodity",
  "costing",
+ "form-validation",
  "futures",
  "graphql_client",
  "i18n-embed",
@@ -636,6 +641,7 @@ dependencies = [
  "wasm-logger",
  "web-sys",
  "yew",
+ "yew-bulma",
  "yew-router",
  "yew-state",
  "yewtil",
@@ -1654,6 +1660,16 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "yew-macro",
+]
+
+[[package]]
+name = "yew-bulma"
+version = "0.1.0"
+dependencies = [
+ "form-validation",
+ "web-sys",
+ "yew",
+ "yewtil",
 ]
 
 [[package]]

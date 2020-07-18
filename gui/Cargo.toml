@@ -22,6 +22,8 @@ rust_decimal = "1.5.0"
 yew = { git = "https://github.com/yewstack/yew.git" }
 yew-router = { git = "https://github.com/yewstack/yew.git" }
 yewtil = { git = "https://github.com/yewstack/yew.git", default-features = false, features = ["neq"] }
+yew-bulma = { path = "yew-bulma" }
+form-validation = { path = "form-validation" }
 tr = { version = "0.1", default-features = false, features = ["gettext"] }
 rust-embed = { version = "5.5.1", features = ["debug-embed"] }
 i18n-embed = { path = "../../cargo-i18n/i18n-embed", version = "0.6", features = ["web-sys-requester"] }
@@ -48,7 +50,9 @@ logging = ["wasm-logger"]
 [workspace]
 members = [
     "yew-state",
-    "switch-router"
+    "yew-bulma",
+    "switch-router",
+    "form-validation"
 ]
 
 # [profile.release]

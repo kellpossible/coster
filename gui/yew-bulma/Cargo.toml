@@ -1,0 +1,19 @@
+[package]
+name = "yew-bulma"
+version = "0.1.0"
+authors = ["Luke Frisken <l.frisken@gmail.com>"]
+edition = "2018"
+readme = "README.md"
+license = "MIT"
+keywords = ["yew", "wasm", "bulma", "css"]
+categories = ["gui", "wasm", "web-programming", "api-bindings"]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+[dependencies]
+yew = { git = "https://github.com/yewstack/yew.git" }
+yewtil = { git = "https://github.com/yewstack/yew.git", default-features = false, features = ["neq"] }
+web-sys = { version = "0.3", features = ["Request"] }
+form-validation = { version = "0.1", path = "../form-validation" }

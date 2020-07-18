@@ -53,7 +53,7 @@ type CallbackVec<SR> = Rc<RefCell<Vec<Callback<SR>>>>;
 pub struct SwitchRouteService<SR> {
     history: History,
     location: Location,
-    // TODO: change this to use weak references for callback listeners.
+    // TODO: change this to use weak references for callback listeners. #23
     callbacks: CallbackVec<SR>,
     event_listener: EventListener,
     switch_route_type: PhantomData<SR>,

@@ -1,8 +1,8 @@
-use crate::bulma::{
+use yew_bulma::{
     components::{Form, FormFieldLink, InputField, SelectField},
     FieldKey, InputValue,
 };
-use crate::validation::{
+use form_validation::{
     concat_results, Validatable, Validation, ValidationError, ValidationErrors, Validator,
 };
 use crate::{

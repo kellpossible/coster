@@ -13,19 +13,19 @@ crate-type = ["cdylib", "rlib"]
 costing = { path = "../costing" }
 yew-state = { path = "yew-state" }
 switch-router = { path = "switch-router" }
-commodity = { version = "0.3", features = ["serde-support"] }
+commodity = { version = "0.4", features = ["serde-support", "iso4217"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_derive = "1.0"
 serde_json = "1.0"
-rust_decimal = "1.5.0"
-yew = { git = "https://github.com/yewstack/yew.git" }
-yew-router = { git = "https://github.com/yewstack/yew.git" }
-yewtil = { git = "https://github.com/yewstack/yew.git", default-features = false, features = ["neq"] }
-yew-bulma = { path = "yew-bulma" }
+rust_decimal = "1.7.0"
+yew = { version = "0.17" }
+yew-router = { version = "0.14.0" }
+yewtil = { version = "0.3.0", default-features = false, features = ["neq"] }
+yew-bulma = { git = "https://github.com/kellpossible/yew-bulma.git" }
 form-validation = { git = "https://github.com/kellpossible/form-validation.git" }
 tr = { version = "0.1", default-features = false, features = ["gettext"] }
-rust-embed = { version = "5.5.1", features = ["debug-embed"] }
+rust-embed = { version = "5.6.0", features = ["debug-embed"] }
 i18n-embed = { path = "../../cargo-i18n/i18n-embed", version = "0.6", features = ["web-sys-requester"] }
 unic-langid = { version = "0.9.0", features = ["serde"]}
 anyhow = "1.0"
@@ -37,8 +37,8 @@ wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
 web-sys = { version = "0.3", features = ["Request"] }
-kvdb = "0.6"
-kvdb-web = "0.6"
+kvdb = "0.7"
+kvdb-web = "0.7"
 uuid = { version = "0.8", default_features = false, features = ["v4", "serde", "wasm-bindgen"] }
 graphql_client = { version = "0.9" }
 futures = "0.3"
@@ -50,7 +50,6 @@ logging = ["wasm-logger"]
 [workspace]
 members = [
     "yew-state",
-    "yew-bulma",
     "switch-router",
 ]
 

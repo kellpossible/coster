@@ -5,7 +5,7 @@ use crate::{
     },
     AppRoute, LanguageRequesterRef,
 };
-use yew_bulma::components::Select;
+use yew_bulma::components::select::Select;
 
 use std::rc::Rc;
 use tr::tr;
@@ -109,7 +109,7 @@ impl Component for Navbar {
         let on_language_change = self.link.callback(Msg::SelectLanguage);
 
         let select_icon_props = yew_bulma::components::icon::Props {
-            color: Some(yew_bulma::Color::Info),
+            color: Some(yew_bulma::classes::Color::Info),
             span_class: vec![],
             class: vec!["fas".to_string(), "fa-globe".to_string()],
         };
@@ -154,7 +154,7 @@ impl Component for Navbar {
                     <div class="navbar-end">
                         <div class="navbar-item">
                             <Select<LanguageIdentifier>
-                                size=yew_bulma::Size::Big
+                                size=yew_bulma::classes::Size::Big
                                 selected=current_language
                                 options=self.available_languages.clone()
                                 onchange=on_language_change

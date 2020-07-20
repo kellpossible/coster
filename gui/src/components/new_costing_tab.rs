@@ -16,10 +16,7 @@ use std::{fmt::Display, rc::Rc};
 use tr::tr;
 use uuid::Uuid;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
-use yew_bulma::{
-    components::{Form, FormFieldLink, InputField, SelectField},
-    FieldKey, InputValue,
-};
+use yew_bulma::components::form::{Form, FormFieldLink, InputField, SelectField, FieldKey, InputValue};
 
 #[derive(PartialEq, Clone, Copy, Hash, Eq, Debug)]
 enum FormFields {

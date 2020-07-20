@@ -53,7 +53,7 @@ impl Component for Page {
                 <Navbar
                     state_store = self.props.state_store.clone()
                     language_requester = self.props.language_requester.clone()/>
-                { self.props.children.render() }
+                { self.props.children.clone() }
             </>
         }
     }

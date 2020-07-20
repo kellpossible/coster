@@ -11,18 +11,18 @@ tokio = { version = "0.2", features = ["macros"] }
 warp = "0.2"
 serde_derive = "1.0"
 serde_json = "1.0"
-rust_decimal = "1.5.0"
+rust_decimal = "1.7.0"
 rusqlite = { version = "0.23", features = ["chrono", "bundled"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive", "rc"] }
 costing = { path = "./costing" }
-commodity = { version = "0.3", features = ["serde-support"] }
-rust-embed = "5.5.1"
+commodity = { version = "0.4", features = ["serde-support"] }
+rust-embed = "5.6.0"
 mime_guess = "2"
 log = "0.4"
 pretty_env_logger = "0.4"
-kvdb = "0.6"
-kvdb-rocksdb = "0.8"
+kvdb = "0.7"
+kvdb-rocksdb = "0.9"
 async-graphql = "1.14"
 async-graphql-warp = "1.14"
 

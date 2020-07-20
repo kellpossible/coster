@@ -1,7 +1,8 @@
 use crate::Store;
 use std::{cell::RefCell, fmt::Debug, rc::Rc};
 use yew::{
-    html::ChildrenRenderer, ChildrenWithProps, Component, ComponentLink, Properties, Renderable,
+    html::ChildrenRenderer, ChildrenWithProps, Component, ComponentLink, Properties,
+    html, virtual_dom::VChild
 };
 
 #[derive(Clone)]
@@ -114,7 +115,7 @@ where
     ) -> Option<ChildrenWithProps<C>> {
         // TODO: only make the children vec if props changed
         // alternatively request an iter_mut implementation for ChildrenWithProps...
-        let mut children_vec = children.to_vec();
+        let mut children_vec: Vec<VChild<C>> = children.iter().collect();
         let mut child_props_changed = false;
 
         for child in &mut children_vec {
@@ -206,6 +207,6 @@ where
     }
 
     fn view(&self) -> yew::Html {
-        self.children.render()
+        html!{ <>{ self.children.clone() }</> }
     }
 }

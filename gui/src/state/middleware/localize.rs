@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::{cell::RefCell, fmt::Display, hash::Hash, rc::Rc};
 use unic_langid::LanguageIdentifier;
 use yew::{Component, ComponentLink};
-use yew_state::{
+use reactive_state::{
     middleware::{Middleware, ReduceMiddlewareResult},
     Callback, Store, StoreEvent,
 };
@@ -32,7 +32,7 @@ where
         &self,
         store: &Store<State, Action, Event, Effect>,
         action: Option<&Action>,
-        reduce: yew_state::middleware::ReduceFn<State, Action, Event, Effect>,
+        reduce: reactive_state::middleware::ReduceFn<State, Action, Event, Effect>,
     ) -> ReduceMiddlewareResult<Event, Effect> {
         if let Some(action) = action {
             if let Some(action) = action.get_change_selected_language() {

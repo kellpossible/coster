@@ -8,7 +8,7 @@ pub use dispatch::DatabaseDispatch;
 use kvdb::KeyValueDB;
 use serde::Serialize;
 use std::{fmt::Debug, rc::Rc};
-use yew_state::{middleware::Middleware, Store};
+use reactive_state::{middleware::Middleware, Store};
 
 pub struct DatabaseMiddleware<DB> {
     database: DB,
@@ -70,8 +70,8 @@ where
         &self,
         store: &Store<State, Action, Event, Effect>,
         action: Option<&Action>,
-        reduce: yew_state::middleware::ReduceFn<State, Action, Event, Effect>,
-    ) -> yew_state::middleware::ReduceMiddlewareResult<Event, Effect> {
+        reduce: reactive_state::middleware::ReduceFn<State, Action, Event, Effect>,
+    ) -> reactive_state::middleware::ReduceMiddlewareResult<Event, Effect> {
         reduce(store, action)
     }
 

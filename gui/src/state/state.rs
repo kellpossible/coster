@@ -7,9 +7,9 @@ use costing::Tab;
 use serde::Serialize;
 use std::rc::Rc;
 use unic_langid::LanguageIdentifier;
-use yew_state::StoreRef;
+use reactive_state::StoreRef;
 
-pub type StateCallback = yew_state::Callback<CosterState, CosterEvent>;
+pub type StateCallback = reactive_state::Callback<CosterState, CosterEvent>;
 
 pub type StateStoreRef = StoreRef<CosterState, CosterAction, CosterEvent, CosterEffect>;
 

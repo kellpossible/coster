@@ -1,6 +1,6 @@
 use serde::Serialize;
 use std::fmt::Debug;
-use yew_state::Store;
+use reactive_state::Store;
 
 #[derive(Serialize)]
 pub struct DatabaseDispatch<DB, State, Action, Event, Effect> {

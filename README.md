@@ -18,7 +18,7 @@ The following libraries were developed to service this application's needs, but 
 + [Commodity](https://github.com/kellpossible/commodity) - A library for representing commodities/currencies.
 + [cargo-i18n](https://github.com/kellpossible/cargo-i18n) - A tool for extracting localizations and embedding them using `i18n-embed`.
 + [i18n-embed](https://github.com/kellpossible/cargo-i18n/tree/master/i18n-embed) - A library for embedding localizations extracted using `cargo-i18n`.
-+ [yew-state](./gui/yew-state/README.md) - A library for managing global application state (similar to redux).
++ [reactive-state](https://github.com/kellpossible/reactive-state) - A library for managing global application state (similar to redux).
 + [yew-bulma](https://github.com/kellpossible/yew-bulma) - A library for rendering `bulma` css components using `yew`.
 + [form-validation](https://github.com/kellpossible/form-validation) - A library for validating user input in data forms in a GUI.
 + [yew-switch-router](https://github.com/kellpossible/yew-switch-router) - An alternate version of the yew RouteService, which aims to provide a more type safe API for setting routes, and some other improvements.

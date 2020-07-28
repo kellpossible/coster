@@ -7,7 +7,7 @@ use commodity::CommodityType;
 use costing::db::{DBTransactionSerde, DatabaseValueRead, DatabaseValueWriteID, KeyValueDBSerde};
 use costing::Tab;
 use std::rc::Rc;
-use yew_state::{Reducer, ReducerResult, Store};
+use reactive_state::{Reducer, ReducerResult, Store};
 
 pub struct CosterReducer;
 

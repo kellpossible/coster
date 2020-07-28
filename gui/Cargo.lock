@@ -629,6 +629,7 @@ dependencies = [
  "kvdb-web",
  "lazy_static",
  "log",
+ "reactive-state",
  "rust-embed",
  "rust_decimal",
  "serde",
@@ -645,7 +646,6 @@ dependencies = [
  "yew",
  "yew-bulma",
  "yew-router",
- "yew-state",
  "yew-switch-router",
  "yewtil",
 ]
@@ -1179,6 +1179,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "reactive-state"
+version = "0.1.0"
+source = "git+https://github.com/kellpossible/reactive-state.git#8afbd0013389c9c333b20f80e96e007d9450ed28"
+dependencies = [
+ "log",
+ "serde",
+ "serde-diff",
+ "wasm-bindgen",
+ "web-sys",
+ "yew",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.1.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1648,7 +1661,7 @@ dependencies = [
 [[package]]
 name = "yew-bulma"
 version = "0.1.0"
-source = "git+https://github.com/kellpossible/yew-bulma.git#598adf6f37806fd02bed70bba759c82cd352f3d3"
+source = "git+https://github.com/kellpossible/yew-bulma.git#0b004698cd3dac1b2d643e8ae228ad2e6f6bf917"
 dependencies = [
  "form-validation",
  "web-sys",
@@ -1713,21 +1726,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "yew-state"
-version = "0.1.0"
-dependencies = [
- "log",
- "serde",
- "serde-diff",
- "wasm-bindgen",
- "web-sys",
- "yew",
-]
-
-[[package]]
 name = "yew-switch-router"
 version = "0.1.0"
-source = "git+https://github.com/kellpossible/yew-switch-router.git#888b10e6d4cc1e2420aa2267b2cf68bc2a797536"
+source = "git+https://github.com/kellpossible/yew-switch-router.git#c09c9c8f53badf85f1ffae1fe6fc94dd02e875f2"
 dependencies = [
  "gloo-events",
  "wasm-bindgen",

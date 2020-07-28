@@ -4,7 +4,7 @@ use super::{
 };
 use costing::TabID;
 use serde::Serialize;
-use yew_state::StoreEvent;
+use reactive_state::StoreEvent;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
 pub enum CosterEvent {

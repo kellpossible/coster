@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 costing = { path = "../costing" }
-yew-state = { path = "yew-state" }
+reactive-state = { git = "https://github.com/kellpossible/reactive-state.git" }
 yew-switch-router = { git = "https://github.com/kellpossible/yew-switch-router.git" }
 commodity = { version = "0.4", features = ["serde-support", "iso4217"] }
 chrono = { version = "0.4", features = ["serde"] }
@@ -46,11 +46,6 @@ futures = "0.3"
 [features]
 default = ["logging"]
 logging = ["wasm-logger"]
-
-[workspace]
-members = [
-    "yew-state",
-]
 
 # [profile.release]
 # lto = true

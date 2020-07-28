@@ -7,7 +7,7 @@ use std::{
     marker::PhantomData,
 };
 use yew_switch_router::{SwitchRoute, SwitchRouteService};
-use yew_state::{
+use reactive_state::{
     middleware::{Middleware, ReduceFn},
     Store, StoreEvent, StoreRef,
 };
@@ -84,7 +84,7 @@ where
         store: &Store<State, Action, Event, Effect>,
         action: Option<&Action>,
         reduce: ReduceFn<State, Action, Event, Effect>,
-    ) -> yew_state::middleware::ReduceMiddlewareResult<Event, Effect> {
+    ) -> reactive_state::middleware::ReduceMiddlewareResult<Event, Effect> {
         if let Some(action) = &action {
             if let Some(route_action) = action.route_action() {
                 match route_action {

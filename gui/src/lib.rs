@@ -34,7 +34,7 @@ use tr::tr;
 use wasm_bindgen::prelude::*;
 use yew::virtual_dom::VNode;
 use yew::{html, Component, ComponentLink, Html, ShouldRender};
-use yew_state::middleware::web_logger::{LogLevel, WebLoggerMiddleware};
+use reactive_state::middleware::web_logger::{LogLevel, WebLoggerMiddleware};
 
 #[derive(RustEmbed, I18nEmbed)]
 #[folder = "i18n/mo"]
@@ -61,7 +61,7 @@ pub struct Model {
     _localizer: LocalizerRef,
     _link: ComponentLink<Self>,
     state_store: StateStoreRef,
-    _state_callback: yew_state::Callback<CosterState, CosterEvent>,
+    _state_callback: reactive_state::Callback<CosterState, CosterEvent>,
 }
 
 impl Model {

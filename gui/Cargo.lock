@@ -17,9 +17,9 @@ checksum = "ee2a4ec343196209d6594e19543ae87a39f96d5534d7174822a3ad825dd6ed7e"
 
 [[package]]
 name = "anyhow"
-version = "1.0.31"
+version = "1.0.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85bb70cc08ec97ca5450e6eba421deeea5f172c0fc61f78b5357b2a8e8be195f"
+checksum = "6b602bfe940d21c130f3895acd65221e8a61270debe89d628b9cb4e3ccb8569b"
 
 [[package]]
 name = "anymap"
@@ -361,8 +361,9 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "form-validation"
-version = "0.1.0"
-source = "git+https://github.com/kellpossible/form-validation.git#403f15486bc2108285169e8611c4caab3fb63a4b"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9aa1583124782a241ea1668188ea2014bec3ee8734691c3e9c1b58875942c0fc"
 dependencies = [
  "uuid",
 ]
@@ -633,7 +634,6 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "switch-router",
  "thiserror",
  "tr",
  "unic-langid",
@@ -646,6 +646,7 @@ dependencies = [
  "yew-bulma",
  "yew-router",
  "yew-state",
+ "yew-switch-router",
  "yewtil",
 ]
 
@@ -961,18 +962,18 @@ dependencies = [
 
 [[package]]
 name = "pin-project"
-version = "0.4.22"
+version = "0.4.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12e3a6cdbfe94a5e4572812a0201f8c0ed98c1c452c7b8563ce2276988ef9c17"
+checksum = "ca4433fff2ae79342e497d9f8ee990d174071408f28f726d6d83af93e58e48aa"
 dependencies = [
  "pin-project-internal",
 ]
 
 [[package]]
 name = "pin-project-internal"
-version = "0.4.22"
+version = "0.4.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a0ffd45cf79d88737d7cc85bfd5d2894bee1139b356e616fe85dc389c61aaf7"
+checksum = "2c0e815c3ee9a031fdf5af21c10aa17c573c9c6a566328d99e3936c34e36461f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -993,9 +994,9 @@ checksum = "237a5ed80e274dbc66f86bd59c1e25edc039660be53194b5fe0a482e0f2612ea"
 
 [[package]]
 name = "proc-macro-hack"
-version = "0.5.16"
+version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e0456befd48169b9f13ef0f0ad46d492cf9d2dbb918bcf38e01eed4ce3ec5e4"
+checksum = "99c605b9a0adc77b7211c6b1f722dcb613d68d66859a44f3d485a6da332b0598"
 
 [[package]]
 name = "proc-macro-nested"
@@ -1303,9 +1304,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.56"
+version = "1.0.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3433e879a558dde8b5e8feb2a04899cf34fdde1fafb894687e52105fc1162ac3"
+checksum = "164eacbdb13512ec2745fb09d51fd5b22b0d65ed294a1dcf7285a360c80a675c"
 dependencies = [
  "itoa",
  "ryu",
@@ -1337,20 +1338,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6446ced80d6c486436db5c078dde11a9f73d42b57fb273121e160b84f63d894c"
 
 [[package]]
-name = "switch-router"
-version = "0.1.0"
-dependencies = [
- "gloo-events",
- "wasm-bindgen",
- "web-sys",
- "yew",
-]
-
-[[package]]
 name = "syn"
-version = "1.0.34"
+version = "1.0.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "936cae2873c940d92e697597c5eee105fb570cd5689c695806f672883653349b"
+checksum = "4cdb98bcb1f9d81d07b536179c269ea15999b5d14ea958196413869445bb5250"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1401,9 +1392,9 @@ dependencies = [
 
 [[package]]
 name = "tinystr"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bac79c4b51eda1b090b1edebfb667821bbb51f713855164dc7cec2cb8ac2ba3"
+checksum = "707151f004e8db265b83b1c7509d6c3b4c2c2bc8696113cbe0a8e595c2fdbd3b"
 
 [[package]]
 name = "toml"
@@ -1657,7 +1648,7 @@ dependencies = [
 [[package]]
 name = "yew-bulma"
 version = "0.1.0"
-source = "git+https://github.com/kellpossible/yew-bulma.git#7b2a69baf37633cd0717efeec0f288513ce4f3e5"
+source = "git+https://github.com/kellpossible/yew-bulma.git#598adf6f37806fd02bed70bba759c82cd352f3d3"
 dependencies = [
  "form-validation",
  "web-sys",
@@ -1728,6 +1719,17 @@ dependencies = [
  "log",
  "serde",
  "serde-diff",
+ "wasm-bindgen",
+ "web-sys",
+ "yew",
+]
+
+[[package]]
+name = "yew-switch-router"
+version = "0.1.0"
+source = "git+https://github.com/kellpossible/yew-switch-router.git#888b10e6d4cc1e2420aa2267b2cf68bc2a797536"
+dependencies = [
+ "gloo-events",
  "wasm-bindgen",
  "web-sys",
  "yew",

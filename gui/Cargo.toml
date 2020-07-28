@@ -12,7 +12,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 costing = { path = "../costing" }
 yew-state = { path = "yew-state" }
-switch-router = { path = "switch-router" }
+yew-switch-router = { git = "https://github.com/kellpossible/yew-switch-router.git" }
 commodity = { version = "0.4", features = ["serde-support", "iso4217"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -23,7 +23,7 @@ yew = { version = "0.17" }
 yew-router = { version = "0.14.0" }
 yewtil = { version = "0.3.0", default-features = false, features = ["neq"] }
 yew-bulma = { git = "https://github.com/kellpossible/yew-bulma.git" }
-form-validation = { git = "https://github.com/kellpossible/form-validation.git" }
+form-validation = "0.1"
 tr = { version = "0.1", default-features = false, features = ["gettext"] }
 rust-embed = { version = "5.6.0", features = ["debug-embed"] }
 i18n-embed = { path = "../../cargo-i18n/i18n-embed", version = "0.6", features = ["web-sys-requester"] }
@@ -50,7 +50,6 @@ logging = ["wasm-logger"]
 [workspace]
 members = [
     "yew-state",
-    "switch-router",
 ]
 
 # [profile.release]

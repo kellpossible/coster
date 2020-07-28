@@ -21,6 +21,7 @@ The following libraries were developed to service this application's needs, but 
 + [yew-state](./gui/yew-state/README.md) - A library for managing global application state (similar to redux).
 + [yew-bulma](https://github.com/kellpossible/yew-bulma) - A library for rendering `bulma` css components using `yew`.
 + [form-validation](https://github.com/kellpossible/form-validation) - A library for validating user input in data forms in a GUI.
++ [yew-switch-router](https://github.com/kellpossible/yew-switch-router) - An alternate version of the yew RouteService, which aims to provide a more type safe API for setting routes, and some other improvements.
 
 ## TODO
 

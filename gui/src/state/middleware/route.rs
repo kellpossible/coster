@@ -6,7 +6,7 @@ use std::{
     hash::Hash,
     marker::PhantomData,
 };
-use switch_router::{SwitchRoute, SwitchRouteService};
+use yew_switch_router::{SwitchRoute, SwitchRouteService};
 use yew_state::{
     middleware::{Middleware, ReduceFn},
     Store, StoreEvent, StoreRef,
@@ -14,7 +14,7 @@ use yew_state::{
 
 pub struct RouteMiddleware<SR, State, Action, Event, Effect> {
     pub router: RefCell<SwitchRouteService<SR>>,
-    callback: switch_router::Callback<SR>,
+    callback: yew_switch_router::Callback<SR>,
     state_type: PhantomData<State>,
     action_type: PhantomData<Action>,
     event_type: PhantomData<Event>,
@@ -31,8 +31,8 @@ where
 {
     pub fn new(store: StoreRef<State, Action, Event, Effect>) -> Self {
         let router = RefCell::new(SwitchRouteService::new());
-        let callback: switch_router::Callback<SR> =
-            switch_router::Callback::new(move |route: SR| {
+        let callback: yew_switch_router::Callback<SR> =
+            yew_switch_router::Callback::new(move |route: SR| {
                 store.dispatch(RouteAction::BrowserChangeRoute(route));
             });
 

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use yew_switch_router::SwitchRoute;
+use switch_router::SwitchRoute;
 use yew_router::{route::Route, Switch};
 
 #[derive(Switch, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]

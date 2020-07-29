@@ -8,7 +8,7 @@ use components::costing_tab::CostingTab;
 use components::costing_tab_list::CostingTabList;
 use components::new_costing_tab::NewCostingTab;
 use components::pages::{centered, Page};
-use yew_switch_router::{SwitchRoute, SwitchRouteService};
+use switch_router::{SwitchRoute, SwitchRouteService};
 
 use costing::db::KeyValueDBStore;
 use i18n_embed::{

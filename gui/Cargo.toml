@@ -11,8 +11,8 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 costing = { path = "../costing" }
-reactive-state = { git = "https://github.com/kellpossible/reactive-state.git" }
-yew-switch-router = { git = "https://github.com/kellpossible/yew-switch-router.git" }
+reactive-state = { version = "0.1", features = ["yew", "web_logger"] }
+switch-router = { git = "https://github.com/kellpossible/switch-router.git" }
 commodity = { version = "0.4", features = ["serde-support", "iso4217"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }

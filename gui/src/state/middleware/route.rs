@@ -6,7 +6,7 @@ use std::{
     hash::Hash,
     marker::PhantomData,
 };
-use yew_switch_router::{SwitchRoute, SwitchRouteService};
+use switch_router::{SwitchRoute, SwitchRouteService};
 use reactive_state::{
     middleware::{Middleware, ReduceFn},
     Store, StoreEvent, StoreRef,
@@ -14,7 +14,9 @@ use reactive_state::{
 
 pub struct RouteMiddleware<SR, State, Action, Event, Effect> {
     pub router: RefCell<SwitchRouteService<SR>>,
-    callback: yew_switch_router::Callback<SR>,
+    /// The callback to the SwitchRouteService. When this gets dropped
+    /// this listener will be removed from the route service.
+    _callback: switch_router::Callback<SR>,
     state_type: PhantomData<State>,
     action_type: PhantomData<Action>,
     event_type: PhantomData<Event>,
@@ -31,15 +33,15 @@ where
 {
     pub fn new(store: StoreRef<State, Action, Event, Effect>) -> Self {
         let router = RefCell::new(SwitchRouteService::new());
-        let callback: yew_switch_router::Callback<SR> =
-            yew_switch_router::Callback::new(move |route: SR| {
+        let callback: switch_router::Callback<SR> =
+            switch_router::Callback::new(move |route: SR| {
                 store.dispatch(RouteAction::BrowserChangeRoute(route));
             });
 
         // FIXME: there is multiple borrow error with this callback
         match router.try_borrow_mut() {
             Ok(mut router_mut) => {
-                router_mut.register_callback(callback.clone());
+                router_mut.register_callback(&callback);
             }
             Err(err) => {
                 error!("Unable to register callback {:?}: {}", callback, err);
@@ -48,7 +50,7 @@ where
 
         Self {
             router,
-            callback,
+            _callback: callback,
             state_type: PhantomData,
             action_type: PhantomData,
             event_type: PhantomData,
@@ -56,12 +58,10 @@ where
         }
     }
 
-    fn set_route_no_callback<SRI: Into<SR>>(&self, switch_route: SRI) {
+    fn set_route<SRI: Into<SR>>(&self, switch_route: SRI) {
         match self.router.try_borrow_mut() {
             Ok(mut router) => {
-                router.deregister_callback(&self.callback);
                 router.set_route(switch_route);
-                router.register_callback(self.callback.clone());
             }
             Err(err) => {
                 error!("Unable to set route with no callback: {}", err);
@@ -89,7 +89,7 @@ where
             if let Some(route_action) = action.route_action() {
                 match route_action {
                     RouteAction::ChangeRoute(route) => {
-                        self.set_route_no_callback(route.clone());
+                        self.set_route(route.clone());
                     }
                     RouteAction::PollBrowserRoute => match self.router.try_borrow_mut() {
                         Ok(router_mut) => {

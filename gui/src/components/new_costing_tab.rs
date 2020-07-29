@@ -1,6 +1,6 @@
 use crate::{
     state::{
-        middleware::{localize::LocalizeStore, route::RouteStore},
+        middleware::localize::LocalizeStore,
         ChangeLastSelectedCurrency, CosterAction, StateCallback, StateStoreRef,
     },
     AppRoute,
@@ -17,6 +17,7 @@ use tr::tr;
 use uuid::Uuid;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_bulma::components::form::{Form, FormFieldLink, InputField, SelectField, FieldKey, InputValue};
+use switch_router_middleware::RouteStore;
 
 #[derive(PartialEq, Clone, Copy, Hash, Eq, Debug)]
 enum FormFields {

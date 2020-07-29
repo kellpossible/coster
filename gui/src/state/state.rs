@@ -1,7 +1,8 @@
 use super::{
-    middleware::{localize::LocalizeState, route::RouteState},
+    middleware::localize::LocalizeState,
     AppRoute, CosterAction, CosterEffect, CosterEvent, RouteType,
 };
+use switch_router_middleware::RouteState;
 use commodity::CommodityType;
 use costing::Tab;
 use serde::Serialize;

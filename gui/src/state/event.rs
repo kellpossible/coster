@@ -1,7 +1,8 @@
 use super::{
-    middleware::{localize::LocalizeEvent, route::RouteEvent},
+    middleware::localize::LocalizeEvent,
     RouteType,
 };
+use switch_router_middleware::RouteEvent;
 use costing::TabID;
 use serde::Serialize;
 use reactive_state::StoreEvent;

@@ -1,12 +1,13 @@
 use crate::state::middleware::localize::LocalizeStore;
 use crate::{
-    state::{middleware::route::RouteStore, CosterEvent, StateCallback, StateStoreRef},
+    state::{CosterEvent, StateCallback, StateStoreRef},
     AppRoute,
 };
 
 use tr::tr;
 use yew::MouseEvent;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
+use switch_router_middleware::RouteStore;
 
 pub struct CostingTabList {
     props: Props,
@@ -77,8 +78,8 @@ impl Component for CostingTabList {
 
     fn view(&self) -> Html {
         let state = self.props.state_store.state();
-        let new_tab_handler = self.link.callback(|msg: MouseEvent| Msg::NewCostingTab);
-        let test_graphql_handler = self.link.callback(|msg: MouseEvent| Msg::TestGraphQL);
+        let new_tab_handler = self.link.callback(|_msg: MouseEvent| Msg::NewCostingTab);
+        let test_graphql_handler = self.link.callback(|_msg: MouseEvent| Msg::TestGraphQL);
 
         let tabs_html_iter = state.tabs.iter().map(|tab| {
             html! {

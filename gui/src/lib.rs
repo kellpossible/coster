@@ -24,10 +24,10 @@ use state::{
     middleware::{
         db::DatabaseMiddleware,
         localize::LocalizeMiddleware,
-        route::{RouteAction, RouteMiddleware},
     },
     AppRoute, CosterAction, CosterEvent, CosterReducer, CosterState, RouteType, StateStoreRef,
 };
+use switch_router_middleware::{RouteAction, RouteMiddleware};
 use std::cell::RefCell;
 use std::rc::Rc;
 use tr::tr;

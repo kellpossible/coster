@@ -13,6 +13,7 @@ crate-type = ["cdylib", "rlib"]
 costing = { path = "../costing" }
 reactive-state = { version = "0.1", features = ["yew", "web_logger"] }
 switch-router = { git = "https://github.com/kellpossible/switch-router.git" }
+switch-router-middleware = { git = "https://github.com/kellpossible/switch-router-middleware.git", features = ["serde"] }
 commodity = { version = "0.4", features = ["serde-support", "iso4217"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }

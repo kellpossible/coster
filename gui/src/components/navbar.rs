@@ -1,6 +1,6 @@
 use crate::{
     state::{
-        middleware::{localize::LocalizeStore, route::RouteStore},
+        middleware::localize::LocalizeStore,
         StateCallback, StateStoreRef,
     },
     AppRoute, LanguageRequesterRef,
@@ -11,6 +11,7 @@ use std::rc::Rc;
 use tr::tr;
 use unic_langid::LanguageIdentifier;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
+use switch_router_middleware::RouteStore;
 
 pub struct Navbar {
     burger_menu_active: bool,

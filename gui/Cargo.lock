@@ -636,6 +636,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "switch-router",
+ "switch-router-middleware",
  "thiserror",
  "tr",
  "unic-langid",
@@ -1353,11 +1354,22 @@ checksum = "6446ced80d6c486436db5c078dde11a9f73d42b57fb273121e160b84f63d894c"
 [[package]]
 name = "switch-router"
 version = "0.1.0"
-source = "git+https://github.com/kellpossible/switch-router.git#c993b0cb9f5e514823a99a6d3915085a5639e024"
+source = "git+https://github.com/kellpossible/switch-router.git#65dd6faf45097910e0e68d201265eca783b30b6e"
 dependencies = [
  "gloo-events",
  "wasm-bindgen",
  "web-sys",
+]
+
+[[package]]
+name = "switch-router-middleware"
+version = "0.1.0"
+source = "git+https://github.com/kellpossible/switch-router-middleware.git#37dbb9dcf9404609443033f6d57ab615672b4bcd"
+dependencies = [
+ "log",
+ "reactive-state",
+ "serde",
+ "switch-router",
 ]
 
 [[package]]

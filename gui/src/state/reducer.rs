@@ -1,8 +1,9 @@
 use super::{
     db::CosterClientDBStore,
-    middleware::{db::DatabaseEffect, localize::LocalizeStore, route::RouteAction},
+    middleware::{db::DatabaseEffect, localize::LocalizeStore},
     ChangeLastSelectedCurrency, CosterAction, CosterEffect, CosterEvent, CosterState,
 };
+use switch_router_middleware::RouteAction;
 use commodity::CommodityType;
 use costing::db::{DBTransactionSerde, DatabaseValueRead, DatabaseValueWriteID, KeyValueDBSerde};
 use costing::Tab;

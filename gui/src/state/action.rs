@@ -1,10 +1,10 @@
 use super::{
     middleware::{
         localize::{ChangeSelectedLanguage, LocalizeAction},
-        route::{IsRouteAction, RouteAction},
     },
     RouteType,
 };
+use switch_router_middleware::{IsRouteAction, RouteAction};
 use commodity::CommodityType;
 use costing::Tab;
 use serde::Serialize;

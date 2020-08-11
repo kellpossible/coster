@@ -8,7 +8,7 @@ use components::costing_tab::CostingTab;
 use components::costing_tab_list::CostingTabList;
 use components::new_costing_tab::NewCostingTab;
 use components::pages::{centered, Page};
-use switch_router::{SwitchRoute, SwitchRouteService};
+use switch_router::{SwitchRoute, SwitchRouteService, WebRouteService};
 
 use costing::db::KeyValueDBStore;
 use i18n_embed::{
@@ -48,7 +48,7 @@ lazy_static! {
 
 static TRANSLATIONS: Translations = Translations;
 
-pub type AppRouterRef = Rc<RefCell<SwitchRouteService<AppRoute>>>;
+pub type AppRouterRef = Rc<RefCell<WebRouteService<AppRoute>>>;
 pub type LocalizerRef = Rc<dyn Localizer<'static>>;
 pub type LanguageRequesterRef = Rc<RefCell<dyn LanguageRequester<'static>>>;
 
@@ -86,7 +86,8 @@ impl Component for Model {
         let log_middleware = WebLoggerMiddleware::new().log_level(LogLevel::Log);
         state_store.add_middleware(log_middleware);
 
-        let route_middleware = RouteMiddleware::new(state_store.clone());
+        let route_service = WebRouteService::new();
+        let route_middleware = RouteMiddleware::new(route_service, state_store.clone());
         state_store.add_middleware(route_middleware);
 
         let mut language_requester: WebLanguageRequester<'static> = WebLanguageRequester::new();

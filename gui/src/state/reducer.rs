@@ -57,6 +57,7 @@ impl Reducer<CosterState, CosterAction, CosterEvent, CosterEffect> for CosterRed
                     Rc::new(prev_state.change_route(route.clone()))
                 }
                 RouteAction::PollBrowserRoute => prev_state.clone(),
+                RouteAction::Back => prev_state.clone(),
             },
             CosterAction::ChangeLastSelectedCurrency(action) => {
                 let last_selected_currency = &action.last_selected_currency;

@@ -254,9 +254,9 @@ dependencies = [
 
 [[package]]
 name = "either"
-version = "1.5.3"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb1f6b1ce1c140482ea30ddd3335fc0024ac7ee112895426e0a629a6c20adfe3"
+checksum = "cd56b59865bce947ac5958779cfa508f6c3b9497cc762b7e24a12d11ccde2c4f"
 
 [[package]]
 name = "encoding"
@@ -361,11 +361,13 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "form-validation"
-version = "0.1.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9aa1583124782a241ea1668188ea2014bec3ee8734691c3e9c1b58875942c0fc"
+checksum = "14d2e18f5c795ad8447a2ca1e34e3928210fb9e4ceb99dbb6245f356d7e9ffb6"
 dependencies = [
+ "futures",
  "uuid",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -653,9 +655,9 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34f595585f103464d8d2f6e9864682d74c1601fed5e07d62b1c9058dba8246fb"
+checksum = "e91b62f79061a0bc2e046024cb7ba44b08419ed238ecbd9adbd787434b9e8c25"
 dependencies = [
  "autocfg 1.0.0",
 ]
@@ -737,9 +739,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.5.0"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b88cd59ee5f71fea89a62248fc8f387d44400cefe05ef548466d61ced9029a7"
+checksum = "86b45e59b16c76b11bf9738fd5d38879d3bd28ad292d7b313608becb17ae2df9"
 dependencies = [
  "autocfg 1.0.0",
  "hashbrown",
@@ -1181,10 +1183,11 @@ dependencies = [
 
 [[package]]
 name = "reactive-state"
-version = "0.1.2"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8cca75ee616d483d1d61a32b3d9fc1f8a0e78eb053a8475fdbc8ba2c3c8923f"
+checksum = "9bb1556f4c6c864e4f9e033ef64bc8bc036cd133ff78fb4f15e6564fdae1ec20"
 dependencies = [
+ "js-sys",
  "serde",
  "serde-diff",
  "wasm-bindgen",
@@ -1275,9 +1278,9 @@ checksum = "686ef91cf020ad8d4aca9a7047641fd6add626b7b89e14546c2b6a76781cf822"
 
 [[package]]
 name = "serde"
-version = "1.0.114"
+version = "1.0.115"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5317f7588f0a5078ee60ef675ef96735a1442132dc645eb1d12c018620ed8cd3"
+checksum = "e54c9a88f2da7238af84b5101443f0c0d0a3bbdc455e34a5c9497b1903ed55d5"
 dependencies = [
  "serde_derive",
 ]
@@ -1307,9 +1310,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.114"
+version = "1.0.115"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a0be94b04690fbaed37cddffc5c134bf537c8e3329d53e982fe04c374978f8e"
+checksum = "609feed1d0a73cc36a0182a840a9b37b4a82f0b1150369f0536a9e3f2a31dc48"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1354,7 +1357,7 @@ checksum = "6446ced80d6c486436db5c078dde11a9f73d42b57fb273121e160b84f63d894c"
 [[package]]
 name = "switch-router"
 version = "0.1.0"
-source = "git+https://github.com/kellpossible/switch-router.git#65dd6faf45097910e0e68d201265eca783b30b6e"
+source = "git+https://github.com/kellpossible/switch-router.git#ff4de24353fd51325400427be138f141e86eadd8"
 dependencies = [
  "gloo-events",
  "wasm-bindgen",
@@ -1364,7 +1367,7 @@ dependencies = [
 [[package]]
 name = "switch-router-middleware"
 version = "0.1.0"
-source = "git+https://github.com/kellpossible/switch-router-middleware.git#37dbb9dcf9404609443033f6d57ab615672b4bcd"
+source = "git+https://github.com/kellpossible/switch-router-middleware.git#4da70c34a9ff33eec67a483cdf3c734b4e1a690a"
 dependencies = [
  "log",
  "reactive-state",
@@ -1374,9 +1377,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.36"
+version = "1.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cdb98bcb1f9d81d07b536179c269ea15999b5d14ea958196413869445bb5250"
+checksum = "e69abc24912995b3038597a7a593be5053eb0fb44f3cc5beec0deb421790c1f4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1683,9 +1686,10 @@ dependencies = [
 [[package]]
 name = "yew-bulma"
 version = "0.1.0"
-source = "git+https://github.com/kellpossible/yew-bulma.git#1dab0d937b180d9439b9f176324d55f64847a869"
+source = "git+https://github.com/kellpossible/yew-bulma.git#5c284965b969d8473cd749cdeab0c5c6035355e1"
 dependencies = [
  "form-validation",
+ "log",
  "wasm-bindgen",
  "web-sys",
  "yew",
@@ -1754,6 +1758,9 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf437d08b3267acb36755fc5e2fb77bbfccc1697db2e3a2bd48ae9837a43050e"
 dependencies = [
+ "futures",
  "log",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
  "yew",
 ]

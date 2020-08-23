@@ -12,7 +12,7 @@ use switch_router::{SwitchRoute, SwitchRouteService, WebRouteService};
 
 use costing::db::KeyValueDBStore;
 use i18n_embed::{
-    language_loader, DefaultLocalizer, I18nEmbed, LanguageRequester, Localizer,
+    gettext::{GettextLanguageLoader, gettext_language_loader}, DefaultLocalizer, I18nEmbed, LanguageRequester, Localizer,
     WebLanguageRequester,
 };
 use lazy_static::lazy_static;
@@ -40,10 +40,8 @@ use reactive_state::middleware::web_logger::{LogLevel, WebLoggerMiddleware};
 #[folder = "i18n/mo"]
 struct Translations;
 
-language_loader!(WebLanguageLoader);
-
 lazy_static! {
-    static ref LANGUAGE_LOADER: WebLanguageLoader = WebLanguageLoader::new();
+    static ref LANGUAGE_LOADER: GettextLanguageLoader = gettext_language_loader!();
 }
 
 static TRANSLATIONS: Translations = Translations;

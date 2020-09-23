@@ -215,8 +215,8 @@ impl Component for NewCostingTab {
     fn view(&self) -> Html {
         let onclick_cancel = self.link.callback(|_| Msg::Cancel);
         let onclick_submit = self.link.callback(|_| Msg::Create);
-        let onchange_working_currency = self.link.callback(Msg::UpdateWorkingCurrency);
-        let onchange_name = self
+        let onupdate_working_currency = self.link.callback(Msg::UpdateWorkingCurrency);
+        let onupdate_name = self
             .link
             .callback(Msg::UpdateName);
 
@@ -241,7 +241,7 @@ impl Component for NewCostingTab {
 
                 <div class="card">
                     <Form<FormFields>
-                        field_link = self.form_field_link.clone()
+                        form_link = self.form_field_link.clone()
                         onvalidateupdate=onvalidateupdate
                         >
                         <TextInput<FormFields>
@@ -250,7 +250,7 @@ impl Component for NewCostingTab {
                             form_link = self.form_field_link.clone()
                             placeholder = tab_name_label
                             validator = name_validator
-                            onchange = onchange_name
+                            onupdate = onupdate_name
                             />
                         <SelectField<CommodityType, FormFields>
                             label = tr!("Working Currency")
@@ -258,7 +258,7 @@ impl Component for NewCostingTab {
                             form_link = self.form_field_link.clone()
                             options = self.currencies.clone()
                             validator = working_currency_validator
-                            onchange = onchange_working_currency
+                            onupdate = onupdate_working_currency
                             selected = self.form_data.working_currency.clone()
                             />
                     </Form<FormFields>>

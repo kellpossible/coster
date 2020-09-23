@@ -399,6 +399,7 @@ checksum = "c6439924472fc10cbea81e1777ecac513751fed2b378ba715243992bb29fc89a"
 dependencies = [
  "arrayvec",
  "chrono",
+ "iso4217",
  "rust_decimal",
  "serde",
  "serde_derive",
@@ -994,6 +995,12 @@ checksum = "b2b3ea6ff95e175473f8ffe6a7eb7c00d054240321b84c57051175fe3c1e075e"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "iso4217"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a0ea2a998704e0177b5e9cbd428f2f01cbed6c56d9de68d4d3743e10bc82230"
 
 [[package]]
 name = "itertools"

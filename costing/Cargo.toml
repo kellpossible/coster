@@ -13,7 +13,7 @@ rust_decimal = "1.7"
 thiserror = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive", "rc"] }
-commodity = { version = "0.4", features = ["serde-support"] }
+commodity = { version = "0.4", features = ["serde-support", "iso4217"] }
 doublecount = { version = "0.8", features = ["serde-support"] }
 uuid = { version = "0.8", default_features = false, features = ["v4", "serde", "wasm-bindgen"] }
 kvdb = "0.7"

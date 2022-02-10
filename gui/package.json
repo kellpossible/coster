@@ -7,7 +7,7 @@
   "license": "MIT",
   "devDependencies": {
     "bulma": "^0.8.2",
-    "node-sass": "^4.14.1"
+    "node-sass": "^7.0.0"
   },
   "scripts": {
     "css-build": "node-sass --omit-source-map-url --output-style compressed sass/gui_bulma.scss ../public/css/bulma/bulma.min.css",

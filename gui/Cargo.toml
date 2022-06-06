@@ -26,7 +26,7 @@ yewtil = { version = "0.3.0", default-features = false, features = ["neq"] }
 yew-bulma = { git = "https://github.com/kellpossible/yew-bulma.git" }
 form-validation = {version = "0.3", features = ["async"] }
 tr = { version = "0.1", default-features = false, features = ["gettext"] }
-rust-embed = { version = "5.6.0", features = ["debug-embed"] }
+rust-embed = { version = "6.3.0", features = ["debug-embed"] }
 i18n-embed = { version = "0.7", features = ["gettext-system", "web-sys-requester"] }
 unic-langid = { version = "0.9.0", features = ["serde"]}
 anyhow = "1.0"
